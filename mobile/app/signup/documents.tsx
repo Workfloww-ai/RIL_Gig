@@ -96,7 +96,7 @@ export default function DocumentsScreen() {
       router.push({ pathname: '/otp', params: { mobile } });
 
     } catch (error: any) {
-      Alert.alert('Upload Failed', error.response?.data?.detail || 'Something went wrong while uploading documents.');
+      Alert.alert('Upload Failed', error.response?.data?.detail || 'Something went wrong while uploading documents. Please check again');
     } finally {
       setLoading(false);
     }
