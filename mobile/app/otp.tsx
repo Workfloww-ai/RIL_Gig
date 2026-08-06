@@ -8,7 +8,7 @@ import { useAuthStore } from '../src/store/authStore';
 
 export default function OTPScreen() {
   const router = useRouter();
-  const { mobile } = useLocalSearchParams();
+  const { mobile, userDetails, documentsMetadata } = useLocalSearchParams() as { mobile: string, userDetails?: string, documentsMetadata?: string };
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,10 +23,57 @@ export default function OTPScreen() {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/auth/verify-otp', {
-        mobile_number: mobile,
-        otp: otp
-      });
+
+      let response;
+
+      if (userDetails && documentsMetadata) {
+        // Atomic Signup Flow
+        const formData = new FormData();
+        formData.append('mobile_number', mobile as string);
+        formData.append('otp', otp);
+        formData.append('user_details', userDetails);
+
+        // Parse metadata to extract URI and then rebuild the clean metadata
+        const metadataList = JSON.parse(documentsMetadata);
+        const cleanMetadata = metadataList.map((m: any) => ({
+          filename: m.filename,
+          doc_name: m.doc_name,
+          doc_number: m.doc_number
+        }));
+        formData.append('metadata', JSON.stringify(cleanMetadata));
+
+        // Append files using a for...of loop so we can await the blob fetch
+        for (const doc of metadataList) {
+          const fileResp = await fetch(doc.uri);
+          const blob = await fileResp.blob();
+
+          // In React Native, some environments support the File class, others support passing a blob directly with a filename string
+          formData.append('files', blob, doc.filename);
+        }
+
+        // React Native Axios has known bugs with FormData file uploads, so we use native fetch
+        const fetchResponse = await fetch(`${apiClient.defaults.baseURL}/auth/verify-and-signup`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+
+        const data = await fetchResponse.json();
+
+        if (!fetchResponse.ok) {
+          throw { response: { data: data } };
+        }
+
+        response = { data };
+      } else {
+        // Standard Login Flow
+        response = await apiClient.post('/auth/verify-otp', {
+          mobile_number: mobile,
+          otp: otp
+        });
+      }
 
       const { token, status } = response.data;
       if (status === 'login_success') {
@@ -35,7 +82,27 @@ export default function OTPScreen() {
         alert("Login Success! You are now authenticated.");
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid or expired OTP');
+      console.error("OTP Verification Error:", err.message);
+
+      if (err.response) {
+        console.error(
+          "Backend Error Data:",
+          JSON.stringify(err.response.data, null, 2)
+        );
+
+        const detail = err.response.data?.detail;
+
+        if (typeof detail === "string") {
+          setError(detail);
+        } else if (Array.isArray(detail)) {
+          // FastAPI 422 Validation Error
+          setError(detail[0]?.msg || "Validation Error");
+        } else {
+          setError("Server returned an error");
+        }
+      } else {
+        setError("Network error. Cannot reach server.");
+      }
     } finally {
       setLoading(false);
     }
@@ -51,8 +118,8 @@ export default function OTPScreen() {
             <Text className="font-bold text-primary-500">{mobile}</Text>
           </Text>
         </View>
-        
-        <Input 
+
+        <Input
           label="6-Digit OTP"
           placeholder="------"
           keyboardType="numeric"
@@ -63,16 +130,16 @@ export default function OTPScreen() {
           textAlign="center"
           style={{ fontSize: 24, letterSpacing: 10, fontWeight: 'bold' }}
         />
-        
+
         <View className="mt-8">
           <Button title="Verify & Login" onPress={handleVerify} loading={loading} />
         </View>
-        
-        <Button 
-          title="Resend Code" 
-          variant="outline" 
-          onPress={() => apiClient.post('/auth/send-otp', { mobile_number: mobile })} 
-          disabled={loading} 
+
+        <Button
+          title="Resend Code"
+          variant="outline"
+          onPress={() => apiClient.post('/auth/send-otp', { mobile_number: mobile })}
+          disabled={loading}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

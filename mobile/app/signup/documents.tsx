@@ -16,7 +16,7 @@ interface DocumentEntry {
 
 export default function DocumentsScreen() {
   const router = useRouter();
-  const { user_id, mobile } = useLocalSearchParams();
+  const { user_id, mobile, userDetails } = useLocalSearchParams() as { user_id?: string, mobile: string, userDetails?: string };
   const [documents, setDocuments] = useState<DocumentEntry[]>([]);
   const [docNumbers, setDocNumbers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -65,38 +65,31 @@ export default function DocumentsScreen() {
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      
-      // 1. Append metadata string
-      const metadata = documents.map(d => ({
+      // 1. Prepare metadata
+      const documentsMetadata = documents.map(d => ({
         filename: d.filename,
         doc_name: d.doc_name,
-        doc_number: docNumbers[d.doc_name] || ''
+        doc_number: docNumbers[d.doc_name] || '',
+        uri: d.uri,
+        type: d.type
       }));
-      formData.append('metadata', JSON.stringify(metadata));
 
-      // 2. Append files
-      documents.forEach(doc => {
-        formData.append('files', {
-          uri: doc.uri,
-          name: doc.filename,
-          type: doc.type,
-        } as any);
-      });
-
-      // Send to backend
-      await apiClient.post(`/auth/users/${user_id}/documents`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      
-      // Request OTP
+      // 2. Request OTP
       await apiClient.post('/auth/send-otp', { mobile_number: mobile });
       
-      // Navigate to OTP Screen
-      router.push({ pathname: '/otp', params: { mobile } });
+      // 3. Navigate to OTP Screen and pass all signup data
+      router.push({ 
+        pathname: '/otp', 
+        params: { 
+          mobile,
+          userDetails,
+          documentsMetadata: JSON.stringify(documentsMetadata)
+        } 
+      });
 
     } catch (error: any) {
-      Alert.alert('Upload Failed', error.response?.data?.detail || 'Something went wrong while uploading documents. Please check again');
+      console.error("Submit Error:", error);
+      Alert.alert('Failed', error.response?.data?.detail || 'Something went wrong while requesting OTP. Please check again');
     } finally {
       setLoading(false);
     }

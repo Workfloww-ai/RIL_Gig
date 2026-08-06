@@ -34,23 +34,14 @@ export default function SignupDetailsScreen() {
   });
 
   const onSubmit = async (data: SignupFormData) => {
-    setLoading(true);
-    try {
-      // 1. Create User via POST /signup
-      const response = await apiClient.post('/auth/signup', {
-        mobile_number: mobile,
-        ...data,
-      });
-
-      const { user_id } = response.data;
-      
-      // Navigate to Documents Upload Screen with user_id
-      router.push({ pathname: '/signup/documents', params: { user_id, mobile } });
-    } catch (error: any) {
-      alert(error.response?.data?.detail || "Failed to submit details");
-    } finally {
-      setLoading(false);
-    }
+    // Instead of creating the user immediately, we pass the serialized details to the next screen.
+    router.push({ 
+      pathname: '/signup/documents', 
+      params: { 
+        mobile, 
+        userDetails: JSON.stringify(data) 
+      } 
+    });
   };
 
   return (
