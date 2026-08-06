@@ -1,0 +1,6 @@
+{
+  "name": "GIG WORKERS",
+  "description": "Gig worker application for retail shift booking, real-time tracking, and automated payments.",
+  "requestFramePermissions": ["geolocation", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
