@@ -66,8 +66,11 @@ def process_quiz_submission(user_id: str, module_id: str, score: int, passing_sc
         
     prog = curr_prog.data[0]
     
-    # Update highest score
-    new_highest = max(score, prog.get('highest_quiz_score', 0))
+    # Update highest score (handle NULL from database)
+    current_highest = prog.get('highest_quiz_score')
+    if current_highest is None:
+        current_highest = 0
+    new_highest = max(score, current_highest)
     
     # Determine new status
     new_status = prog['status']

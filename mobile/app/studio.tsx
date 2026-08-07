@@ -12,11 +12,15 @@ export default function StudioScreen() {
   const [module, setModule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const source = activeTab === 'video' ? module?.video_url : module?.podcast_url;
-
-  const player = useVideoPlayer(source || '', (player) => {
-    player.loop = false;
+  const videoPlayer = useVideoPlayer(module?.video_url || null, (p) => {
+    p.loop = false;
   });
+
+  const audioPlayer = useVideoPlayer(module?.podcast_url || null, (p) => {
+    p.loop = false;
+  });
+
+  const player = activeTab === 'video' ? videoPlayer : audioPlayer;
 
   const [currentTime, setCurrentTime] = useState(0);
 
@@ -50,6 +54,12 @@ export default function StudioScreen() {
     
     if (id) fetchModule();
   }, [id]);
+
+  const handleTabChange = (tab: 'video' | 'audio') => {
+    videoPlayer?.pause();
+    audioPlayer?.pause();
+    setActiveTab(tab);
+  };
 
   const togglePlayPause = () => {
     if (player.playing) {
@@ -103,16 +113,16 @@ export default function StudioScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="flex-row mx-4 mt-4 bg-gray-100 rounded-full p-1">
           <TouchableOpacity 
-            className={`flex-1 py-2.5 rounded-full items-center ${activeTab === 'video' ? 'bg-white shadow-sm' : ''}`}
-            onPress={() => setActiveTab('video')}
+            className={`flex-1 py-2.5 rounded-full items-center ${activeTab === 'video' ? 'bg-white' : ''}`}
+            onPress={() => handleTabChange('video')}
           >
             <Text className={`font-semibold ${activeTab === 'video' ? 'text-primary-600' : 'text-gray-500'}`}>
               📹 Video Lesson
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            className={`flex-1 py-2.5 rounded-full items-center ${activeTab === 'audio' ? 'bg-white shadow-sm' : ''}`}
-            onPress={() => setActiveTab('audio')}
+            className={`flex-1 py-2.5 rounded-full items-center ${activeTab === 'audio' ? 'bg-white' : ''}`}
+            onPress={() => handleTabChange('audio')}
           >
             <Text className={`font-semibold ${activeTab === 'audio' ? 'text-primary-600' : 'text-gray-500'}`}>
               🎙 Podcast (Audio)
@@ -127,20 +137,42 @@ export default function StudioScreen() {
 
         <View className="bg-white mx-4 rounded-3xl overflow-hidden shadow-sm border border-gray-100 p-1 mb-6">
           <View className="bg-black w-full aspect-video rounded-2xl overflow-hidden justify-center items-center relative">
-            {!source ? (
+            {(!module?.video_url && activeTab === 'video') || (!module?.podcast_url && activeTab === 'audio') ? (
               <View className="items-center justify-center p-4">
                 <Text className="text-gray-400 font-medium text-center">
                   {activeTab === 'video' ? 'No video' : 'No podcast'} available for this module.
                 </Text>
               </View>
             ) : (
-              <>
-                <VideoView
-                  player={player}
-                  className="w-full h-full"
-                  contentFit="contain"
-                  nativeControls={false}
-                />
+              <View className="w-full h-full relative">
+                {/* Video Player */}
+                <View className="absolute inset-0" style={{ display: activeTab === 'video' ? 'flex' : 'none' }}>
+                  <VideoView
+                    player={videoPlayer}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="contain"
+                    nativeControls={false}
+                  />
+                </View>
+                
+                {/* Audio Player */}
+                <View className="absolute inset-0" style={{ display: activeTab === 'audio' ? 'flex' : 'none' }}>
+                  <VideoView
+                    player={audioPlayer}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="contain"
+                    nativeControls={false}
+                  />
+                  {/* Podcast Graphic Overlay */}
+                  <View className="absolute inset-0 bg-gradient-to-br from-primary-900 to-primary-700 items-center justify-center" pointerEvents="none">
+                    <View className="w-28 h-28 bg-white/10 rounded-full items-center justify-center border border-white/20 mb-3 shadow-xl">
+                      <Text className="text-6xl">🎙️</Text>
+                    </View>
+                    <Text className="text-white/90 font-bold tracking-widest text-xs">PODCAST EPISODE</Text>
+                  </View>
+                </View>
+
+                {/* Overlay Play Button */}
                 {!player?.playing ? (
                   <View className="absolute inset-0 bg-black/30 items-center justify-center">
                     <TouchableOpacity onPress={togglePlayPause} className="bg-white/90 w-16 h-16 rounded-full items-center justify-center shadow-lg pl-1">
@@ -148,11 +180,11 @@ export default function StudioScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : null}
-              </>
+              </View>
             )}
           </View>
 
-          <View className="p-5 opacity-100" style={{ opacity: source ? 1 : 0.5 }} pointerEvents={source ? 'auto' : 'none'}>
+          <View className="p-5 opacity-100" style={{ opacity: player ? 1 : 0.5 }} pointerEvents={player ? 'auto' : 'none'}>
             <View className="h-2 bg-gray-100 rounded-full mb-2 overflow-hidden flex-row">
               <View className="h-full bg-primary-500" style={{ width: `${progressPercent}%` }} />
             </View>
@@ -161,9 +193,7 @@ export default function StudioScreen() {
               <Text className="text-gray-500 text-xs font-medium tracking-widest">
                 {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
               </Text>
-              <View className="bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                <Text className="text-primary-600 text-[10px] font-bold">🔒 Scrub Locked</Text>
-              </View>
+              
             </View>
 
             <View className="flex-row items-center justify-between">

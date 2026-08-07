@@ -9,9 +9,16 @@ from utils.supabase_client import supabase
 
 router = APIRouter()
 
+def get_mobile_variations(mobile: str):
+    """Returns the mobile number without '+' and with '+' for robust DB querying."""
+    clean = mobile.replace("+", "").replace(" ", "").strip()
+    return clean, f"+{clean}"
+
 @router.post("/check-mobile")
 async def check_mobile(payload: MobileCheckRequest):
-    response = supabase.table("users").select("*").eq("mobile_number", payload.mobile_number).execute()
+    clean, with_plus = get_mobile_variations(payload.mobile_number)
+    # Check for both variations in the database to prevent duplicates
+    response = supabase.table("users").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
     
     if len(response.data) > 0:
         # User exists, they should just login (we can trigger send OTP here or let them call /send-otp)
@@ -29,8 +36,10 @@ async def signup(payload: SignupRequest):
         raise HTTPException(status_code=500, detail="Default worker role not found in the database.")
     role_id = role_response.data[0]["role_id"]
     
+    clean_mobile, _ = get_mobile_variations(payload.mobile_number)
+    
     user_dict = {
-        "mobile_number": payload.mobile_number,
+        "mobile_number": clean_mobile,
         "first_name": payload.first_name,
         "last_name": payload.last_name,
         "email": payload.email,
@@ -132,9 +141,10 @@ async def send_otp(payload: SendOTPRequest):
     expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     
     # 1. Save OTP to DB
+    clean_mobile, _ = get_mobile_variations(payload.mobile_number)
     try:
         supabase.table("otp_codes").insert({
-            "mobile_number": payload.mobile_number, 
+            "mobile_number": clean_mobile, 
             "otp_hash": otp_code,
             "expires_at": expires_at
         }).execute()
@@ -154,7 +164,8 @@ async def send_otp(payload: SendOTPRequest):
 @router.post("/verify-otp")
 async def verify_otp(payload: VerifyOTPRequest):
     # 1. Fetch OTP from DB
-    response = supabase.table("otp_codes").select("*").eq("mobile_number", payload.mobile_number).order("created_at", desc=True).limit(1).execute()
+    clean, with_plus = get_mobile_variations(payload.mobile_number)
+    response = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
     if not response.data:
         raise HTTPException(status_code=400, detail="No OTP found for this number.")
@@ -192,7 +203,8 @@ async def verify_and_signup(
     files: List[UploadFile] = File(...)
 ):
     # 1. Verify OTP from DB
-    otp_resp = supabase.table("otp_codes").select("*").eq("mobile_number", mobile_number).order("created_at", desc=True).limit(1).execute()
+    clean, with_plus = get_mobile_variations(mobile_number)
+    otp_resp = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
     if not otp_resp.data:
         raise HTTPException(status_code=400, detail="No OTP found for this number.")
@@ -235,7 +247,7 @@ async def verify_and_signup(
     role_id = role_response.data[0]["role_id"]
     
     user_dict = {
-        "mobile_number": payload.mobile_number,
+        "mobile_number": clean, # Use normalized mobile number
         "first_name": payload.first_name,
         "last_name": payload.last_name,
         "email": payload.email,

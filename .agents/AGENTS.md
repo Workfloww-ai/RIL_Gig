@@ -6,3 +6,4 @@
 4. **Database Queries**: Avoid using `SELECT *` commands. Instead, explicitly mention the specific column names in queries.
 5. **Supabase Restrictions**: Do not call Supabase directly from the frontend. All database calls must be routed through the backend.
 6. **Backend Structure**: For database functions, maintain a separate `db` folder in the backend that contains dedicated files for interacting with tables.
+7. **Frontend Structure**: For new frontend features, organize `.tsx` files in dedicated feature directories (e.g., `app/featurename/`) instead of placing everything directly in `app/` or crowding existing folders like `app/signup/`.
