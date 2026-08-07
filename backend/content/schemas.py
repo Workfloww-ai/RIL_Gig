@@ -13,3 +13,10 @@ class ContentModuleResponse(BaseModel):
     key_module_topics: Optional[List[str]] = []
     order_index: int
     is_locked_default: bool
+    status: Optional[str] = "locked"
+    highest_quiz_score: Optional[int] = 0
+
+class QuizSubmissionRequest(BaseModel):
+    user_id: str
+    module_id: str
+    score: int

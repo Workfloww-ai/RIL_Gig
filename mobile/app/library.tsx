@@ -14,7 +14,8 @@ interface Module {
   overview_text: string;
   key_module_topics: string[];
   order_index: number;
-  is_locked_default: boolean;
+  status: string;
+  highest_quiz_score: number;
 }
 
 export default function LibraryScreen() {
@@ -26,7 +27,7 @@ export default function LibraryScreen() {
   useEffect(() => {
     const fetchModules = async () => {
       try {
-        const response = await apiClient.get('/content/modules');
+        const response = await apiClient.get('/content/modules?user_id=test-user-id');
         setModules(response.data);
       } catch (err: any) {
         console.error('Failed to fetch modules:', err);
@@ -42,6 +43,10 @@ export default function LibraryScreen() {
   const handleStartLesson = (moduleId: string) => {
     router.push({ pathname: '/studio', params: { id: moduleId } });
   };
+
+  const completedCount = modules.filter(m => m.status === 'quiz_passed').length;
+  const totalCount = modules.length;
+  const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -67,7 +72,7 @@ export default function LibraryScreen() {
           {/* Tab Navigation Mockup */}
           <View className="flex-row items-center mb-2">
             <TouchableOpacity className="border-b-2 border-white pb-2 mr-6">
-              <Text className="text-white font-bold">Modules 0/4</Text>
+              <Text className="text-white font-bold">Modules {completedCount}/{totalCount}</Text>
             </TouchableOpacity>
             <TouchableOpacity className="pb-2 mr-6 opacity-60">
               <Text className="text-white font-medium">Certificate 🔒</Text>
@@ -99,10 +104,10 @@ export default function LibraryScreen() {
             
             <View className="mb-2 flex-row justify-between">
               <Text className="text-white font-semibold">📖 Module Completion</Text>
-              <Text className="text-white font-bold">0 of 4 (0%)</Text>
+              <Text className="text-white font-bold">{completedCount} of {totalCount} ({completionPercent}%)</Text>
             </View>
-            <View className="h-2 bg-primary-800 rounded-full mb-4 overflow-hidden">
-              <View className="h-full bg-blue-400 w-0 rounded-full" />
+            <View className="h-2 bg-primary-800 rounded-full mb-4 overflow-hidden flex-row">
+              <View className="h-full bg-blue-400 rounded-full" style={{ width: `${completionPercent}%` }} />
             </View>
             <Text className="text-primary-100 text-sm">
               Complete all video modules without forward seeking and pass each short quiz to get certified.
@@ -127,12 +132,12 @@ export default function LibraryScreen() {
                     {/* Placeholder for video thumbnail */}
                     <View className="absolute inset-0 bg-gray-300 opacity-50" />
                     <View className="absolute inset-0 items-center justify-center">
-                      <View className={`w-10 h-10 rounded-full items-center justify-center ${module.is_locked_default ? 'bg-gray-800/60' : 'bg-primary-500'}`}>
-                        <Text className="text-white text-lg">{module.is_locked_default ? '🔒' : '▶'}</Text>
+                      <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-green-500' : 'bg-primary-500'}`}>
+                        <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
                       </View>
                     </View>
                     <View className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded-md">
-                       <Text className="text-white text-xs font-medium">{module.is_locked_default ? '2m' : '1m 30s'}</Text>
+                       <Text className="text-white text-xs font-medium">{module.duration_text || '2m'}</Text>
                     </View>
                   </View>
 
@@ -158,11 +163,20 @@ export default function LibraryScreen() {
                     <Text className="text-gray-400 mr-2">⏱</Text>
                     <Text className="text-gray-500 text-xs font-medium">{module.duration_text}</Text>
                   </View>
-                  {module.is_locked_default ? (
+                  
+                  {module.status === 'locked' ? (
                     <View className="bg-gray-100 px-5 py-2.5 rounded-full flex-row items-center">
                       <Text className="text-gray-400 mr-2">🔒</Text>
                       <Text className="text-gray-400 font-bold">Locked</Text>
                     </View>
+                  ) : module.status === 'quiz_passed' ? (
+                    <TouchableOpacity 
+                      onPress={() => handleStartLesson(module.id)}
+                      className="bg-green-50 px-5 py-2.5 rounded-full flex-row items-center border border-green-200"
+                    >
+                      <Text className="text-green-600 font-bold mr-2">✓ Passed</Text>
+                      <Text className="text-green-500 text-xs font-medium bg-green-100 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
+                    </TouchableOpacity>
                   ) : (
                     <TouchableOpacity 
                       onPress={() => handleStartLesson(module.id)}

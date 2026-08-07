@@ -18,8 +18,19 @@ export default function StudioScreen() {
     player.loop = false;
   });
 
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    if (!player) return;
+    // Actively poll the player time so the React component re-renders
+    const interval = setInterval(() => {
+      setCurrentTime(player.currentTime);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [player]);
+
   // Calculate completion percentage
-  const progressPercent = player ? (player.currentTime / (player.duration || 1)) * 100 : 0;
+  const progressPercent = player && player.duration ? (currentTime / player.duration) * 100 : 0;
   const isCompleted = progressPercent >= 95; // unlock quiz at 95% to be safe
 
   useEffect(() => {
@@ -27,7 +38,7 @@ export default function StudioScreen() {
     // For now we fetch all and filter since we don't have a GET /module/:id endpoint yet
     const fetchModule = async () => {
       try {
-        const response = await apiClient.get('/content/modules');
+        const response = await apiClient.get('/content/modules?user_id=test-user-id');
         const found = response.data.find((m: any) => m.id === id);
         setModule(found || response.data[0]); // fallback to first if not found
       } catch (error) {
@@ -148,7 +159,7 @@ export default function StudioScreen() {
             
             <View className="flex-row justify-between items-center mb-5">
               <Text className="text-gray-500 text-xs font-medium tracking-widest">
-                {formatTime(player?.currentTime || 0)} / {formatTime(player?.duration || 0)}
+                {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
               </Text>
               <View className="bg-blue-50 px-2 py-1 rounded border border-blue-100">
                 <Text className="text-primary-600 text-[10px] font-bold">🔒 Scrub Locked</Text>
@@ -170,7 +181,10 @@ export default function StudioScreen() {
               </View>
 
               {isCompleted ? (
-                <TouchableOpacity className="bg-green-500 px-5 py-3 rounded-xl shadow-sm shadow-green-500/30">
+                <TouchableOpacity 
+                  onPress={() => router.push({ pathname: '/quiz', params: { id: module.id } })}
+                  className="bg-green-500 px-5 py-3 rounded-xl shadow-sm shadow-green-500/30"
+                >
                   <Text className="text-white font-bold">Take Quiz</Text>
                 </TouchableOpacity>
               ) : (
