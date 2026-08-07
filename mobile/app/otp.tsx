@@ -78,8 +78,8 @@ export default function OTPScreen() {
       const { token, status } = response.data;
       if (status === 'login_success') {
         setToken(token);
-        // Replace this with navigation to your main app dashboard later
-        alert("Login Success! You are now authenticated.");
+        // Go straight to library screen
+        router.push('/library');
       }
     } catch (err: any) {
       console.error("OTP Verification Error:", err.message);

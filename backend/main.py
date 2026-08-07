@@ -4,6 +4,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from auth.route import router as auth_router
+from content.route import router as content_router
 
 app = FastAPI(
     title="Reliance Project",
@@ -22,6 +23,9 @@ app.add_middleware(
 
 # Include the auth router
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+
+# Include the content router
+app.include_router(content_router, prefix="/api/content", tags=["Content Library"])
 
 @app.get("/health")
 async def health():
