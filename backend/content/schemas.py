@@ -17,6 +17,5 @@ class ContentModuleResponse(BaseModel):
     highest_quiz_score: Optional[int] = 0
 
 class QuizSubmissionRequest(BaseModel):
-    user_id: str
     module_id: str
     score: int

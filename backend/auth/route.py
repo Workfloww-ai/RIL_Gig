@@ -6,6 +6,8 @@ import random
 from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest
 from utils.sms import send_otp_sms
 from utils.supabase_client import supabase
+from utils.jwt_auth import create_access_token, get_current_user
+from fastapi import Depends
 
 router = APIRouter()
 
@@ -26,6 +28,12 @@ async def check_mobile(payload: MobileCheckRequest):
     else:
         return {"status": "new_user", "message": "User not found, please proceed to signup"}
 
+@router.get("/me")
+async def get_my_profile(user_id: str = Depends(get_current_user)):
+    response = supabase.table("users").select("first_name, last_name, email, mobile_number").eq("user_id", user_id).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+    return response.data[0]
 
 # 1. POST /auth/signup
 @router.post("/signup")
@@ -186,10 +194,15 @@ async def verify_otp(payload: VerifyOTPRequest):
     if datetime.now(timezone.utc) > expires_at:
         raise HTTPException(status_code=400, detail="OTP has expired.")
         
-    # 4. Optional: Delete OTP after successful verification so it can't be reused
-    supabase.table("otp_codes").delete().eq("id", otp_record["id"]).execute()
-        
-    access_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+    # 5. Fetch user_id to inject into token
+    clean_user, with_plus_user = get_mobile_variations(otp_record["mobile_number"])
+    user_response = supabase.table("users").select("user_id").or_(f"mobile_number.eq.{clean_user},mobile_number.eq.{with_plus_user}").execute()
+    if not user_response.data:
+        raise HTTPException(status_code=400, detail="User account not found. Please sign up.")
+    
+    user_id = user_response.data[0]["user_id"]
+    
+    access_token = create_access_token({"sub": user_id})
     return {"status": "login_success", "token": access_token}
 
 
@@ -319,5 +332,5 @@ async def verify_and_signup(
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Database operation failed for {meta.doc_name}: {str(e)}")
                 
-    access_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+    access_token = create_access_token({"sub": user_id})
     return {"status": "login_success", "token": access_token, "user_id": user_id, "uploaded_documents": len(uploaded_docs)}

@@ -21,14 +21,19 @@ interface Module {
 export default function LibraryScreen() {
   const router = useRouter();
   const [modules, setModules] = useState<Module[]>([]);
+  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchModules = async () => {
+    const fetchData = async () => {
       try {
-        const response = await apiClient.get('/content/modules?user_id=test-user-id');
-        setModules(response.data);
+        const [modulesRes, profileRes] = await Promise.all([
+          apiClient.get('/content/modules'),
+          apiClient.get('/auth/me').catch(() => ({ data: null }))
+        ]);
+        setModules(modulesRes.data);
+        if (profileRes?.data) setUserProfile(profileRes.data);
       } catch (err: any) {
         console.error('Failed to fetch modules:', err);
         setError('Failed to load content modules.');
@@ -37,7 +42,7 @@ export default function LibraryScreen() {
       }
     };
 
-    fetchModules();
+    fetchData();
   }, []);
 
   const handleStartLesson = (moduleId: string) => {
@@ -64,9 +69,6 @@ export default function LibraryScreen() {
                 <Text className="text-primary-100 text-xs">Training Content Library</Text>
               </View>
             </View>
-            <View className="bg-primary-500/50 px-4 py-2 rounded-full border border-primary-400">
-              <Text className="text-white font-medium text-sm">Demo Pass</Text>
-            </View>
           </View>
 
           {/* Tab Navigation Mockup */}
@@ -90,11 +92,11 @@ export default function LibraryScreen() {
             <View className="flex-row justify-between items-center mb-6">
               <View className="flex-row items-center">
                 <View className="h-12 w-12 rounded-full bg-primary-500 items-center justify-center border border-primary-400 mr-3">
-                  <Text className="text-white text-lg font-bold">A</Text>
+                  <Text className="text-white text-lg font-bold">{userProfile?.first_name?.charAt(0).toUpperCase() || 'U'}</Text>
                 </View>
                 <View>
                   <Text className="text-primary-200 text-xs font-semibold tracking-wider">CANDIDATE DASHBOARD</Text>
-                  <Text className="text-white text-xl font-bold">Alex Morgan</Text>
+                  <Text className="text-white text-xl font-bold">{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Loading...'}</Text>
                 </View>
               </View>
               <View className="bg-primary-500/40 px-3 py-1.5 rounded-lg border border-primary-400/50">

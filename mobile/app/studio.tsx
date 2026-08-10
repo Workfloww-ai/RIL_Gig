@@ -42,7 +42,7 @@ export default function StudioScreen() {
     // For now we fetch all and filter since we don't have a GET /module/:id endpoint yet
     const fetchModule = async () => {
       try {
-        const response = await apiClient.get('/content/modules?user_id=test-user-id');
+        const response = await apiClient.get('/content/modules');
         const found = response.data.find((m: any) => m.id === id);
         setModule(found || response.data[0]); // fallback to first if not found
       } catch (error) {

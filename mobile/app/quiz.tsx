@@ -13,9 +13,6 @@ interface Question {
 export default function QuizScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  // TODO: Replace with real user_id from auth state
-  // const user_id = useAuthStore(state => state.user?.id) || 'dummy-user-id';
-  const user_id = 'test-user-id'; // Using a test ID for now to ensure MVP works
 
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -26,7 +23,7 @@ export default function QuizScreen() {
   useEffect(() => {
     const fetchModule = async () => {
       try {
-        const response = await apiClient.get(`/content/modules?user_id=${user_id}`);
+        const response = await apiClient.get(`/content/modules`);
         const module = response.data.find((m: any) => m.id === id);
         
         if (module && module.quiz_questions && module.quiz_questions.length > 0) {
@@ -53,7 +50,6 @@ export default function QuizScreen() {
     setSubmitting(true);
     try {
       const res = await apiClient.post('/content/submit-quiz', {
-        user_id,
         module_id: id,
         score
       });
