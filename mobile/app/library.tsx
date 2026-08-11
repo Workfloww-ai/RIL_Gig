@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { apiClient } from '../src/api/client';
 import { Button } from '../src/components/Button';
 
@@ -20,10 +20,15 @@ interface Module {
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const { justCompleted } = useLocalSearchParams();
+  
   const [modules, setModules] = useState<Module[]>([]);
   const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const [activeTab, setActiveTab] = useState<'modules' | 'certificate' | 'jobs'>('modules');
+  const [showCongrats, setShowCongrats] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,13 +57,20 @@ export default function LibraryScreen() {
   const completedCount = modules.filter(m => m.status === 'quiz_passed').length;
   const totalCount = modules.length;
   const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const isAllCompleted = totalCount > 0 && completedCount === totalCount;
+
+  useEffect(() => {
+    if (justCompleted === 'true' && isAllCompleted) {
+      setShowCongrats(true);
+    }
+  }, [justCompleted, isAllCompleted]);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-50 pt-8">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         
         {/* Header Area */}
-        <View className="bg-primary-600 pt-12 pb-4 px-6 rounded-b-3xl">
+        <View className="bg-primary-600 pt-8 pb-4 px-6 rounded-b-3xl">
           <View className="flex-row justify-between items-center mb-6">
             <View className="flex-row items-center">
               <View className="bg-white h-10 w-10 rounded-full items-center justify-center mr-3">
@@ -71,23 +83,35 @@ export default function LibraryScreen() {
             </View>
           </View>
 
-          {/* Tab Navigation Mockup */}
+          {/* Tab Navigation */}
           <View className="flex-row items-center mb-2">
-            <TouchableOpacity className="border-b-2 border-white pb-2 mr-6">
+            <TouchableOpacity 
+              onPress={() => setActiveTab('modules')}
+              className={`border-b-2 pb-2 mr-6 ${activeTab === 'modules' ? 'border-white' : 'border-transparent opacity-60'}`}
+            >
               <Text className="text-white font-bold">Modules {completedCount}/{totalCount}</Text>
             </TouchableOpacity>
-            <TouchableOpacity className="pb-2 mr-6 opacity-60">
-              <Text className="text-white font-medium">Certificate 🔒</Text>
+            
+            <TouchableOpacity 
+              onPress={() => isAllCompleted ? setActiveTab('certificate') : null}
+              className={`border-b-2 pb-2 mr-6 ${activeTab === 'certificate' ? 'border-white' : 'border-transparent opacity-60'}`}
+            >
+              <Text className="text-white font-medium">Certificate {!isAllCompleted && '🔒'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity className="pb-2 opacity-60">
-              <Text className="text-white font-medium">Jobs 🔒</Text>
+            
+            <TouchableOpacity 
+              onPress={() => isAllCompleted ? setActiveTab('jobs') : null}
+              className={`border-b-2 pb-2 ${activeTab === 'jobs' ? 'border-white' : 'border-transparent opacity-60'}`}
+            >
+              <Text className="text-white font-medium">Jobs {!isAllCompleted && '🔒'}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View className="px-5 pt-6 pb-20">
-          
-          {/* Dashboard Progress Card */}
+          {activeTab === 'modules' && (
+            <View>
+              {/* Dashboard Progress Card */}
           <View className="bg-primary-600 rounded-3xl p-6 mb-8 shadow-sm">
             <View className="flex-row justify-between items-center mb-6">
               <View className="flex-row items-center">
@@ -99,9 +123,7 @@ export default function LibraryScreen() {
                   <Text className="text-white text-xl font-bold">{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Loading...'}</Text>
                 </View>
               </View>
-              <View className="bg-primary-500/40 px-3 py-1.5 rounded-lg border border-primary-400/50">
-                <Text className="text-white text-xs font-medium">🔒 Jobs Locked</Text>
-              </View>
+              
             </View>
             
             <View className="mb-2 flex-row justify-between">
@@ -112,13 +134,13 @@ export default function LibraryScreen() {
               <View className="h-full bg-blue-400 rounded-full" style={{ width: `${completionPercent}%` }} />
             </View>
             <Text className="text-primary-100 text-sm">
-              Complete all video modules without forward seeking and pass each short quiz to get certified.
+              Complete all video modules and pass each short quiz to get certified.
             </Text>
           </View>
 
           <View className="mb-6">
             <Text className="text-2xl font-bold text-gray-900">Training Content Library</Text>
-            <Text className="text-gray-500 mt-1">Sequenced modules with locked forward scrub</Text>
+            <Text className="text-gray-500 mt-1">Empower your growth with our curated training library. </Text>
           </View>
 
           {loading ? (
@@ -206,8 +228,79 @@ export default function LibraryScreen() {
               </View>
             ))
           )}
+          </View>
+          )}
+
+          {activeTab === 'certificate' && (
+             <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center min-h-[400px]">
+               {/* Certificate Template */}
+               <View className="w-full aspect-[1.4] bg-white border-8 border-primary-900 rounded-xl p-4 items-center justify-between relative shadow-lg overflow-hidden">
+                  <View className="absolute top-0 left-0 right-0 h-32 bg-primary-50 opacity-50" />
+                  <View className="items-center mt-4">
+                    <Text className="text-3xl font-serif font-bold text-primary-900 mb-1">CERTIFICATE</Text>
+                    <Text className="text-[10px] text-primary-600 tracking-widest uppercase font-bold">of completion</Text>
+                  </View>
+                  
+                  <View className="items-center my-6 z-10 w-full px-2">
+                    <Text className="text-gray-500 italic text-xs mb-3">This is proudly presented to</Text>
+                    <Text className="text-2xl font-bold text-gray-900 border-b border-gray-300 pb-1 w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
+                      {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Student Name'}
+                    </Text>
+                    <Text className="text-gray-500 italic mt-3 text-center text-xs">For successfully completing all required training modules in the LucidFlexi program.</Text>
+                  </View>
+
+                  <View className="flex-row justify-between w-full px-2 mb-2 items-end z-10">
+                     <View className="items-center w-24">
+                       <Text className="text-gray-800 font-bold border-b border-gray-300 pb-1 mb-1 w-full text-center text-xs">
+                         {new Date().toLocaleDateString()}
+                       </Text>
+                       <Text className="text-gray-400 text-[8px] uppercase">Date</Text>
+                     </View>
+                     <View className="w-14 h-14 rounded-full bg-primary-600 items-center justify-center transform rotate-12 shadow-sm border-2 border-white">
+                       <Text className="text-white text-[8px] font-bold text-center leading-tight">LucidFlexi{'\n'}Certified</Text>
+                     </View>
+                  </View>
+               </View>
+
+               <TouchableOpacity className="mt-8 bg-gray-100 px-6 py-3 rounded-full flex-row items-center border border-gray-200">
+                 <Text className="font-bold text-gray-700">↓ Download PDF</Text>
+               </TouchableOpacity>
+             </View>
+          )}
+
+          {activeTab === 'jobs' && (
+             <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
+               <Text className="text-6xl mb-6">🎉</Text>
+               <Text className="text-xl font-bold text-gray-900 mb-3 text-center">You are eligible for jobs.</Text>
+               <Text className="text-gray-500 text-center leading-relaxed">
+                 Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
+               </Text>
+             </View>
+          )}
         </View>
       </ScrollView>
+
+      {/* Congrats Popup */}
+      <Modal visible={showCongrats} animationType="slide" transparent={true}>
+        <View className="flex-1 bg-black/60 justify-center items-center p-6">
+          <View className="bg-white w-full rounded-3xl p-8 items-center shadow-xl">
+            <Text className="text-6xl mb-6">🎓</Text>
+            <Text className="text-2xl font-bold text-gray-900 mb-2 text-center">Congratulations!</Text>
+            <Text className="text-gray-600 text-center mb-8">
+              You have successfully completed all the training modules. You are now certified and eligible for jobs!
+            </Text>
+            <TouchableOpacity 
+              onPress={() => {
+                setShowCongrats(false);
+                setActiveTab('certificate');
+              }}
+              className="bg-primary-600 w-full py-4 rounded-xl items-center shadow-md shadow-primary-600/30"
+            >
+              <Text className="text-white font-bold text-lg">View Certificate</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

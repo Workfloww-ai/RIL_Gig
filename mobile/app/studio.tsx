@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { apiClient } from '../src/api/client';
@@ -11,6 +12,9 @@ export default function StudioScreen() {
   const [activeTab, setActiveTab] = useState<'video' | 'audio'>('video');
   const [module, setModule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const videoRef = useRef<any>(null);
 
   const videoPlayer = useVideoPlayer(module?.video_url || null, (p) => {
     p.loop = false;
@@ -32,6 +36,12 @@ export default function StudioScreen() {
     }, 500);
     return () => clearInterval(interval);
   }, [player]);
+
+  useEffect(() => {
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    };
+  }, []);
 
   // Calculate completion percentage
   const progressPercent = player && player.duration ? (currentTime / player.duration) * 100 : 0;
@@ -61,6 +71,16 @@ export default function StudioScreen() {
     setActiveTab(tab);
   };
 
+  const toggleFullscreen = async () => {
+    if (isFullscreen) {
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      setIsFullscreen(false);
+    } else {
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      setIsFullscreen(true);
+    }
+  };
+
   const togglePlayPause = () => {
     if (player.playing) {
       player.pause();
@@ -78,7 +98,7 @@ export default function StudioScreen() {
 
   if (loading || !module) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-white items-center justify-center pt-8">
         <ActivityIndicator size="large" color="#2563EB" />
       </SafeAreaView>
     );
@@ -94,7 +114,7 @@ export default function StudioScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-50 pt-8">
       <View className="bg-white px-4 py-4 flex-row items-center border-b border-gray-100 shadow-sm z-10">
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
           <Text className="text-gray-500 font-bold">← Back</Text>
@@ -130,11 +150,6 @@ export default function StudioScreen() {
           </TouchableOpacity>
         </View>
 
-        <View className="flex-row justify-between px-6 mt-4 mb-2">
-          <Text className="text-gray-500 text-xs font-semibold">Playback Speed: 1.0x (Fixed)</Text>
-          <Text className="text-gray-400 text-xs font-medium">🔒 Forward Seeking Disabled</Text>
-        </View>
-
         <View className="bg-white mx-4 rounded-3xl overflow-hidden shadow-sm border border-gray-100 p-1 mb-6">
           <View className="bg-black w-full aspect-video rounded-2xl overflow-hidden justify-center items-center relative">
             {(!module?.video_url && activeTab === 'video') || (!module?.podcast_url && activeTab === 'audio') ? (
@@ -146,8 +161,9 @@ export default function StudioScreen() {
             ) : (
               <View className="w-full h-full relative">
                 {/* Video Player */}
-                <View className="absolute inset-0" style={{ display: activeTab === 'video' ? 'flex' : 'none' }}>
+                <View className="absolute inset-0" style={{ display: activeTab === 'video' && !isFullscreen ? 'flex' : 'none' }}>
                   <VideoView
+                    ref={videoRef}
                     player={videoPlayer}
                     style={{ width: '100%', height: '100%' }}
                     contentFit="contain"
@@ -156,7 +172,7 @@ export default function StudioScreen() {
                 </View>
                 
                 {/* Audio Player */}
-                <View className="absolute inset-0" style={{ display: activeTab === 'audio' ? 'flex' : 'none' }}>
+                <View className="absolute inset-0" style={{ display: activeTab === 'audio' && !isFullscreen ? 'flex' : 'none' }}>
                   <VideoView
                     player={audioPlayer}
                     style={{ width: '100%', height: '100%' }}
@@ -172,14 +188,27 @@ export default function StudioScreen() {
                   </View>
                 </View>
 
-                {/* Overlay Play Button */}
-                {!player?.playing ? (
-                  <View className="absolute inset-0 bg-black/30 items-center justify-center">
-                    <TouchableOpacity onPress={togglePlayPause} className="bg-white/90 w-16 h-16 rounded-full items-center justify-center shadow-lg pl-1">
-                      <Text className="text-primary-600 text-2xl font-bold">▶</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
+                {/* Overlay Controls */}
+                <View className="absolute inset-0 flex-row items-center justify-center gap-6 z-20" pointerEvents="box-none">
+                  {/* Rewind */}
+                  <TouchableOpacity onPress={rewind10s} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
+                    <Text className="text-white text-lg font-bold">↺</Text>
+                    <Text className="text-white text-[8px] font-bold absolute bottom-2">10s</Text>
+                  </TouchableOpacity>
+
+                  {/* Play/Pause */}
+                  <TouchableOpacity 
+                    onPress={togglePlayPause} 
+                    className="w-16 h-16 rounded-full bg-blue-600/90 items-center justify-center border border-white/30 shadow-xl backdrop-blur-md pl-1"
+                  >
+                    <Text className="text-white text-2xl font-bold">{player?.playing ? '⏸' : '▶'}</Text>
+                  </TouchableOpacity>
+
+                  {/* Fullscreen */}
+                  <TouchableOpacity onPress={toggleFullscreen} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
+                    <Text className="text-white text-lg font-bold">⛶</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -193,22 +222,10 @@ export default function StudioScreen() {
               <Text className="text-gray-500 text-xs font-medium tracking-widest">
                 {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
               </Text>
-              
             </View>
 
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row gap-3">
-                <TouchableOpacity 
-                  onPress={togglePlayPause} 
-                  className="bg-primary-600 px-6 py-3 rounded-xl flex-row items-center shadow-sm shadow-primary-500/30"
-                >
-                  <Text className="text-white font-bold">{player?.playing ? 'Pause' : 'Play'}</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity onPress={rewind10s} className="bg-gray-100 px-4 py-3 rounded-xl border border-gray-200">
-                  <Text className="text-gray-600 font-bold">↺ -10s</Text>
-                </TouchableOpacity>
-              </View>
+            <View className="flex-row items-center justify-end">
+
 
               {isCompleted ? (
                 <TouchableOpacity 
@@ -219,8 +236,8 @@ export default function StudioScreen() {
                 </TouchableOpacity>
               ) : (
                 <View className="bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-100 items-center">
-                  <Text className="text-gray-400 text-xs font-medium">Complete 100% to</Text>
-                  <Text className="text-gray-400 text-sm font-bold">Unlock Quiz</Text>
+                  <Text className="text-gray-400 text-xs font-medium">Complete 100% to Unlock Quix</Text>
+                  
                 </View>
               )}
             </View>
@@ -245,6 +262,46 @@ export default function StudioScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Custom Fullscreen Modal */}
+      <Modal visible={isFullscreen} animationType="fade" supportedOrientations={['landscape', 'portrait']}>
+        <View className="flex-1 bg-black justify-center items-center">
+          <VideoView
+            player={player}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="contain"
+            nativeControls={false}
+          />
+          {/* Fullscreen Overlay Controls */}
+          <View className="absolute inset-0 flex-row items-center justify-center gap-8 z-20" pointerEvents="box-none">
+              <TouchableOpacity onPress={rewind10s} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
+                <Text className="text-white text-2xl font-bold">↺</Text>
+                <Text className="text-white text-[10px] font-bold absolute bottom-2.5">10s</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={togglePlayPause} 
+                className="w-24 h-24 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-2xl pl-1 backdrop-blur-md"
+              >
+                <Text className="text-white text-5xl font-bold">{player?.playing ? '⏸' : '▶'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={toggleFullscreen} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
+                <Text className="text-white text-2xl font-bold">⛶</Text>
+              </TouchableOpacity>
+          </View>
+
+          {/* Fullscreen Progress Bar */}
+          <View className="absolute bottom-8 left-12 right-12 z-20 pointer-events-none">
+            <View className="h-1.5 bg-white/20 rounded-full mb-3 overflow-hidden flex-row">
+              <View className="h-full bg-primary-500" style={{ width: `${progressPercent}%` }} />
+            </View>
+            <Text className="text-white/90 text-sm font-bold tracking-widest text-center shadow-sm">
+              {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

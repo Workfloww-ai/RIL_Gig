@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, SafeAreaView, Platform, StatusBar, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../src/api/client';
 import useAuthStore from '../src/store/useAuthStore'; // Or however you get the user_id
@@ -55,8 +55,8 @@ export default function QuizScreen() {
       });
       
       if (res.data.passed) {
-        Alert.alert('Congratulations! 🎉', `You passed with ${score}%. The next module is now unlocked!`, [
-          { text: 'Go to Dashboard', onPress: () => router.push('/library') }
+        Alert.alert('Congratulations! 🎉', `You passed with ${score}%.`, [
+          { text: 'Go to Dashboard', onPress: () => router.push({ pathname: '/library', params: { justCompleted: 'true' } }) }
         ]);
       } else {
         Alert.alert('Keep Trying!', `You scored ${score}%. You need at least 80% to pass.`, [
@@ -101,7 +101,7 @@ export default function QuizScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-white items-center justify-center pt-8">
         <ActivityIndicator size="large" color="#2563EB" />
       </SafeAreaView>
     );
@@ -112,7 +112,7 @@ export default function QuizScreen() {
   const question = questions[currentQIndex];
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-50 pt-8">
       {/* Header */}
       <View className="bg-white px-6 py-5 border-b border-gray-100 shadow-sm flex-row items-center justify-between">
         <Text className="text-gray-400 font-bold" onPress={() => router.back()}>Cancel</Text>

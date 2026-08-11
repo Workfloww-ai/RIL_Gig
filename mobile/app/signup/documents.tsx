@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, Alert } from 'react-native';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../src/components/Button';
@@ -96,7 +96,7 @@ export default function DocumentsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white pt-8">
       <ScrollView className="flex-1 px-8 pt-8">
         <Text className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">Documents</Text>
         <Text className="text-gray-500 mb-8 text-lg font-medium">Upload your KYC documents.</Text>

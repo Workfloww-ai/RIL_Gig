@@ -45,7 +45,7 @@ export default function SignupDetailsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white pt-8">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <ScrollView className="flex-1 px-8 pt-8" showsVerticalScrollIndicator={false}>
           <Text className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">Create Profile</Text>
