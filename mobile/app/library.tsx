@@ -73,9 +73,12 @@ export default function LibraryScreen() {
         <View className="bg-primary-600 pt-8 pb-4 px-6 rounded-b-3xl">
           <View className="flex-row justify-between items-center mb-6">
             <View className="flex-row items-center">
-              <View className="bg-white h-10 w-10 rounded-full items-center justify-center mr-3">
-                <Text className="text-primary-600 font-bold text-xl">L</Text>
-              </View>
+              <TouchableOpacity 
+                onPress={() => router.push('/profile')}
+                className="bg-white h-10 w-10 rounded-full items-center justify-center mr-3 shadow-sm"
+              >
+                <Text className="text-primary-600 font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
+              </TouchableOpacity>
               <View>
                 <Text className="text-white font-bold text-xl leading-tight">LucidFlexi</Text>
                 <Text className="text-primary-100 text-xs">Training Content Library</Text>
