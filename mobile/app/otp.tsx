@@ -79,7 +79,7 @@ export default function OTPScreen() {
       if (status === 'login_success') {
         setToken(token);
         // Go straight to library screen
-        router.push('/library');
+        router.replace('/library');
       }
     } catch (err: any) {
       console.error("OTP Verification Error:", err.message);
@@ -131,16 +131,19 @@ export default function OTPScreen() {
           style={{ fontSize: 24, letterSpacing: 10, fontWeight: 'bold' }}
         />
 
-        <View className="mt-8">
+        <View className="mt-5">
           <Button title="Verify & Login" onPress={handleVerify} loading={loading} />
         </View>
-
+        <View style={{ marginTop: 8 }}>
         <Button
           title="Resend Code"
-          variant="outline"
+          variant="ghost"
           onPress={() => apiClient.post('/auth/send-otp', { mobile_number: mobile })}
           disabled={loading}
+          style={{ color: '#2563EB' }}
+          
         />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

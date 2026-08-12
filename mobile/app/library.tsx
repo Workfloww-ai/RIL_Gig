@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler } from 'react-native';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { Button } from '../src/components/Button';
 
@@ -29,6 +30,20 @@ export default function LibraryScreen() {
   
   const [activeTab, setActiveTab] = useState<'modules' | 'certificate' | 'jobs'>('modules');
   const [showCongrats, setShowCongrats] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () =>
+        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [])
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -80,35 +95,13 @@ export default function LibraryScreen() {
                 <Text className="text-primary-600 font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
               </TouchableOpacity>
               <View>
-                <Text className="text-white font-bold text-xl leading-tight">LucidFlexi</Text>
+                <Text className="text-white font-bold text-xl leading-tight">SAHYOGI</Text>
                 <Text className="text-primary-100 text-xs">Training Content Library</Text>
               </View>
             </View>
           </View>
 
-          {/* Tab Navigation */}
-          <View className="flex-row items-center mb-2">
-            <TouchableOpacity 
-              onPress={() => setActiveTab('modules')}
-              className={`border-b-2 pb-2 mr-6 ${activeTab === 'modules' ? 'border-white' : 'border-transparent opacity-60'}`}
-            >
-              <Text className="text-white font-bold">Modules {completedCount}/{totalCount}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={() => isAllCompleted ? setActiveTab('certificate') : null}
-              className={`border-b-2 pb-2 mr-6 ${activeTab === 'certificate' ? 'border-white' : 'border-transparent opacity-60'}`}
-            >
-              <Text className="text-white font-medium">Certificate {!isAllCompleted && '🔒'}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={() => isAllCompleted ? setActiveTab('jobs') : null}
-              className={`border-b-2 pb-2 ${activeTab === 'jobs' ? 'border-white' : 'border-transparent opacity-60'}`}
-            >
-              <Text className="text-white font-medium">Jobs {!isAllCompleted && '🔒'}</Text>
-            </TouchableOpacity>
-          </View>
+
         </View>
 
         <View className="px-5 pt-6 pb-20">
@@ -163,9 +156,9 @@ export default function LibraryScreen() {
                         <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
                       </View>
                     </View>
-                    <View className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded-md">
+                    {/* <View className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded-md">
                        <Text className="text-white text-xs font-medium">{module.duration_text || '2m'}</Text>
-                    </View>
+                    </View> */}
                   </View>
 
                   {/* Details */}
@@ -249,7 +242,7 @@ export default function LibraryScreen() {
                     <Text className="text-2xl font-bold text-gray-900 border-b border-gray-300 pb-1 w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
                       {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Student Name'}
                     </Text>
-                    <Text className="text-gray-500 italic mt-3 text-center text-xs">For successfully completing all required training modules in the LucidFlexi program.</Text>
+                    <Text className="text-gray-500 italic mt-3 text-center text-xs">For successfully completing all required training modules in thE Sahyogi program.</Text>
                   </View>
 
                   <View className="flex-row justify-between w-full px-2 mb-2 items-end z-10">
@@ -260,7 +253,7 @@ export default function LibraryScreen() {
                        <Text className="text-gray-400 text-[8px] uppercase">Date</Text>
                      </View>
                      <View className="w-14 h-14 rounded-full bg-primary-600 items-center justify-center transform rotate-12 shadow-sm border-2 border-white">
-                       <Text className="text-white text-[8px] font-bold text-center leading-tight">LucidFlexi{'\n'}Certified</Text>
+                       <Text className="text-white text-[8px] font-bold text-center leading-tight">Sahyogi{'\n'}Certified</Text>
                      </View>
                   </View>
                </View>
@@ -282,6 +275,39 @@ export default function LibraryScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <View className="flex-row justify-around items-center bg-white border-t border-gray-100 pb-6 pt-3 px-2">
+        <TouchableOpacity 
+          onPress={() => setActiveTab('modules')}
+          className="items-center flex-1"
+        >
+          <Feather name="book-open" size={22} color={activeTab === 'modules' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4 }} />
+          <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'modules' ? 'text-gray-900' : 'text-gray-400'}`}>Modules</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          onPress={() => isAllCompleted ? setActiveTab('certificate') : null}
+          className="items-center flex-1"
+        >
+          <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
+          <View className="flex-row items-center">
+            <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-gray-900' : 'text-gray-400'}`}>Certificate</Text>
+            {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          onPress={() => isAllCompleted ? setActiveTab('jobs') : null}
+          className="items-center flex-1"
+        >
+          <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
+          <View className="flex-row items-center">
+            <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-gray-900' : 'text-gray-400'}`}>Jobs</Text>
+            {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* Congrats Popup */}
       <Modal visible={showCongrats} animationType="slide" transparent={true}>

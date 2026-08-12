@@ -2,10 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiClient } from '../src/api/client';
+import { useAuthStore } from '../src/store/authStore';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const logout = useAuthStore(state => state.logout);
   const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/');
+  };
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -104,6 +111,17 @@ export default function ProfileScreen() {
               </View>
             </View>
           </View>
+        </View>
+
+        {/* Logout Button */}
+        <View className="mx-5 mb-10 mt-2">
+          <TouchableOpacity 
+            onPress={handleLogout}
+            className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
+          >
+            <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
+            
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
