@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from utils.jwt_auth import get_current_user
 from utils.supabase_client import supabase
-from .schemas import AvailableJobsResponse, JobResponse, AcceptJobResponse
+from .schemas import AvailableJobsResponse, JobResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse
 
 router = APIRouter()
 
@@ -104,4 +104,47 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
         raise
     except Exception as e:
         print(f"Error accepting job: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/accepted", response_model=MyAcceptedJobsResponse)
+async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
+    try:
+        response = supabase.table("worker_job_assignments").select(
+            "assignment_status, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city))"
+        ).eq("worker_id", user_id).execute()
+        
+        jobs = []
+        for r in response.data:
+            req_info = r.get("manpower_requests")
+            if not req_info:
+                continue
+            if isinstance(req_info, list) and len(req_info) > 0:
+                req_info = req_info[0]
+                
+            job_info = req_info.get("jobs") or {}
+            if isinstance(job_info, list) and len(job_info) > 0:
+                job_info = job_info[0]
+                
+            store_info = req_info.get("stores") or {}
+            if isinstance(store_info, list) and len(store_info) > 0:
+                store_info = store_info[0]
+                
+            jobs.append(AcceptedJobResponse(
+                assignment_status=r.get("assignment_status", ""),
+                request_id=req_info.get("request_id", ""),
+                shift_date=req_info.get("shift_date", ""),
+                start_time=req_info.get("start_time", ""),
+                hours_duration=float(req_info.get("hours_duration", 0)),
+                job_id=job_info.get("job_id", ""),
+                job_name=job_info.get("job_name", ""),
+                base_compensation=float(job_info.get("base_compensation", 0)),
+                store_id=store_info.get("store_id", ""),
+                store_name=store_info.get("store_name", ""),
+                address=store_info.get("address"),
+                city=store_info.get("city")
+            ))
+            
+        return MyAcceptedJobsResponse(status="success", jobs=jobs)
+    except Exception as e:
+        print(f"Error fetching accepted jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

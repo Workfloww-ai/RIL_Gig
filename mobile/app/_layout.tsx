@@ -7,6 +7,7 @@ export default function RootLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="otp" />
       <Stack.Screen name="signup" />
+      <Stack.Screen name="library" />
     </Stack>
   );
 }
