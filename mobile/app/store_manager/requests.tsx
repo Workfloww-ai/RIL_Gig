@@ -65,52 +65,51 @@ export default function StoreManagerRequestsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
       {/* Top Bar Header */}
-      <View className="bg-blue-600 px-6 pt-10 pb-6 rounded-b-3xl shadow-sm flex-row items-center justify-between">
-        <TouchableOpacity onPress={() => router.push('/store_manager')} className="flex-row items-center">
-          <Ionicons name="arrow-back" size={22} color="#ffffff" />
-          <Text className="text-white font-bold text-lg ml-2">My Requests</Text>
+      <View style={{ backgroundColor: '#10472B', paddingHorizontal: 20, paddingTop: 40, paddingBottom: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <TouchableOpacity onPress={() => router.push('/store_manager')} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 18, marginLeft: 8 }}>My Requests</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => setIsRaiseModalOpen(true)}
-          className="bg-white/20 border border-white/40 px-3 py-1.5 rounded-full"
+          style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 }}
         >
-          <Text className="text-white font-bold text-xs">+ New Request</Text>
+          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>+ New Request</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1 px-5 pt-5" showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
         {requestsList.map((job) => (
-          <View key={job.id} className="bg-white rounded-2xl p-5 mb-4 border border-gray-100 shadow-sm">
-            <View className="flex-row justify-between items-start mb-1">
-              <Text className="font-bold text-gray-900 text-lg flex-1 mr-2">{job.title}</Text>
+          <View key={job.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+              <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.title}</Text>
               <View
-                className={`px-3 py-1 rounded-full ${
-                  job.status === 'Pending Approval' ? 'bg-amber-100' : 'bg-emerald-100'
-                }`}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 5,
+                  borderRadius: 999,
+                  backgroundColor: job.status === 'Pending Approval' ? '#FEF3C7' : '#DCFCE7',
+                }}
               >
-                <Text
-                  className={`text-xs font-bold ${
-                    job.status === 'Pending Approval' ? 'text-amber-800' : 'text-emerald-800'
-                  }`}
-                >
+                <Text style={{ fontSize: 11, fontWeight: '700', color: job.status === 'Pending Approval' ? '#D97706' : '#15803D' }}>
                   {job.status}
                 </Text>
               </View>
             </View>
 
-            <Text className="text-gray-500 text-xs font-medium mb-3">{job.shiftTime}</Text>
+            <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shiftTime}</Text>
 
-            <View className="bg-gray-50/80 rounded-xl p-4 flex-row justify-between items-center border border-gray-100">
+            <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
               <View>
-                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Workers</Text>
-                <Text className="text-gray-900 font-bold text-base">{job.workersNeeded} Needed</Text>
+                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Workers</Text>
+                <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workersNeeded} Needed</Text>
               </View>
-              <View className="items-end">
-                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Compensation</Text>
-                <Text className="text-gray-900 font-bold text-base">₹{job.compensation}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Compensation</Text>
+                <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.compensation}</Text>
               </View>
             </View>
           </View>
@@ -119,97 +118,98 @@ export default function StoreManagerRequestsScreen() {
 
       {/* RAISE REQUEST MODAL */}
       <Modal visible={isRaiseModalOpen} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-[32px] p-6">
-            <View className="flex-row justify-between items-center mb-5">
-              <Text className="text-xl font-bold text-gray-900">Raise Manpower Request</Text>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Raise Manpower Request</Text>
               <TouchableOpacity onPress={() => setIsRaiseModalOpen(false)}>
-                <Ionicons name="close-circle-outline" size={28} color="#9ca3af" />
+                <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} className="max-h-[480px]">
-              <View className="mb-4">
-                <Text className="text-xs font-bold text-gray-600 mb-1.5">Store</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+              <View style={{ marginBottom: 14 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Store</Text>
                 <TextInput
                   value={requestStore}
                   editable={false}
-                  className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 font-medium"
+                  style={{ backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: '#4B5563', fontWeight: '500' }}
                 />
               </View>
 
-              <View className="flex-row space-x-3 mb-4">
-                <View className="flex-1 mr-1">
-                  <Text className="text-xs font-bold text-gray-600 mb-1.5">Date</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+                <View style={{ flex: 1, marginRight: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Date</Text>
                   <TextInput
                     value={requestDate}
                     onChangeText={setRequestDate}
                     placeholder="dd/mm/yyyy"
-                    className="bg-white border border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-900"
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
                   />
                 </View>
 
-                <View className="flex-1 ml-1">
-                  <Text className="text-xs font-bold text-gray-600 mb-1.5">Role</Text>
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Role</Text>
                   <TextInput
                     value={requestRole}
                     onChangeText={setRequestRole}
                     placeholder="Select a role..."
-                    className="bg-white border border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-900"
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
                   />
                 </View>
               </View>
 
-              <View className="flex-row space-x-3 mb-4">
-                <View className="flex-1 mr-1">
-                  <Text className="text-xs font-bold text-gray-600 mb-1.5">Start Time</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+                <View style={{ flex: 1, marginRight: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Start Time</Text>
                   <TextInput
                     value={requestStartTime}
                     onChangeText={setRequestStartTime}
                     placeholder="--:-- --"
-                    className="bg-white border border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-900"
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
                   />
                 </View>
 
-                <View className="flex-1 ml-1">
-                  <Text className="text-xs font-bold text-gray-600 mb-1.5">How many hours?</Text>
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>How many hours?</Text>
                   <TextInput
                     value={requestHours}
                     onChangeText={setRequestHours}
                     keyboardType="numeric"
-                    className="bg-white border border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-900"
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
                   />
                 </View>
               </View>
 
-              <View className="flex-row space-x-3 mb-6">
-                <View className="flex-1 mr-1">
-                  <Text className="text-xs font-bold text-gray-600 mb-1.5">Number of Workers</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 24 }}>
+                <View style={{ flex: 1, marginRight: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Number of Workers</Text>
                   <TextInput
                     value={requestNumWorkers}
                     onChangeText={setRequestNumWorkers}
                     keyboardType="numeric"
-                    className="bg-white border border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-900"
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
                   />
                 </View>
 
-                <View className="flex-1 ml-1">
-                  <Text className="text-xs font-bold text-gray-600 mb-1.5">Compensation (Fixed ₹)</Text>
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Compensation (Fixed ₹)</Text>
                   <TextInput
                     value={requestCompensation}
                     onChangeText={setRequestCompensation}
                     keyboardType="numeric"
                     placeholder="Auto-set by role"
-                    className="bg-gray-50 border border-gray-300 rounded-xl px-3 py-3 text-sm text-gray-900 font-semibold"
+                    style={{ backgroundColor: '#F7F8F9', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A', fontWeight: '700' }}
                   />
                 </View>
               </View>
 
               <TouchableOpacity
                 onPress={handlePublishRequest}
-                className="bg-blue-600 py-4 rounded-xl items-center shadow-md mb-4"
+                style={{ backgroundColor: '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
+                activeOpacity={0.85}
               >
-                <Text className="text-white font-bold text-base">Publish to Worker Pool</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Publish to Worker Pool</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
