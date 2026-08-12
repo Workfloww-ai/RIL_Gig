@@ -75,11 +75,15 @@ export default function OTPScreen() {
         });
       }
 
-      const { token, status } = response.data;
+      const { token, status, role } = response.data;
       if (status === 'login_success') {
         setToken(token);
-        // Go straight to library screen
-        router.replace('/library');
+        
+        if (role === 'store_manager') {
+          router.replace('/store_manager');
+        } else {
+          router.replace('/library');
+        }
       }
     } catch (err: any) {
       console.error("OTP Verification Error:", err.message);
