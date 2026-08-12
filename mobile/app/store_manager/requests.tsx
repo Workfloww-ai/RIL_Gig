@@ -75,9 +75,10 @@ export default function StoreManagerRequestsScreen() {
 
         <TouchableOpacity
           onPress={() => setIsRaiseModalOpen(true)}
-          style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 }}
+          style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
         >
-          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>+ New Request</Text>
+          <Ionicons name="add-outline" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>New Request</Text>
         </TouchableOpacity>
       </View>
 

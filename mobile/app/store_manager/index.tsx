@@ -29,7 +29,6 @@ interface AcceptedWorker {
   role: string;
   avatarUrl?: string;
   status: 'Review Pending' | 'En Route' | 'On Site' | 'Confirmed' | 'Completed';
-  etaText?: string;
   acceptances: {
     t90: AcceptanceStatus;
     t60: AcceptanceStatus;
@@ -57,8 +56,11 @@ export default function StoreManagerDashboard() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
 
-  // Navigation tab state: ONLY 'home' | 'requests' | 'profile' (Insights removed per request)
+  // Navigation tab state: 'home' | 'requests' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'requests' | 'profile'>('home');
+
+  // Interactive Expandable Jobs State (ID of expanded job card, defaults to 'job-1')
+  const [expandedJobId, setExpandedJobId] = useState<string | null>('job-1');
 
   // Modal States
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
@@ -133,7 +135,6 @@ export default function StoreManagerDashboard() {
           name: 'Priya',
           role: 'Morning Display Setup',
           status: 'En Route',
-          etaText: 'Arriving in 15 mins',
           avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
           acceptances: {
             t90: {
@@ -158,6 +159,11 @@ export default function StoreManagerDashboard() {
       ],
     },
   ]);
+
+  // Toggle expandable job card
+  const toggleExpandJob = (jobId: string) => {
+    setExpandedJobId(expandedJobId === jobId ? null : jobId);
+  };
 
   // Handle open rating modal
   const handleOpenRating = (worker: AcceptedWorker) => {
@@ -234,19 +240,9 @@ export default function StoreManagerDashboard() {
     router.replace('/');
   };
 
-  // Active & Pending Review Counts
-  const activeWorkersCount = jobsList.reduce(
-    (acc, job) => acc + job.acceptedWorkers.filter((w) => w.status === 'En Route' || w.status === 'On Site' || w.status === 'Confirmed').length,
-    0
-  );
-  const pendingReviewCount = jobsList.reduce(
-    (acc, job) => acc + job.acceptedWorkers.filter((w) => w.status === 'Review Pending').length,
-    0
-  );
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
-      {/* ==================== 1. TOP HEADER (Forest Green #10472B background with Red accent button) ==================== */}
+      {/* ==================== 1. TOP HEADER (Forest Green #10472B without Active/Pending stats box) ==================== */}
       {activeTab !== 'profile' ? (
         <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 24, paddingHorizontal: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -261,26 +257,9 @@ export default function StoreManagerDashboard() {
               <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Sign Out</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Dual Metrics Box */}
-          <View style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: 20, padding: 16, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)', marginTop: 20 }}>
-            <View style={{ alignItems: 'center', flex: 1 }}>
-              <Ionicons name="people-outline" size={22} color="#FFFFFF" />
-              <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginTop: 4 }}>{activeWorkersCount || 1}</Text>
-              <Text style={{ fontSize: 12, color: '#E1EBE5', fontWeight: '500' }}>Active</Text>
-            </View>
-
-            <View style={{ width: 1, height: 36, backgroundColor: 'rgba(255, 255, 255, 0.25)' }} />
-
-            <View style={{ alignItems: 'center', flex: 1 }}>
-              <Ionicons name="checkmark-circle-outline" size={22} color="#FFFFFF" />
-              <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginTop: 4 }}>{pendingReviewCount || 1}</Text>
-              <Text style={{ fontSize: 12, color: '#E1EBE5', fontWeight: '500' }}>Pending Review</Text>
-            </View>
-          </View>
         </View>
       ) : (
-        /* Top Bar for Profile Screen (Matching Worker Profile Header) */
+        /* Top Bar for Profile Screen */
         <View style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
           <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A', flex: 1, textAlign: 'center' }}>Manager Profile</Text>
         </View>
@@ -289,238 +268,269 @@ export default function StoreManagerDashboard() {
       {/* ==================== 2. MAIN SCROLLABLE BODY CONTENT ==================== */}
       <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
-        {/* ==================== HOME TAB ==================== */}
+        {/* ==================== HOME TAB (JOBS IN PROCESS & EXPANDABLE ASSIGNED WORKERS) ==================== */}
         {activeTab === 'home' && (
           <View>
-            {/* Section Title + Primary Red Raise Request Button */}
+            {/* Section Title + Single '+' Raise Request Button */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Today's Gig Workers</Text>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Jobs in Process</Text>
               <TouchableOpacity
                 onPress={() => setIsRaiseModalOpen(true)}
-                style={{ backgroundColor: '#E31B23', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
+                style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
                 activeOpacity={0.85}
               >
-                <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>+ Raise Request</Text>
+                <Ionicons name="add-outline" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Raise Request</Text>
               </TouchableOpacity>
             </View>
 
-            {/* List of Jobs & Accepted Workers */}
-            {jobsList.map((job) => (
-              <View key={job.id} style={{ marginBottom: 16 }}>
-                {job.acceptedWorkers.map((worker) => (
-                  <View
-                    key={worker.id}
-                    style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}
+            {/* List of Jobs in Process (Click to view assigned workers) */}
+            {jobsList.map((job) => {
+              const isExpanded = expandedJobId === job.id;
+
+              return (
+                <View
+                  key={job.id}
+                  style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
+                >
+                  {/* Job Card Header (Clickable to Expand / Collapse) */}
+                  <TouchableOpacity
+                    onPress={() => toggleExpandJob(job.id)}
+                    style={{ padding: 18, backgroundColor: isExpanded ? '#FAFBFB' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                    activeOpacity={0.8}
                   >
-                    {/* Worker Info */}
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ width: 48, height: 48, borderRadius: 24, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justify: 'center', marginRight: 12, borderWidth: 1, borderColor: '#C3D3CA' }}>
-                          {worker.avatarUrl ? (
-                            <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
-                          ) : (
-                            <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 18 }}>{worker.name.charAt(0)}</Text>
-                          )}
-                        </View>
-                        <View>
-                          <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 16 }}>{worker.name}</Text>
-                          <Text style={{ color: '#666666', fontSize: 13, marginTop: 2 }}>{worker.role}</Text>
+                    <View style={{ flex: 1, marginRight: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.title}</Text>
+                        <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803D' }}>In Process</Text>
                         </View>
                       </View>
 
-                      {/* Status Badge */}
-                      <View
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 5,
-                          borderRadius: 999,
-                          backgroundColor:
-                            worker.status === 'Review Pending'
-                              ? '#FEF3C7'
-                              : worker.status === 'En Route'
-                              ? '#F3E8FF'
-                              : worker.status === 'Completed'
-                              ? '#DCFCE7'
-                              : '#E0F2FE',
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: '700',
-                            color:
-                              worker.status === 'Review Pending'
-                                ? '#D97706'
-                                : worker.status === 'En Route'
-                                ? '#7E22CE'
-                                : worker.status === 'Completed'
-                                ? '#15803D'
-                                : '#0369A1',
-                          }}
-                        >
-                          {worker.status}
+                      <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shiftTime}</Text>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#10472B' }}>
+                          {job.acceptedWorkers.length} {job.acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
                         </Text>
                       </View>
                     </View>
 
-                    {/* ETA Sub-banner */}
-                    {worker.etaText && (
-                      <View style={{ backgroundColor: '#F7F8F9', borderRadius: 12, padding: 12, marginTop: 12, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
-                        <Ionicons name="time-outline" size={16} color="#E31B23" style={{ marginRight: 8 }} />
-                        <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>
-                          Arriving in <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>15 mins</Text>
-                        </Text>
-                      </View>
-                    )}
+                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#1A1A1A" />
+                    </View>
+                  </TouchableOpacity>
 
-                    {/* 3-STEP ACCEPTANCE TIMELINE CHECKPOINTS */}
-                    <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
-                        Worker Check-in Timeline (3 Checkpoints)
+                  {/* EXPANDED SECTION: ASSIGNED WORKERS & STATUS FOR THIS JOB */}
+                  {isExpanded && (
+                    <View style={{ padding: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#FFFFFF' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+                        Assigned Workers & Check-in Status
                       </Text>
 
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F7F8F9', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB' }}>
-                        {/* Step 1: 90m Before */}
-                        <View style={{ alignItems: 'center', flex: 1 }}>
-                          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                            <Ionicons name="checkmark-sharp" size={14} color="#10472B" />
-                          </View>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#1A1A1A' }}>90m Before</Text>
-                          <Text style={{ fontSize: 9, color: '#666666', fontWeight: '500' }}>{worker.acceptances.t90.expectedTime}</Text>
-                          <Text style={{ fontSize: 8, color: '#10472B', fontWeight: '700', marginTop: 2 }}>✓ Confirmed</Text>
-                        </View>
-
-                        <View style={{ width: 24, height: 2, backgroundColor: '#86EFAC', marginTop: -12 }} />
-
-                        {/* Step 2: 60m Before */}
-                        <View style={{ alignItems: 'center', flex: 1 }}>
+                      {job.acceptedWorkers.length === 0 ? (
+                        <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No workers assigned yet for this job.</Text>
+                      ) : (
+                        job.acceptedWorkers.map((worker) => (
                           <View
-                            style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: 14,
-                              backgroundColor: worker.acceptances.t60.status === 'DONE' ? '#DCFCE7' : '#FEF3C7',
-                              alignItems: 'center',
-                              justify: 'center',
-                              marginBottom: 4,
-                            }}
+                            key={worker.id}
+                            style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' }}
                           >
-                            <Ionicons
-                              name={worker.acceptances.t60.status === 'DONE' ? 'checkmark-sharp' : 'navigate-outline'}
-                              size={14}
-                              color={worker.acceptances.t60.status === 'DONE' ? '#10472B' : '#D97706'}
-                            />
-                          </View>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#1A1A1A' }}>60m Before</Text>
-                          <Text style={{ fontSize: 9, color: '#666666', fontWeight: '500' }}>{worker.acceptances.t60.expectedTime}</Text>
-                          <Text
-                            style={{
-                              fontSize: 8,
-                              fontWeight: '700',
-                              marginTop: 2,
-                              color: worker.acceptances.t60.status === 'DONE' ? '#10472B' : '#D97706',
-                            }}
-                          >
-                            {worker.acceptances.t60.status === 'DONE' ? '✓ En Route' : 'Pending'}
-                          </Text>
-                        </View>
+                            {/* Worker Header */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#C3D3CA' }}>
+                                  {worker.avatarUrl ? (
+                                    <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
+                                  ) : (
+                                    <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0)}</Text>
+                                  )}
+                                </View>
+                                <View>
+                                  <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name}</Text>
+                                  <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
+                                </View>
+                              </View>
 
-                        <View
-                          style={{
-                            width: 24,
-                            height: 2,
-                            marginTop: -12,
-                            backgroundColor: worker.acceptances.onArrival.status === 'DONE' ? '#86EFAC' : '#E5E7EB',
-                          }}
-                        />
+                              {/* Worker Status Badge */}
+                              <View
+                                style={{
+                                  paddingHorizontal: 10,
+                                  paddingVertical: 4,
+                                  borderRadius: 999,
+                                  backgroundColor:
+                                    worker.status === 'Review Pending'
+                                      ? '#FEF3C7'
+                                      : worker.status === 'En Route'
+                                      ? '#F3E8FF'
+                                      : worker.status === 'Completed'
+                                      ? '#DCFCE7'
+                                      : '#E0F2FE',
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: '700',
+                                    color:
+                                      worker.status === 'Review Pending'
+                                        ? '#D97706'
+                                        : worker.status === 'En Route'
+                                        ? '#7E22CE'
+                                        : worker.status === 'Completed'
+                                        ? '#15803D'
+                                        : '#0369A1',
+                                  }}
+                                >
+                                  {worker.status}
+                                </Text>
+                              </View>
+                            </View>
 
-                        {/* Step 3: On Arrival */}
-                        <View style={{ alignItems: 'center', flex: 1 }}>
-                          <View
-                            style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: 14,
-                              backgroundColor:
-                                worker.acceptances.onArrival.status === 'DONE'
-                                  ? '#DCFCE7'
-                                  : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                  ? '#FEF3C7'
-                                  : '#F3F4F6',
-                              alignItems: 'center',
-                              justify: 'center',
-                              marginBottom: 4,
-                            }}
-                          >
-                            <Ionicons
-                              name={
-                                worker.acceptances.onArrival.status === 'DONE'
-                                  ? 'checkmark-sharp'
-                                  : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                  ? 'time-outline'
-                                  : 'location-outline'
-                              }
-                              size={14}
-                              color={
-                                worker.acceptances.onArrival.status === 'DONE'
-                                  ? '#10472B'
-                                  : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                  ? '#D97706'
-                                  : '#9CA3AF'
-                              }
-                            />
+                            {/* 3-STEP CHECKPOINTS TIMELINE */}
+                            <View style={{ backgroundColor: '#FFFFFF', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                              {/* Step 1: 90m Before */}
+                              <View style={{ alignItems: 'center', flex: 1 }}>
+                                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}>
+                                  <Ionicons name="checkmark-sharp" size={13} color="#10472B" />
+                                </View>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1A1A1A' }}>90m Before</Text>
+                                <Text style={{ fontSize: 9, color: '#666666' }}>{worker.acceptances.t90.expectedTime}</Text>
+                                <Text style={{ fontSize: 8, color: '#10472B', fontWeight: '700' }}>✓ Confirmed</Text>
+                              </View>
+
+                              <View style={{ width: 20, height: 2, backgroundColor: '#86EFAC', marginTop: -10 }} />
+
+                              {/* Step 2: 60m Before */}
+                              <View style={{ alignItems: 'center', flex: 1 }}>
+                                <View
+                                  style={{
+                                    width: 26,
+                                    height: 26,
+                                    borderRadius: 13,
+                                    backgroundColor: worker.acceptances.t60.status === 'DONE' ? '#DCFCE7' : '#FEF3C7',
+                                    alignItems: 'center',
+                                    justify: 'center',
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  <Ionicons
+                                    name={worker.acceptances.t60.status === 'DONE' ? 'checkmark-sharp' : 'navigate-outline'}
+                                    size={13}
+                                    color={worker.acceptances.t60.status === 'DONE' ? '#10472B' : '#D97706'}
+                                  />
+                                </View>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1A1A1A' }}>60m Before</Text>
+                                <Text style={{ fontSize: 9, color: '#666666' }}>{worker.acceptances.t60.expectedTime}</Text>
+                                <Text
+                                  style={{
+                                    fontSize: 8,
+                                    fontWeight: '700',
+                                    color: worker.acceptances.t60.status === 'DONE' ? '#10472B' : '#D97706',
+                                  }}
+                                >
+                                  {worker.acceptances.t60.status === 'DONE' ? '✓ En Route' : 'Pending'}
+                                </Text>
+                              </View>
+
+                              <View
+                                style={{
+                                  width: 20,
+                                  height: 2,
+                                  marginTop: -10,
+                                  backgroundColor: worker.acceptances.onArrival.status === 'DONE' ? '#86EFAC' : '#E5E7EB',
+                                }}
+                              />
+
+                              {/* Step 3: On Arrival */}
+                              <View style={{ alignItems: 'center', flex: 1 }}>
+                                <View
+                                  style={{
+                                    width: 26,
+                                    height: 26,
+                                    borderRadius: 13,
+                                    backgroundColor:
+                                      worker.acceptances.onArrival.status === 'DONE'
+                                        ? '#DCFCE7'
+                                        : worker.acceptances.onArrival.status === 'IN_PROGRESS'
+                                        ? '#FEF3C7'
+                                        : '#F3F4F6',
+                                    alignItems: 'center',
+                                    justify: 'center',
+                                    marginBottom: 2,
+                                  }}
+                                >
+                                  <Ionicons
+                                    name={
+                                      worker.acceptances.onArrival.status === 'DONE'
+                                        ? 'checkmark-sharp'
+                                        : worker.acceptances.onArrival.status === 'IN_PROGRESS'
+                                        ? 'time-outline'
+                                        : 'location-outline'
+                                    }
+                                    size={13}
+                                    color={
+                                      worker.acceptances.onArrival.status === 'DONE'
+                                        ? '#10472B'
+                                        : worker.acceptances.onArrival.status === 'IN_PROGRESS'
+                                        ? '#D97706'
+                                        : '#9CA3AF'
+                                    }
+                                  />
+                                </View>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1A1A1A' }}>On Arrival</Text>
+                                <Text style={{ fontSize: 9, color: '#666666' }}>{worker.acceptances.onArrival.expectedTime}</Text>
+                                <Text
+                                  style={{
+                                    fontSize: 8,
+                                    fontWeight: '700',
+                                    color:
+                                      worker.acceptances.onArrival.status === 'DONE'
+                                        ? '#10472B'
+                                        : worker.acceptances.onArrival.status === 'IN_PROGRESS'
+                                        ? '#D97706'
+                                        : '#9CA3AF',
+                                  }}
+                                >
+                                  {worker.acceptances.onArrival.status === 'DONE'
+                                    ? '✓ Arrived'
+                                    : worker.acceptances.onArrival.status === 'IN_PROGRESS'
+                                    ? 'Arriving'
+                                    : 'Pending'}
+                                </Text>
+                              </View>
+                            </View>
+
+                            {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
+                            {worker.status === 'Review Pending' && (
+                              <TouchableOpacity
+                                onPress={() => handleOpenRating(worker)}
+                                style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
+                                activeOpacity={0.85}
+                              >
+                                <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
+                                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Worker & Approve Shift</Text>
+                              </TouchableOpacity>
+                            )}
+
+                            {/* RATED STATUS SUMMARY */}
+                            {worker.status === 'Completed' && worker.rating && (
+                              <View style={{ backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Text style={{ color: '#10472B', fontSize: 12, fontWeight: '700' }}>
+                                  {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
+                                </Text>
+                                <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '600' }}>Approved ✓</Text>
+                              </View>
+                            )}
                           </View>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#1A1A1A' }}>On Arrival</Text>
-                          <Text style={{ fontSize: 9, color: '#666666', fontWeight: '500' }}>{worker.acceptances.onArrival.expectedTime}</Text>
-                          <Text
-                            style={{
-                              fontSize: 8,
-                              fontWeight: '700',
-                              marginTop: 2,
-                              color:
-                                worker.acceptances.onArrival.status === 'DONE'
-                                  ? '#10472B'
-                                  : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                  ? '#D97706'
-                                  : '#9CA3AF',
-                            }}
-                          >
-                            {worker.acceptances.onArrival.status === 'DONE'
-                              ? '✓ Arrived'
-                              : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                              ? 'Arriving'
-                              : 'Pending'}
-                          </Text>
-                        </View>
-                      </View>
+                        ))
+                      )}
                     </View>
-
-                    {/* WORKER RATING ACTION BUTTON (Primary Red Button) */}
-                    {worker.status === 'Review Pending' && (
-                      <TouchableOpacity
-                        onPress={() => handleOpenRating(worker)}
-                        style={{ backgroundColor: '#E31B23', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16 }}
-                        activeOpacity={0.85}
-                      >
-                        <Ionicons name="star" size={16} color="#FFD700" style={{ marginRight: 6 }} />
-                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Rate Worker & Approve Shift</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* RATED STATUS SUMMARY */}
-                    {worker.status === 'Completed' && worker.rating && (
-                      <View style={{ backgroundColor: '#F0FDF4', borderRadius: 12, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text style={{ color: '#10472B', fontSize: 13, fontWeight: '700' }}>
-                          {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
-                        </Text>
-                        <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '600' }}>Approved ✓</Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
-              </View>
-            ))}
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -531,10 +541,11 @@ export default function StoreManagerDashboard() {
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>My Requests</Text>
               <TouchableOpacity
                 onPress={() => setIsRaiseModalOpen(true)}
-                style={{ backgroundColor: '#E31B23', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
+                style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
                 activeOpacity={0.85}
               >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>+ New Request</Text>
+                <Ionicons name="add-outline" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>New Request</Text>
               </TouchableOpacity>
             </View>
 
@@ -563,7 +574,7 @@ export default function StoreManagerDashboard() {
                     <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Workers</Text>
                     <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workersNeeded} Needed</Text>
                   </View>
-                  <View style={{ alignItems: 'end' }}>
+                  <View style={{ alignItems: 'flex-end' }}>
                     <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Compensation</Text>
                     <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.compensation}</Text>
                   </View>
@@ -573,7 +584,7 @@ export default function StoreManagerDashboard() {
           </View>
         )}
 
-        {/* ==================== PROFILE TAB (Matches Worker Profile Layout Exactly) ==================== */}
+        {/* ==================== PROFILE TAB (Clean Profile Without Stats Grid & Activity) ==================== */}
         {activeTab === 'profile' && (
           <View style={{ paddingBottom: 20 }}>
             {/* Profile Avatar Card */}
@@ -590,49 +601,31 @@ export default function StoreManagerDashboard() {
                 <Text style={{ color: '#F59E0B', marginRight: 6, fontSize: 14 }}>⭐⭐⭐⭐⭐</Text>
                 <Text style={{ color: '#B45309', fontWeight: '700', fontSize: 13 }}>5.0</Text>
               </View>
-              <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6 }}>Rated by Gig Workers & Regional Operations</Text>
+              <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6 }}>Rated by Gig Workers & Operations</Text>
             </View>
 
-            {/* Stats Grid Card (Matching Worker Profile Grid) */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-              <View style={{ backgroundColor: '#FFFFFF', flex: 1, marginRight: 8, borderRadius: 24, padding: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 18 }}>📋</Text>
-                </View>
-                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' }}>Total Requests</Text>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' }}>18</Text>
-              </View>
+            {/* Settings Options */}
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, marginBottom: 20 }}>
+              <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Store Settings & Locations</Text>
+                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
 
-              <View style={{ backgroundColor: '#FFFFFF', flex: 1, marginLeft: 8, borderRadius: 24, padding: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 18 }}>👥</Text>
-                </View>
-                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' }}>Workers Hired</Text>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' }}>42</Text>
-              </View>
+              <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Gig Worker Escalations</Text>
+                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Help & Support</Text>
+                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
             </View>
 
-            {/* Recent Activity Card */}
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 }}>Recent Activity</Text>
-              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    <Ionicons name="checkmark-circle" size={24} color="#10472B" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15, marginBottom: 2 }}>Request Approved</Text>
-                    <Text style={{ color: '#666666', fontSize: 12 }}>Inventory Restocking Shift</Text>
-                  </View>
-                  <Text style={{ color: '#9CA3AF', fontSize: 11 }}>Today</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Logout Button (Matching Worker Logout Button Style) */}
+            {/* Logout Button */}
             <TouchableOpacity
               onPress={handleLogout}
-              style={{ backgroundColor: '#FEF2F2', borderRadius: 24, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FEE2E2', flexDirection: 'row', justifyContent: 'center' }}
+              style={{ backgroundColor: '#FEF2F2', borderRadius: 24, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FEE2E2', flexDirection: 'row', justifyContent: 'center', marginBottom: 40 }}
               activeOpacity={0.85}
             >
               <Text style={{ color: '#E31B23', fontWeight: '700', fontSize: 16 }}>Logout</Text>
@@ -641,7 +634,7 @@ export default function StoreManagerDashboard() {
         )}
       </ScrollView>
 
-      {/* ==================== 3. FIXED BOTTOM NAVIGATION BAR (Strictly Fixed at Bottom) ==================== */}
+      {/* ==================== 3. FIXED BOTTOM NAVIGATION BAR ==================== */}
       <View
         style={{
           position: 'absolute',
@@ -701,7 +694,6 @@ export default function StoreManagerDashboard() {
       <Modal visible={isRatingModalOpen} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 }}>
-            {/* Modal Header */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Rate Worker Performance</Text>
               <TouchableOpacity onPress={() => setIsRatingModalOpen(false)}>
@@ -709,7 +701,6 @@ export default function StoreManagerDashboard() {
               </TouchableOpacity>
             </View>
 
-            {/* Selected Worker Info */}
             {selectedWorker && (
               <View style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 20, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
                 <View style={{ width: 48, height: 48, borderRadius: 24, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
@@ -726,7 +717,6 @@ export default function StoreManagerDashboard() {
               </View>
             )}
 
-            {/* Star Rating Control */}
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center', marginBottom: 8 }}>
               Tap stars to rate performance
             </Text>
@@ -751,7 +741,6 @@ export default function StoreManagerDashboard() {
                 : '★ Needs Improvement'}
             </Text>
 
-            {/* Metric Tags */}
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Strengths & Highlights</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 }}>
               {['On-Time Arrival', 'High Efficiency', 'Great Attitude', 'Followed Instructions', 'Kept Store Clean'].map(
@@ -782,7 +771,6 @@ export default function StoreManagerDashboard() {
               )}
             </View>
 
-            {/* Feedback TextInput */}
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Manager Feedback (Optional)</Text>
             <TextInput
               placeholder="Add optional notes about the worker's shift..."
@@ -794,7 +782,6 @@ export default function StoreManagerDashboard() {
               style={{ backgroundColor: '#F7F8F9', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 12, fontSize: 14, color: '#1A1A1A', marginBottom: 24, minHeight: 70 }}
             />
 
-            {/* Primary Red Submit Button */}
             <TouchableOpacity
               onPress={handleSubmitRating}
               style={{ backgroundColor: '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
