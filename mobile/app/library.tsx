@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler } from 'react-native';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
@@ -33,6 +33,27 @@ export default function LibraryScreen() {
   const [activeTab, setActiveTab] = useState<'modules' | 'certificate' | 'jobs'>('modules');
   const [showCongrats, setShowCongrats] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  const [jobsTab, setJobsTab] = useState<'available' | 'accepted'>('available');
+  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
+  const [acceptedJobs, setAcceptedJobs] = useState<any[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [acceptingJobId, setAcceptingJobId] = useState<string | null>(null);
+
+
+
+  const handleAcceptJob = async (request_id: string) => {
+    setAcceptingJobId(request_id);
+    try {
+      await apiClient.post(`/jobs/accept/${request_id}`);
+      showToast('Job accepted successfully!');
+      fetchJobs();
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || 'Failed to accept job');
+    } finally {
+      setAcceptingJobId(null);
+    }
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -82,6 +103,29 @@ export default function LibraryScreen() {
   const totalCount = modules.length;
   const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isAllCompleted = totalCount > 0 && completedCount === totalCount;
+
+  const fetchJobs = async () => {
+    setJobsLoading(true);
+    try {
+      if (jobsTab === 'available') {
+        const res = await apiClient.get('/jobs/available');
+        setAvailableJobs(res.data.jobs || []);
+      } else {
+        const res = await apiClient.get('/jobs/accepted');
+        setAcceptedJobs(res.data.jobs || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch jobs:", err);
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'jobs' && isAllCompleted) {
+      fetchJobs();
+    }
+  }, [activeTab, isAllCompleted, jobsTab]);
 
   useEffect(() => {
     if (justCompleted === 'true' && isAllCompleted) {
@@ -274,13 +318,156 @@ export default function LibraryScreen() {
           )}
 
           {activeTab === 'jobs' && (
-             <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
-               <Text className="text-6xl mb-6">🎉</Text>
-               <Text className="text-xl font-bold text-gray-900 mb-3 text-center">You are eligible for jobs.</Text>
-               <Text className="text-gray-500 text-center leading-relaxed">
-                 Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
-               </Text>
-             </View>
+            <View className="mt-4">
+              <View className="mb-6 flex-row justify-between items-center">
+                <View>
+                  <Text className="text-2xl font-bold text-gray-900">Your Shifts</Text>
+                  <Text className="text-gray-500 mt-1">Accept and manage your jobs.</Text>
+                </View>
+                <TouchableOpacity onPress={fetchJobs} className="bg-gray-100 p-2.5 rounded-full shadow-sm">
+                  <Feather name="refresh-cw" size={16} color="#4B5563" />
+                </TouchableOpacity>
+              </View>
+
+              <View className="flex-row bg-gray-200 rounded-full p-1 mb-6">
+                <Pressable
+                  style={{ flex: 1, paddingVertical: 10, borderRadius: 9999, alignItems: 'center', backgroundColor: jobsTab === 'available' ? '#ffffff' : 'transparent', shadowOpacity: jobsTab === 'available' ? 0.05 : 0 }}
+                  onPress={() => setJobsTab('available')}
+                >
+                  <Text style={{ fontWeight: 'bold', color: jobsTab === 'available' ? '#2563EB' : '#6B7280' }}>Available</Text>
+                </Pressable>
+                <Pressable
+                  style={{ flex: 1, paddingVertical: 10, borderRadius: 9999, alignItems: 'center', backgroundColor: jobsTab === 'accepted' ? '#ffffff' : 'transparent', shadowOpacity: jobsTab === 'accepted' ? 0.05 : 0 }}
+                  onPress={() => setJobsTab('accepted')}
+                >
+                  <Text style={{ fontWeight: 'bold', color: jobsTab === 'accepted' ? '#2563EB' : '#6B7280' }}>Accepted</Text>
+                </Pressable>
+              </View>
+
+              {jobsLoading ? (
+                <ActivityIndicator size="large" color="#2563EB" className="mt-10" />
+              ) : jobsTab === 'available' ? (
+                availableJobs.length === 0 ? (
+                 <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
+                   <Text className="text-6xl mb-6">🔍</Text>
+                   <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Jobs Available</Text>
+                   <Text className="text-gray-500 text-center leading-relaxed">
+                     Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
+                   </Text>
+                 </View>
+                ) : (
+                  availableJobs.map((job) => (
+                    <View key={job.request_id} className="bg-white rounded-3xl p-5 mb-5 shadow-sm border border-gray-100">
+                      <View className="flex-row justify-between items-start mb-4">
+                        <View className="flex-1 pr-4">
+                          <View className="bg-blue-50 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-blue-100">
+                            <Feather name="briefcase" size={12} color="#2563EB" style={{ marginRight: 6 }} />
+                            <Text className="text-primary-700 text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
+                          </View>
+                          <Text className="font-bold text-gray-900 text-lg leading-tight mb-1.5">{job.store_name}</Text>
+                          <View className="flex-row items-start">
+                            <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
+                            <Text className="text-gray-500 text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
+                          </View>
+                        </View>
+                        <View className="bg-green-50 px-3 py-2.5 rounded-2xl items-center border border-green-100 min-w-[75px] shadow-sm">
+                          <Text className="text-green-700 font-bold text-xl">₹{job.base_compensation}</Text>
+                          <Text className="text-green-600 text-[9px] font-bold uppercase tracking-wider mt-0.5">per hour</Text>
+                        </View>
+                      </View>
+
+                      <View className="flex-row bg-gray-50 rounded-2xl p-3.5 mb-5 border border-gray-100 justify-around shadow-sm">
+                        <View className="items-center">
+                          <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
+                          <View className="flex-row items-center">
+                            <Feather name="calendar" size={12} color="#4B5563" style={{ marginRight: 5 }} />
+                            <Text className="text-gray-700 font-semibold text-xs">{job.shift_date}</Text>
+                          </View>
+                        </View>
+                        <View className="w-[1px] bg-gray-200 h-full" />
+                        <View className="items-center">
+                          <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
+                          <View className="flex-row items-center">
+                            <Feather name="clock" size={12} color="#4B5563" style={{ marginRight: 5 }} />
+                            <Text className="text-gray-700 font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
+                          </View>
+                        </View>
+                        <View className="w-[1px] bg-gray-200 h-full" />
+                        <View className="items-center">
+                          <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Duration</Text>
+                          <Text className="text-gray-700 font-semibold text-xs">{job.hours_duration} hrs</Text>
+                        </View>
+                      </View>
+
+                      <Button 
+                        title="Accept Job" 
+                        onPress={() => handleAcceptJob(job.request_id)} 
+                        loading={acceptingJobId === job.request_id}
+                        disabled={acceptingJobId !== null && acceptingJobId !== job.request_id}
+                      />
+                    </View>
+                  ))
+                )
+              ) : (
+                acceptedJobs.length === 0 ? (
+                 <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
+                   <Text className="text-6xl mb-6">📅</Text>
+                   <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Accepted Jobs</Text>
+                   <Text className="text-gray-500 text-center leading-relaxed">
+                     You haven't accepted any jobs yet. Check the Available tab for opportunities.
+                   </Text>
+                 </View>
+                ) : (
+                  acceptedJobs.map((job) => (
+                    <View key={job.request_id} className="bg-white rounded-3xl p-5 mb-5 shadow-sm border border-gray-100">
+                      <View className="flex-row justify-between items-start mb-4">
+                        <View className="flex-1 pr-4">
+                          <View className="bg-blue-50 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-blue-100">
+                            <Feather name="briefcase" size={12} color="#2563EB" style={{ marginRight: 6 }} />
+                            <Text className="text-primary-700 text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
+                          </View>
+                          <Text className="font-bold text-gray-900 text-lg leading-tight mb-1.5">{job.store_name}</Text>
+                          <View className="flex-row items-start">
+                            <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
+                            <Text className="text-gray-500 text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
+                          </View>
+                        </View>
+                        <View className="bg-primary-50 px-3 py-2.5 rounded-2xl items-center border border-primary-100 min-w-[75px] shadow-sm">
+                          <Text className="text-primary-700 font-bold text-xl">₹{job.base_compensation}</Text>
+                          <Text className="text-primary-600 text-[9px] font-bold uppercase tracking-wider mt-0.5">per hour</Text>
+                        </View>
+                      </View>
+
+                      <View className="flex-row bg-gray-50 rounded-2xl p-3.5 mb-2 border border-gray-100 justify-around shadow-sm">
+                        <View className="items-center">
+                          <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
+                          <View className="flex-row items-center">
+                            <Feather name="calendar" size={12} color="#4B5563" style={{ marginRight: 5 }} />
+                            <Text className="text-gray-700 font-semibold text-xs">{job.shift_date}</Text>
+                          </View>
+                        </View>
+                        <View className="w-[1px] bg-gray-200 h-full" />
+                        <View className="items-center">
+                          <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
+                          <View className="flex-row items-center">
+                            <Feather name="clock" size={12} color="#4B5563" style={{ marginRight: 5 }} />
+                            <Text className="text-gray-700 font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
+                          </View>
+                        </View>
+                        <View className="w-[1px] bg-gray-200 h-full" />
+                        <View className="items-center">
+                          <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Status</Text>
+                          <View className="flex-row items-center">
+                            <Feather name="check-circle" size={12} color="#10B981" style={{ marginRight: 5 }} />
+                            <Text className="text-green-600 font-bold text-xs uppercase">{job.assignment_status}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ))
+                )
+              )}
+            </View>
           )}
         </View>
       </ScrollView>

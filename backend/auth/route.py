@@ -30,10 +30,18 @@ async def check_mobile(payload: MobileCheckRequest):
 
 @router.get("/me")
 async def get_my_profile(user_id: str = Depends(get_current_user)):
-    response = supabase.table("users").select("first_name, last_name, email, mobile_number").eq("user_id", user_id).execute()
+    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id").eq("user_id", user_id).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="User not found")
-    return response.data[0]
+    
+    user_data = response.data[0]
+    if user_data.get("role_id"):
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_data["role_id"]).execute()
+        user_data["role_name"] = role_resp.data[0]["role_name"].lower() if role_resp.data else "worker"
+    else:
+        user_data["role_name"] = "worker"
+        
+    return user_data
 
 # 1. POST /auth/signup
 @router.post("/signup")
@@ -196,16 +204,23 @@ async def verify_otp(payload: VerifyOTPRequest):
     if datetime.now(timezone.utc) > expires_at:
         raise HTTPException(status_code=400, detail="OTP has expired.")
         
-    # 5. Fetch user_id to inject into token
+    # 5. Fetch user_id and role to inject into token and response
     clean_user, with_plus_user = get_mobile_variations(otp_record["mobile_number"])
-    user_response = supabase.table("users").select("user_id").or_(f"mobile_number.eq.{clean_user},mobile_number.eq.{with_plus_user}").execute()
+    user_response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean_user},mobile_number.eq.{with_plus_user}").execute()
     if not user_response.data:
         raise HTTPException(status_code=400, detail="User account not found. Please sign up.")
     
-    user_id = user_response.data[0]["user_id"]
+    user_data = user_response.data[0]
+    user_id = user_data["user_id"]
+    
+    role_name = "worker"
+    if user_data.get("role_id"):
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_data["role_id"]).execute()
+        if role_resp.data:
+            role_name = role_resp.data[0]["role_name"].lower()
     
     access_token = create_access_token({"sub": user_id})
-    return {"status": "login_success", "token": access_token}
+    return {"status": "login_success", "token": access_token, "role": role_name}
 
 
 # 5. POST /auth/verify-and-signup
@@ -335,4 +350,4 @@ async def verify_and_signup(
                 raise HTTPException(status_code=500, detail=f"Database operation failed for {meta.doc_name}: {str(e)}")
                 
     access_token = create_access_token({"sub": user_id})
-    return {"status": "login_success", "token": access_token, "user_id": user_id, "uploaded_documents": len(uploaded_docs)}
+    return {"status": "login_success", "token": access_token, "user_id": user_id, "uploaded_documents": len(uploaded_docs), "role": "worker"}
