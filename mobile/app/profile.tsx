@@ -57,7 +57,7 @@ export default function ProfileScreen() {
             <Text className="text-primary-600 text-4xl font-bold">{initial}</Text>
           </View>
           
-          <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName}</Text>
+          <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName.toUpperCase()}</Text>
           <Text className="text-gray-500 text-sm font-medium mb-3">Gig Worker</Text>
           
           {/* Hardcoded Rating */}

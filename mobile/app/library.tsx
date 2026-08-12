@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { Button } from '../src/components/Button';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Module {
   id: string;
@@ -22,6 +23,7 @@ interface Module {
 export default function LibraryScreen() {
   const router = useRouter();
   const { justCompleted } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   
   const [modules, setModules] = useState<Module[]>([]);
   const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
@@ -38,10 +40,9 @@ export default function LibraryScreen() {
         return true;
       };
 
-      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
-      return () =>
-        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
     }, [])
   );
 
@@ -277,7 +278,10 @@ export default function LibraryScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View className="flex-row justify-around items-center bg-white border-t border-gray-100 pb-6 pt-3 px-2">
+      <View 
+        className="flex-row justify-around items-center bg-white border-t border-gray-100 pt-3 px-2"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
         <TouchableOpacity 
           onPress={() => setActiveTab('modules')}
           className="items-center flex-1"
