@@ -7,3 +7,4 @@
 5. **Supabase Restrictions**: Do not call Supabase directly from the frontend. All database calls must be routed through the backend.
 6. **Backend Structure**: For database functions, maintain a separate `db` folder in the backend that contains dedicated files for interacting with tables.
 7. **Frontend Structure**: For new frontend features, organize `.tsx` files in dedicated feature directories (e.g., `app/featurename/`) instead of placing everything directly in `app/` or crowding existing folders like `app/signup/`.
+8. **Frontend Role Architecture**: Maintain a clear separation of frontend flows. Keep the current `app/` structure for the **Worker** flow. For new roles (e.g., **Store Manager**, **Store Admin**), create dedicated root-level folders (e.g., `app/store_manager/`, `app/store_admin/`) and organize their features in subdirectories within those.
