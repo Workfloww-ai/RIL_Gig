@@ -6,17 +6,20 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6', // Brand Blue
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#F2F6F4',
+          100: '#E1EBE5',
+          200: '#C3D3CA',
+          300: '#9EACA4', // palette gray-green
+          400: '#7CAC94', // palette muted green
+          500: '#4B8361',
+          600: '#2E704C',
+          700: '#115D36', // palette main green
+          800: '#0E4A2B',
+          900: '#0B3820',
         },
+        accent: '#E82129', // palette red
+        taupe: '#9C8F80', // palette brownish gray
+        background: '#FAFAFA', // palette off-white
       }
     },
   },

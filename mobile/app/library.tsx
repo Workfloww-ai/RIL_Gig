@@ -32,6 +32,14 @@ export default function LibraryScreen() {
   
   const [activeTab, setActiveTab] = useState<'modules' | 'certificate' | 'jobs'>('modules');
   const [showCongrats, setShowCongrats] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage('');
+    }, 2500);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -124,7 +132,7 @@ export default function LibraryScreen() {
             </View>
             
             <View className="mb-2 flex-row justify-between">
-              <Text className="text-white font-semibold">📖 Module Completion</Text>
+              <Text className="text-white font-semibold"> Module Completion</Text>
               <Text className="text-white font-bold">{completedCount} of {totalCount} ({completionPercent}%)</Text>
             </View>
             <View className="h-2 bg-primary-800 rounded-full mb-4 overflow-hidden flex-row">
@@ -277,6 +285,13 @@ export default function LibraryScreen() {
         </View>
       </ScrollView>
 
+      {/* Toast Popup */}
+      {toastMessage ? (
+        <View className="absolute bottom-24 self-center bg-gray-900/90 px-5 py-3 rounded-full z-50 shadow-md">
+          <Text className="text-white text-xs font-medium text-center">{toastMessage}</Text>
+        </View>
+      ) : null}
+
       {/* Bottom Navigation */}
       <View 
         className="flex-row justify-around items-center bg-white border-t border-gray-100 pt-3 px-2"
@@ -291,7 +306,7 @@ export default function LibraryScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity 
-          onPress={() => isAllCompleted ? setActiveTab('certificate') : null}
+          onPress={() => isAllCompleted ? setActiveTab('certificate') : showToast('Complete all training modules to unlock Certificate')}
           className="items-center flex-1"
         >
           <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
@@ -302,7 +317,7 @@ export default function LibraryScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity 
-          onPress={() => isAllCompleted ? setActiveTab('jobs') : null}
+          onPress={() => isAllCompleted ? setActiveTab('jobs') : showToast('Complete all training modules to unlock Jobs')}
           className="items-center flex-1"
         >
           <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
