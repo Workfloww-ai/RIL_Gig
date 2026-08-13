@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { apiClient } from '../src/api/client';
+import { Feather } from '@expo/vector-icons';
 
 export default function StudioScreen() {
   const { id } = useLocalSearchParams();
@@ -13,8 +14,23 @@ export default function StudioScreen() {
   const [module, setModule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
 
   const videoRef = useRef<any>(null);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetControlsTimeout = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      // We check playing state inside the timeout, but because player is a ref-like object, 
+      // we can't reliably read its current state in this closure without it being stale. 
+      // Instead, we just hide it. We will handle the paused state in the useEffect.
+      setShowControls(false);
+    }, 3000);
+  };
 
   const videoPlayer = useVideoPlayer(module?.video_url || null, (p) => {
     p.loop = false;
@@ -30,12 +46,24 @@ export default function StudioScreen() {
 
   useEffect(() => {
     if (!player) return;
+    
+    // Auto-hide controls logic
+    if (player.playing) {
+      resetControlsTimeout();
+    } else {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    }
+
     // Actively poll the player time so the React component re-renders
     const interval = setInterval(() => {
       setCurrentTime(player.currentTime);
     }, 500);
-    return () => clearInterval(interval);
-  }, [player]);
+    return () => {
+      clearInterval(interval);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [player, player?.playing]);
 
   useEffect(() => {
     return () => {
@@ -188,27 +216,38 @@ export default function StudioScreen() {
                   </View>
                 </View>
 
+                {/* Invisible Overlay to Capture Taps when controls are hidden */}
+                {!showControls && (
+                  <Pressable className="absolute inset-0 z-10" onPress={resetControlsTimeout} />
+                )}
+
                 {/* Overlay Controls */}
-                <View className="absolute inset-0 flex-row items-center justify-center gap-6 z-20" pointerEvents="box-none">
-                  {/* Rewind */}
-                  <TouchableOpacity onPress={rewind10s} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
-                    <Text className="text-white text-lg font-bold">↺</Text>
-                    <Text className="text-white text-[8px] font-bold absolute bottom-2">10s</Text>
-                  </TouchableOpacity>
+                {showControls && (
+                  <Pressable className="absolute inset-0 flex-row items-center justify-center gap-6 z-20" onPress={resetControlsTimeout}>
+                    {/* Rewind */}
+                    <TouchableOpacity onPress={rewind10s} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm relative">
+                      <Feather name="rotate-ccw" size={18} color="white" style={{ marginBottom: 4 }} />
+                      <Text className="text-white text-[8px] font-bold absolute bottom-2">10s</Text>
+                    </TouchableOpacity>
 
-                  {/* Play/Pause */}
-                  <TouchableOpacity 
-                    onPress={togglePlayPause} 
-                    className="w-16 h-16 rounded-full bg-blue-600/90 items-center justify-center border border-white/30 shadow-xl backdrop-blur-md pl-1"
-                  >
-                    <Text className="text-white text-2xl font-bold">{player?.playing ? '⏸' : '▶'}</Text>
-                  </TouchableOpacity>
+                    {/* Play/Pause */}
+                    <TouchableOpacity
+                      onPress={togglePlayPause}
+                      className="w-16 h-16 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-xl"
+                    >
+                      {player?.playing ? (
+                        <Feather name="pause" size={28} color="white" />
+                      ) : (
+                        <Feather name="play" size={28} color="white" style={{ marginLeft: 4 }} />
+                      )}
+                    </TouchableOpacity>
 
-                  {/* Fullscreen */}
-                  <TouchableOpacity onPress={toggleFullscreen} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
-                    <Text className="text-white text-lg font-bold">⛶</Text>
-                  </TouchableOpacity>
-                </View>
+                    {/* Fullscreen */}
+                    <TouchableOpacity onPress={toggleFullscreen} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
+                      <Feather name="maximize" size={18} color="white" />
+                    </TouchableOpacity>
+                  </Pressable>
+                )}
               </View>
             )}
           </View>
@@ -265,31 +304,43 @@ export default function StudioScreen() {
 
       {/* Custom Fullscreen Modal */}
       <Modal visible={isFullscreen} animationType="fade" supportedOrientations={['landscape', 'portrait']}>
-        <View className="flex-1 bg-black justify-center items-center">
+        <View className="flex-1 bg-black justify-center items-center relative">
           <VideoView
             player={player}
             style={{ width: '100%', height: '100%' }}
             contentFit="contain"
             nativeControls={false}
           />
+          
+          {/* Invisible Overlay for Fullscreen */}
+          {!showControls && (
+            <Pressable className="absolute inset-0 z-10" onPress={resetControlsTimeout} />
+          )}
+
           {/* Fullscreen Overlay Controls */}
-          <View className="absolute inset-0 flex-row items-center justify-center gap-8 z-20" pointerEvents="box-none">
-              <TouchableOpacity onPress={rewind10s} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
-                <Text className="text-white text-2xl font-bold">↺</Text>
-                <Text className="text-white text-[10px] font-bold absolute bottom-2.5">10s</Text>
-              </TouchableOpacity>
+          {showControls && (
+            <Pressable className="absolute inset-0 flex-row items-center justify-center gap-8 z-20" onPress={resetControlsTimeout}>
+                <TouchableOpacity onPress={rewind10s} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md relative">
+                  <Feather name="rotate-ccw" size={24} color="white" style={{ marginBottom: 6 }} />
+                  <Text className="text-white text-[10px] font-bold absolute bottom-2.5">10s</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity 
-                onPress={togglePlayPause} 
-                className="w-24 h-24 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-2xl pl-1 backdrop-blur-md"
-              >
-                <Text className="text-white text-5xl font-bold">{player?.playing ? '⏸' : '▶'}</Text>
-              </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={togglePlayPause} 
+                  className="w-24 h-24 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-2xl backdrop-blur-md"
+                >
+                  {player?.playing ? (
+                    <Feather name="pause" size={42} color="white" />
+                  ) : (
+                    <Feather name="play" size={42} color="white" style={{ marginLeft: 6 }} />
+                  )}
+                </TouchableOpacity>
 
-              <TouchableOpacity onPress={toggleFullscreen} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
-                <Text className="text-white text-2xl font-bold">⛶</Text>
-              </TouchableOpacity>
-          </View>
+                <TouchableOpacity onPress={toggleFullscreen} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
+                  <Feather name="minimize" size={24} color="white" />
+                </TouchableOpacity>
+            </Pressable>
+          )}
 
           {/* Fullscreen Progress Bar */}
           <View className="absolute bottom-8 left-12 right-12 z-20 pointer-events-none">
