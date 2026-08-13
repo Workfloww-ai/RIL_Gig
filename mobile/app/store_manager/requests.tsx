@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { apiClient } from '../../src/api/client';
 
 export default function StoreManagerRequestsScreen() {
   const router = useRouter();
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+  
+  // Available Jobs from API
+  const [availableJobs, setAvailableJobs] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
 
   // Request state
   const [requestsList, setRequestsList] = useState([
@@ -38,29 +44,55 @@ export default function StoreManagerRequestsScreen() {
   // Form State
   const [requestStore] = useState('Reliance Smart – Phoenix Marketcity');
   const [requestDate, setRequestDate] = useState('12/08/2026');
-  const [requestRole, setRequestRole] = useState('Inventory Restocking Associate');
   const [requestStartTime, setRequestStartTime] = useState('02:00 PM');
   const [requestHours, setRequestHours] = useState('4');
   const [requestNumWorkers, setRequestNumWorkers] = useState('2');
-  const [requestCompensation, setRequestCompensation] = useState('800');
+  const [requestCompensation, setRequestCompensation] = useState('0');
+
+  // Fetch available jobs on mount
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const response = await apiClient.get('/jobs/available');
+        setAvailableJobs(response.data);
+      } catch (error) {
+        console.error('Failed to fetch jobs', error);
+      }
+    };
+    fetchJobs();
+  }, []);
+
+  // Recalculate compensation when job or hours change
+  useEffect(() => {
+    if (selectedJob && requestHours) {
+      const hours = parseFloat(requestHours);
+      if (!isNaN(hours) && hours > 0) {
+        const total = selectedJob.base_compensation * hours;
+        setRequestCompensation(total.toString());
+      } else {
+        setRequestCompensation('0');
+      }
+    }
+  }, [selectedJob, requestHours]);
 
   const handlePublishRequest = () => {
-    if (!requestRole || !requestStartTime) {
+    if (!selectedJob || !requestStartTime) {
       Alert.alert('Missing Details', 'Please fill in all required job request fields.');
       return;
     }
 
     const newReq = {
       id: `req-${Date.now()}`,
-      title: requestRole,
+      title: selectedJob.title,
       shiftTime: `Today • ${requestStartTime}`,
       status: 'Pending Approval',
       workersNeeded: parseInt(requestNumWorkers) || 1,
-      compensation: parseInt(requestCompensation) || 800,
+      compensation: parseInt(requestCompensation) || 0,
     };
 
     setRequestsList([newReq, ...requestsList]);
     setIsRaiseModalOpen(false);
+    setSelectedJob(null);
     Alert.alert('Request Published', 'Your manpower request has been successfully published to the worker pool!');
   };
 
@@ -142,21 +174,24 @@ export default function StoreManagerRequestsScreen() {
                 <View style={{ flex: 1, marginRight: 6 }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Date</Text>
                   <TextInput
-                    value={requestDate}
-                    onChangeText={setRequestDate}
-                    placeholder="dd/mm/yyyy"
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
+                     value={requestDate}
+                     onChangeText={setRequestDate}
+                     placeholder="dd/mm/yyyy"
+                     style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
                   />
                 </View>
 
                 <View style={{ flex: 1, marginLeft: 6 }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Role</Text>
-                  <TextInput
-                    value={requestRole}
-                    onChangeText={setRequestRole}
-                    placeholder="Select a role..."
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
-                  />
+                  <TouchableOpacity 
+                    onPress={() => setIsJobModalOpen(true)}
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <Text style={{ fontSize: 14, color: selectedJob ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
+                      {selectedJob ? selectedJob.title : 'Select a role...'}
+                    </Text>
+                    <Ionicons name="chevron-down-outline" size={16} color="#9CA3AF" />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -197,9 +232,8 @@ export default function StoreManagerRequestsScreen() {
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Compensation (Fixed ₹)</Text>
                   <TextInput
                     value={requestCompensation}
-                    onChangeText={setRequestCompensation}
-                    keyboardType="numeric"
-                    placeholder="Auto-set by role"
+                    editable={false}
+                    placeholder="Auto-calculated"
                     style={{ backgroundColor: '#F7F8F9', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A', fontWeight: '700' }}
                   />
                 </View>
@@ -212,6 +246,40 @@ export default function StoreManagerRequestsScreen() {
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Publish to Worker Pool</Text>
               </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* JOB SELECTOR MODAL */}
+      <Modal visible={isJobModalOpen} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>Select Role</Text>
+              <TouchableOpacity onPress={() => setIsJobModalOpen(false)}>
+                <Ionicons name="close-circle" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {availableJobs.map((job, index) => (
+                <TouchableOpacity
+                  key={job.job_id || index}
+                  onPress={() => {
+                    setSelectedJob(job);
+                    setIsJobModalOpen(false);
+                  }}
+                  style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <Text style={{ fontSize: 16, color: '#1A1A1A', fontWeight: selectedJob?.job_id === job.job_id ? '700' : '500' }}>
+                    {job.title}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#6B7280' }}>₹{job.base_compensation}/hr</Text>
+                </TouchableOpacity>
+              ))}
+              {availableJobs.length === 0 && (
+                <Text style={{ textAlign: 'center', color: '#6B7280', padding: 20 }}>No roles available</Text>
+              )}
             </ScrollView>
           </View>
         </View>

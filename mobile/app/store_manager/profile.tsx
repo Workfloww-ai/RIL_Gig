@@ -1,91 +1,121 @@
-import React from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { apiClient } from '../../src/api/client';
 import { useAuthStore } from '../../src/store/authStore';
 
 export default function StoreManagerProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
+  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const handleLogout = () => {
     if (logout) logout();
     router.replace('/');
   };
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await apiClient.get('/auth/me');
+        setUserProfile(res.data);
+      } catch (err) {
+        console.error('Failed to load store manager profile', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 pt-8 items-center justify-center">
+        <ActivityIndicator size="large" color="#10472B" />
+      </SafeAreaView>
+    );
+  }
+
+  const fullName = userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : 'Rajesh Kumar';
+  const initial = userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'R';
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
-      {/* Top Header */}
-      <View style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-        <TouchableOpacity onPress={() => router.push('/store_manager')} style={{ marginRight: 12 }}>
-          <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
+    <SafeAreaView className="flex-1 bg-gray-50 pt-8">
+      {/* Header - Identical structure & styling to Worker Profile */}
+      <View className="bg-white px-6 py-4 flex-row items-center border-b border-gray-100 shadow-sm z-10">
+        <TouchableOpacity onPress={() => router.back()} className="mr-4 p-2 -ml-2">
+          <Text className="text-gray-500 font-bold text-lg">← Back</Text>
         </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A', flex: 1, textAlign: 'center', paddingRight: 34 }}>Manager Profile</Text>
+        <Text className="font-bold text-gray-900 text-lg flex-1 text-center pr-8">My Profile</Text>
       </View>
 
-      <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
-        {/* Profile Avatar Card */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 28, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, marginBottom: 20 }}>
-          <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: '#F2F6F4', marginBottom: 14 }}>
-            <Text style={{ color: '#10472B', fontSize: 32, fontWeight: '700' }}>RK</Text>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Profile Info Card - Identical structure & styling to Worker Profile */}
+        <View className="bg-white mx-5 mt-6 rounded-3xl p-6 shadow-sm border border-gray-100 items-center">
+          <View className="h-24 w-24 rounded-full bg-emerald-100 items-center justify-center border-4 border-emerald-50 mb-4 shadow-sm">
+            <Text className="text-emerald-800 text-4xl font-bold">{initial}</Text>
           </View>
 
-          <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 2, letterSpacing: -0.3 }}>RAJESH KUMAR</Text>
-          <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 12 }}>Store Manager • Reliance Smart</Text>
+          <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName.toUpperCase()}</Text>
+          <Text className="text-gray-500 text-sm font-medium mb-3">Store Manager • Reliance Smart</Text>
 
           {/* Rating Badge */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#FDE68A' }}>
-            <Text style={{ color: '#F59E0B', marginRight: 6, fontSize: 14 }}>⭐⭐⭐⭐⭐</Text>
-            <Text style={{ color: '#B45309', fontWeight: '700', fontSize: 13 }}>5.0</Text>
+          <View className="flex-row items-center bg-yellow-50 px-4 py-2 rounded-full border border-yellow-100">
+            <Text className="text-yellow-500 mr-2 text-lg">⭐⭐⭐⭐⭐</Text>
+            <Text className="text-yellow-700 font-bold">5.0</Text>
           </View>
-          <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6 }}>Rated by Gig Workers & Operations</Text>
+          <Text className="text-gray-400 text-xs mt-2">Rated by Gig Workers & Operations</Text>
         </View>
 
-        {/* Stats Grid Card */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-          <View style={{ backgroundColor: '#FFFFFF', flex: 1, marginRight: 8, borderRadius: 24, padding: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
-            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 18 }}>📋</Text>
+        {/* Stats Grid - Identical card styling to Worker Profile */}
+        <View className="mx-5 mt-6 flex-row justify-between">
+          <View className="bg-white flex-1 mr-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+            <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mb-3">
+              <Text className="text-green-500 text-xl">📋</Text>
             </View>
-            <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' }}>Total Requests</Text>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' }}>18</Text>
+            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Requests</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">18</Text>
           </View>
 
-          <View style={{ backgroundColor: '#FFFFFF', flex: 1, marginLeft: 8, borderRadius: 24, padding: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
-            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 18 }}>👥</Text>
+          <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+            <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
+              <Text className="text-blue-500 text-xl">👥</Text>
             </View>
-            <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, textAlign: 'center' }}>Workers Hired</Text>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' }}>42</Text>
+            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Workers Hired</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">42</Text>
           </View>
         </View>
 
-        {/* Settings Options */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, marginBottom: 20 }}>
-          <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-            <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Store Settings & Locations</Text>
+        {/* Management Settings Card */}
+        <View className="mx-5 mt-6 bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+          <TouchableOpacity className="py-3 flex-row items-center justify-between border-b border-gray-100">
+            <Text className="text-gray-900 font-semibold text-sm">Store Settings & Locations</Text>
             <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-            <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Gig Worker Escalations</Text>
+          <TouchableOpacity className="py-3 flex-row items-center justify-between border-b border-gray-100">
+            <Text className="text-gray-900 font-semibold text-sm">Gig Worker Escalations</Text>
             <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Help & Support</Text>
+          <TouchableOpacity className="py-3 flex-row items-center justify-between">
+            <Text className="text-gray-900 font-semibold text-sm">Help & Support</Text>
             <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
         </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity
-          onPress={handleLogout}
-          style={{ backgroundColor: '#FEF2F2', borderRadius: 24, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FEE2E2', flexDirection: 'row', justifyContent: 'center', marginBottom: 40 }}
-          activeOpacity={0.85}
-        >
-          <Text style={{ color: '#E31B23', fontWeight: '700', fontSize: 16 }}>Logout</Text>
-        </TouchableOpacity>
+        {/* Logout Button - Identical styling to Worker Profile */}
+        <View className="mx-5 mb-10 mt-6">
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
+            activeOpacity={0.85}
+          >
+            <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
+import { apiClient } from '../../src/api/client';
 
 // Data Interfaces
 interface AcceptanceStatus {
@@ -58,6 +59,19 @@ export default function StoreManagerDashboard() {
 
   // Navigation tab state: 'home' | 'requests' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'requests' | 'profile'>('home');
+  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await apiClient.get('/auth/me');
+        if (res?.data) setUserProfile(res.data);
+      } catch (err) {
+        console.error('Failed to load profile in dashboard', err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   // Interactive Expandable Jobs State (ID of expanded job card, defaults to 'job-1')
   const [expandedJobId, setExpandedJobId] = useState<string | null>('job-1');
@@ -242,28 +256,26 @@ export default function StoreManagerDashboard() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
-      {/* ==================== 1. TOP HEADER (Forest Green #10472B without Active/Pending stats box) ==================== */}
-      {activeTab !== 'profile' ? (
-        <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 24, paddingHorizontal: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View>
-              <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>Hi, Rajesh Kumar</Text>
-              <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>Reliance Smart – Phoenix Marketcity</Text>
-            </View>
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 }}
-            >
-              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Sign Out</Text>
-            </TouchableOpacity>
+      {/* ==================== 1. TOP HEADER ==================== */}
+      <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 24, paddingHorizontal: 20 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>
+              Hi, {userProfile ? `${userProfile.first_name}` : 'Rajesh'}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>Reliance Smart – Phoenix Marketcity</Text>
           </View>
+          <TouchableOpacity
+            onPress={() => router.push('/store_manager/profile')}
+            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)' }}
+            activeOpacity={0.8}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>
+              {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'R'}
+            </Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        /* Top Bar for Profile Screen */
-        <View style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A', flex: 1, textAlign: 'center' }}>Manager Profile</Text>
-        </View>
-      )}
+      </View>
 
       {/* ==================== 2. MAIN SCROLLABLE BODY CONTENT ==================== */}
       <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -678,7 +690,7 @@ export default function StoreManagerDashboard() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setActiveTab('profile')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.push('/store_manager/profile')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons
             name={activeTab === 'profile' ? 'person' : 'person-outline'}
             size={22}
