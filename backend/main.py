@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth.route import router as auth_router
 from content.route import router as content_router
 from jobs.route import router as jobs_router
+from stores.route import router as stores_router
 
 app = FastAPI(
     title="Reliance Project",
@@ -30,6 +31,9 @@ app.include_router(content_router, prefix="/api/content", tags=["Content Library
 
 # Include the jobs router
 app.include_router(jobs_router, prefix="/api/jobs", tags=["Jobs"])
+
+# Include the stores router
+app.include_router(stores_router, prefix="/api/stores", tags=["Stores"])
 
 @app.get("/health")
 async def health():

@@ -9,6 +9,7 @@ export default function StoreManagerProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+  const [stats, setStats] = useState<{ store_name: string; total_requests: number; workers_hired: number; rating: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const handleLogout = () => {
@@ -19,8 +20,14 @@ export default function StoreManagerProfileScreen() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await apiClient.get('/auth/me');
-        setUserProfile(res.data);
+        const [profileRes, statsRes] = await Promise.all([
+          apiClient.get('/auth/me'),
+          apiClient.get('/auth/me/stats')
+        ]);
+        setUserProfile(profileRes.data);
+        if (statsRes.data) {
+          setStats(statsRes.data);
+        }
       } catch (err) {
         console.error('Failed to load store manager profile', err);
       } finally {
@@ -38,8 +45,8 @@ export default function StoreManagerProfileScreen() {
     );
   }
 
-  const fullName = userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : 'Rajesh Kumar';
-  const initial = userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'R';
+  const fullName = userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : 'Store Manager';
+  const initial = userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'S';
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 pt-8">
@@ -59,12 +66,12 @@ export default function StoreManagerProfileScreen() {
           </View>
 
           <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName.toUpperCase()}</Text>
-          <Text className="text-gray-500 text-sm font-medium mb-3">Store Manager • Reliance Smart</Text>
+          <Text className="text-gray-500 text-sm font-medium mb-3">Store Manager • {stats?.store_name || 'Loading...'}</Text>
 
           {/* Rating Badge */}
           <View className="flex-row items-center bg-yellow-50 px-4 py-2 rounded-full border border-yellow-100">
             <Text className="text-yellow-500 mr-2 text-lg">⭐⭐⭐⭐⭐</Text>
-            <Text className="text-yellow-700 font-bold">5.0</Text>
+            <Text className="text-yellow-700 font-bold">{stats?.rating?.toFixed(1) || '5.0'}</Text>
           </View>
           <Text className="text-gray-400 text-xs mt-2">Rated by Gig Workers & Operations</Text>
         </View>
@@ -76,7 +83,7 @@ export default function StoreManagerProfileScreen() {
               <Text className="text-green-500 text-xl">📋</Text>
             </View>
             <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Requests</Text>
-            <Text className="text-2xl font-bold text-gray-900 text-center">18</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.total_requests || 0}</Text>
           </View>
 
           <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
@@ -84,7 +91,7 @@ export default function StoreManagerProfileScreen() {
               <Text className="text-blue-500 text-xl">👥</Text>
             </View>
             <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Workers Hired</Text>
-            <Text className="text-2xl font-bold text-gray-900 text-center">42</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.workers_hired || 0}</Text>
           </View>
         </View>
 

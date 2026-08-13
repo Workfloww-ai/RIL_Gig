@@ -43,6 +43,44 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
         
     return user_data
 
+@router.get("/me/stats")
+async def get_my_stats(user_id: str = Depends(get_current_user)):
+    try:
+        # Get store name
+        assignment_response = supabase.table("user_store_assignment").select(
+            "store_id, stores(store_name)"
+        ).eq("user_id", user_id).execute()
+        
+        store_name = "Reliance Smart" # Default fallback
+        if assignment_response.data and len(assignment_response.data) > 0:
+            store_data = assignment_response.data[0].get("stores")
+            if store_data:
+                store_name = store_data.get("store_name", "Reliance Smart")
+
+        # Get total requests raised by this manager's store (or by this manager specifically if we had created_by, but we only have store_assignment_id)
+        # Actually, let's just count manpower_requests where store_id matches their assigned store_id
+        total_requests = 0
+        workers_hired = 0
+        
+        if assignment_response.data and len(assignment_response.data) > 0:
+            store_id = assignment_response.data[0]["store_id"]
+            requests_resp = supabase.table("manpower_requests").select("request_id", count="exact").eq("store_id", store_id).execute()
+            total_requests = requests_resp.count if hasattr(requests_resp, 'count') and requests_resp.count is not None else len(requests_resp.data)
+            
+            # For workers hired, we can count worker_job_assignments for requests in this store
+            hired_resp = supabase.table("worker_job_assignments").select("job_assignment_id", count="exact").eq("store_id", store_id).eq("assignment_status", "accepted").execute()
+            workers_hired = hired_resp.count if hasattr(hired_resp, 'count') and hired_resp.count is not None else len(hired_resp.data)
+
+        return {
+            "store_name": store_name,
+            "total_requests": total_requests,
+            "workers_hired": workers_hired,
+            "rating": 5.0
+        }
+    except Exception as e:
+        print(f"Error fetching stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # 1. POST /auth/signup
 @router.post("/signup")
 async def signup(payload: SignupRequest):

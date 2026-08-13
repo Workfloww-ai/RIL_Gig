@@ -10,7 +10,7 @@ def create_job_request(user_id: str, request_data: Dict[str, Any]):
     # 1. Verify the user is an active store manager and get their store assignment
     assignment_response = supabase.table("user_store_assignment").select(
         "assignment_id, store_id"
-    ).eq("user_id", user_id).eq("role", "store_manager").eq("is_active", True).single().execute()
+    ).eq("user_id", user_id).single().execute()
     
     if not assignment_response.data:
         raise HTTPException(

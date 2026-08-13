@@ -96,83 +96,57 @@ export default function StoreManagerDashboard() {
   const [requestCompensation, setRequestCompensation] = useState('800');
 
   // Job data state
-  const [jobsList, setJobsList] = useState<JobRequest[]>([
-    {
-      id: 'job-1',
-      title: 'Inventory Restocking Associate',
-      shiftTime: 'Today • 2:00 PM to 6:00 PM',
-      status: 'Active',
-      workersNeeded: 2,
-      workersFilled: 1,
-      compensation: 800,
-      acceptedWorkers: [
-        {
-          id: 'w-1',
-          name: 'Monalika Goel',
-          role: 'Inventory Restocking',
-          status: 'Review Pending',
-          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-          acceptances: {
-            t90: {
-              timeLabel: '90 Mins Before',
-              expectedTime: '12:30 PM',
-              status: 'DONE',
-              completedTime: '12:30 PM',
-            },
-            t60: {
-              timeLabel: '60 Mins Before',
-              expectedTime: '01:00 PM',
-              status: 'DONE',
-              completedTime: '01:02 PM',
-            },
-            onArrival: {
-              timeLabel: 'On Arrival',
-              expectedTime: '01:55 PM',
-              status: 'DONE',
-              completedTime: '01:55 PM',
-            },
-          },
-        },
-      ],
-    },
-    {
-      id: 'job-2',
-      title: 'Morning Display Setup',
-      shiftTime: 'Today • 8:00 AM to 12:00 PM',
-      status: 'Active',
-      workersNeeded: 1,
-      workersFilled: 1,
-      compensation: 600,
-      acceptedWorkers: [
-        {
-          id: 'w-2',
-          name: 'Priya',
-          role: 'Morning Display Setup',
-          status: 'En Route',
-          avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-          acceptances: {
-            t90: {
-              timeLabel: '90 Mins Before',
-              expectedTime: '06:30 AM',
-              status: 'DONE',
-              completedTime: '06:28 AM',
-            },
-            t60: {
-              timeLabel: '60 Mins Before',
-              expectedTime: '07:00 AM',
-              status: 'DONE',
-              completedTime: '07:00 AM',
-            },
-            onArrival: {
-              timeLabel: 'On Arrival',
-              expectedTime: '07:45 AM',
-              status: 'IN_PROGRESS',
-            },
-          },
-        },
-      ],
-    },
-  ]);
+  const [jobsList, setJobsList] = useState<any[]>([]);
+  
+  // Available Jobs and Stores for Modal
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
+  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [availableStores, setAvailableStores] = useState<any[]>([]);
+  const [selectedStore, setSelectedStore] = useState<any>(null);
+
+  const fetchRequests = async () => {
+    try {
+      const res = await apiClient.get('/jobs/manager/requests');
+      if (res.data && res.data.requests) {
+        setJobsList(res.data.requests);
+      }
+    } catch (error) {
+      console.error('Failed to fetch manager requests', error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [jobsRes, storesRes] = await Promise.all([
+          apiClient.get('/jobs/roles'),
+          apiClient.get('/stores/')
+        ]);
+        setAvailableJobs(jobsRes.data);
+        if (storesRes.data && storesRes.data.stores) {
+          setAvailableStores(storesRes.data.stores);
+        }
+        await fetchRequests();
+      } catch (error) {
+        console.error('Failed to fetch jobs or stores', error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (selectedJob && requestHours) {
+      const hours = parseFloat(requestHours);
+      if (!isNaN(hours) && hours > 0) {
+        const total = selectedJob.base_compensation * hours;
+        setRequestCompensation(total.toString());
+      } else {
+        setRequestCompensation('0');
+      }
+    }
+  }, [selectedJob, requestHours]);
 
   // Toggle expandable job card
   const toggleExpandJob = (jobId: string) => {
@@ -195,11 +169,11 @@ export default function StoreManagerDashboard() {
     setJobsList((prevJobs) =>
       prevJobs.map((job) => ({
         ...job,
-        acceptedWorkers: job.acceptedWorkers.map((w) => {
+        accepted_workers: (job.accepted_workers || []).map((w: any) => {
           if (w.id === selectedWorker.id) {
             return {
               ...w,
-              status: 'Completed',
+              status: 'completed',
               rating: {
                 score: ratingScore,
                 tags: selectedTags,
@@ -227,26 +201,47 @@ export default function StoreManagerDashboard() {
   };
 
   // Create new manpower request
-  const handlePublishRequest = () => {
-    if (!requestRole || !requestStartTime) {
+  const handlePublishRequest = async () => {
+    if (!selectedJob || !requestStartTime || !requestDate) {
       Alert.alert('Missing Details', 'Please fill in all required job request fields.');
       return;
     }
 
-    const newJob: JobRequest = {
-      id: `job-${Date.now()}`,
-      title: requestRole,
-      shiftTime: `Today • ${requestStartTime}`,
-      status: 'Pending Approval',
-      workersNeeded: parseInt(requestNumWorkers) || 1,
-      workersFilled: 0,
-      compensation: parseInt(requestCompensation) || 800,
-      acceptedWorkers: [],
+    const dateParts = requestDate.split('/');
+    let formattedDate = requestDate;
+    if (dateParts.length === 3) {
+      formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+    }
+
+    let formattedTime = requestStartTime;
+    const timeParts = requestStartTime.split(' ');
+    if (timeParts.length === 2) {
+      const [time, period] = timeParts;
+      let [hours, minutes] = time.split(':');
+      let hr = parseInt(hours, 10);
+      if (period.toUpperCase() === 'PM' && hr !== 12) hr += 12;
+      if (period.toUpperCase() === 'AM' && hr === 12) hr = 0;
+      formattedTime = `${hr.toString().padStart(2, '0')}:${minutes}:00`;
+    }
+
+    const payload = {
+      job_id: selectedJob.job_id,
+      workers_needed: parseInt(requestNumWorkers) || 1,
+      shift_date: formattedDate,
+      start_time: formattedTime,
+      hours_duration: parseFloat(requestHours) || 4
     };
 
-    setJobsList([newJob, ...jobsList]);
-    setIsRaiseModalOpen(false);
-    Alert.alert('Request Published', 'Your manpower request has been successfully published to the worker pool!');
+    try {
+      await apiClient.post('/jobs/', payload);
+      setIsRaiseModalOpen(false);
+      setSelectedJob(null);
+      Alert.alert('Request Published', 'Your manpower request has been successfully published to the worker pool!');
+      fetchRequests();
+    } catch (error) {
+      console.error("Error creating request", error);
+      Alert.alert('Error', 'Failed to publish request.');
+    }
   };
 
   const handleLogout = () => {
@@ -298,33 +293,33 @@ export default function StoreManagerDashboard() {
 
             {/* List of Jobs in Process (Click to view assigned workers) */}
             {jobsList.map((job) => {
-              const isExpanded = expandedJobId === job.id;
-
+              const isExpanded = expandedJobId === job.request_id;
+              const acceptedWorkers = job.accepted_workers || [];
               return (
                 <View
-                  key={job.id}
+                  key={job.request_id}
                   style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
                 >
                   {/* Job Card Header (Clickable to Expand / Collapse) */}
                   <TouchableOpacity
-                    onPress={() => toggleExpandJob(job.id)}
+                    onPress={() => toggleExpandJob(job.request_id)}
                     style={{ padding: 18, backgroundColor: isExpanded ? '#FAFBFB' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                     activeOpacity={0.8}
                   >
                     <View style={{ flex: 1, marginRight: 12 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.title}</Text>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
                         <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803D' }}>In Process</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803D' }}>{job.request_status}</Text>
                         </View>
                       </View>
 
-                      <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shiftTime}</Text>
+                      <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
 
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
                         <Text style={{ fontSize: 12, fontWeight: '700', color: '#10472B' }}>
-                          {job.acceptedWorkers.length} {job.acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
+                          {acceptedWorkers.length} {acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
                         </Text>
                       </View>
                     </View>
@@ -341,10 +336,10 @@ export default function StoreManagerDashboard() {
                         Assigned Workers & Check-in Status
                       </Text>
 
-                      {job.acceptedWorkers.length === 0 ? (
+                      {acceptedWorkers.length === 0 ? (
                         <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No workers assigned yet for this job.</Text>
                       ) : (
-                        job.acceptedWorkers.map((worker) => (
+                        acceptedWorkers.map((worker: any) => (
                           <View
                             key={worker.id}
                             style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' }}
@@ -374,9 +369,9 @@ export default function StoreManagerDashboard() {
                                   backgroundColor:
                                     worker.status === 'Review Pending'
                                       ? '#FEF3C7'
-                                      : worker.status === 'En Route'
+                                      : worker.status === 'accepted'
                                       ? '#F3E8FF'
-                                      : worker.status === 'Completed'
+                                      : worker.status === 'completed'
                                       ? '#DCFCE7'
                                       : '#E0F2FE',
                                 }}
@@ -388,128 +383,14 @@ export default function StoreManagerDashboard() {
                                     color:
                                       worker.status === 'Review Pending'
                                         ? '#D97706'
-                                        : worker.status === 'En Route'
+                                        : worker.status === 'accepted'
                                         ? '#7E22CE'
-                                        : worker.status === 'Completed'
+                                        : worker.status === 'completed'
                                         ? '#15803D'
                                         : '#0369A1',
                                   }}
                                 >
                                   {worker.status}
-                                </Text>
-                              </View>
-                            </View>
-
-                            {/* 3-STEP CHECKPOINTS TIMELINE */}
-                            <View style={{ backgroundColor: '#FFFFFF', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                              {/* Step 1: 90m Before */}
-                              <View style={{ alignItems: 'center', flex: 1 }}>
-                                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}>
-                                  <Ionicons name="checkmark-sharp" size={13} color="#10472B" />
-                                </View>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1A1A1A' }}>90m Before</Text>
-                                <Text style={{ fontSize: 9, color: '#666666' }}>{worker.acceptances.t90.expectedTime}</Text>
-                                <Text style={{ fontSize: 8, color: '#10472B', fontWeight: '700' }}>✓ Confirmed</Text>
-                              </View>
-
-                              <View style={{ width: 20, height: 2, backgroundColor: '#86EFAC', marginTop: -10 }} />
-
-                              {/* Step 2: 60m Before */}
-                              <View style={{ alignItems: 'center', flex: 1 }}>
-                                <View
-                                  style={{
-                                    width: 26,
-                                    height: 26,
-                                    borderRadius: 13,
-                                    backgroundColor: worker.acceptances.t60.status === 'DONE' ? '#DCFCE7' : '#FEF3C7',
-                                    alignItems: 'center',
-                                    justify: 'center',
-                                    marginBottom: 2,
-                                  }}
-                                >
-                                  <Ionicons
-                                    name={worker.acceptances.t60.status === 'DONE' ? 'checkmark-sharp' : 'navigate-outline'}
-                                    size={13}
-                                    color={worker.acceptances.t60.status === 'DONE' ? '#10472B' : '#D97706'}
-                                  />
-                                </View>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1A1A1A' }}>60m Before</Text>
-                                <Text style={{ fontSize: 9, color: '#666666' }}>{worker.acceptances.t60.expectedTime}</Text>
-                                <Text
-                                  style={{
-                                    fontSize: 8,
-                                    fontWeight: '700',
-                                    color: worker.acceptances.t60.status === 'DONE' ? '#10472B' : '#D97706',
-                                  }}
-                                >
-                                  {worker.acceptances.t60.status === 'DONE' ? '✓ En Route' : 'Pending'}
-                                </Text>
-                              </View>
-
-                              <View
-                                style={{
-                                  width: 20,
-                                  height: 2,
-                                  marginTop: -10,
-                                  backgroundColor: worker.acceptances.onArrival.status === 'DONE' ? '#86EFAC' : '#E5E7EB',
-                                }}
-                              />
-
-                              {/* Step 3: On Arrival */}
-                              <View style={{ alignItems: 'center', flex: 1 }}>
-                                <View
-                                  style={{
-                                    width: 26,
-                                    height: 26,
-                                    borderRadius: 13,
-                                    backgroundColor:
-                                      worker.acceptances.onArrival.status === 'DONE'
-                                        ? '#DCFCE7'
-                                        : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                        ? '#FEF3C7'
-                                        : '#F3F4F6',
-                                    alignItems: 'center',
-                                    justify: 'center',
-                                    marginBottom: 2,
-                                  }}
-                                >
-                                  <Ionicons
-                                    name={
-                                      worker.acceptances.onArrival.status === 'DONE'
-                                        ? 'checkmark-sharp'
-                                        : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                        ? 'time-outline'
-                                        : 'location-outline'
-                                    }
-                                    size={13}
-                                    color={
-                                      worker.acceptances.onArrival.status === 'DONE'
-                                        ? '#10472B'
-                                        : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                        ? '#D97706'
-                                        : '#9CA3AF'
-                                    }
-                                  />
-                                </View>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#1A1A1A' }}>On Arrival</Text>
-                                <Text style={{ fontSize: 9, color: '#666666' }}>{worker.acceptances.onArrival.expectedTime}</Text>
-                                <Text
-                                  style={{
-                                    fontSize: 8,
-                                    fontWeight: '700',
-                                    color:
-                                      worker.acceptances.onArrival.status === 'DONE'
-                                        ? '#10472B'
-                                        : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                        ? '#D97706'
-                                        : '#9CA3AF',
-                                  }}
-                                >
-                                  {worker.acceptances.onArrival.status === 'DONE'
-                                    ? '✓ Arrived'
-                                    : worker.acceptances.onArrival.status === 'IN_PROGRESS'
-                                    ? 'Arriving'
-                                    : 'Pending'}
                                 </Text>
                               </View>
                             </View>
@@ -527,7 +408,7 @@ export default function StoreManagerDashboard() {
                             )}
 
                             {/* RATED STATUS SUMMARY */}
-                            {worker.status === 'Completed' && worker.rating && (
+                            {worker.status === 'completed' && worker.rating && (
                               <View style={{ backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <Text style={{ color: '#10472B', fontSize: 12, fontWeight: '700' }}>
                                   {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
@@ -562,33 +443,33 @@ export default function StoreManagerDashboard() {
             </View>
 
             {jobsList.map((job) => (
-              <View key={job.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
+              <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                  <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.title}</Text>
+                  <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.job_name}</Text>
                   <View
                     style={{
                       paddingHorizontal: 12,
                       paddingVertical: 5,
                       borderRadius: 999,
-                      backgroundColor: job.status === 'Pending Approval' ? '#FEF3C7' : '#DCFCE7',
+                      backgroundColor: job.request_status === 'Pending Approval' ? '#FEF3C7' : '#DCFCE7',
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: job.status === 'Pending Approval' ? '#D97706' : '#15803D' }}>
-                      {job.status}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status === 'Pending Approval' ? '#D97706' : '#15803D' }}>
+                      {job.request_status}
                     </Text>
                   </View>
                 </View>
 
-                <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shiftTime}</Text>
+                <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shift_date} • {job.start_time}</Text>
 
                 <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
                   <View>
                     <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Workers</Text>
-                    <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workersNeeded} Needed</Text>
+                    <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workers_needed} Needed</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Compensation</Text>
-                    <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.compensation}</Text>
+                    <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.base_compensation * job.hours_duration}</Text>
                   </View>
                 </View>
               </View>
@@ -657,7 +538,7 @@ export default function StoreManagerDashboard() {
           borderTopWidth: 1,
           borderTopColor: '#E5E7EB',
           flexDirection: 'row',
-          justify: 'space-around',
+          justifyContent: 'space-around',
           paddingVertical: 12,
           paddingBottom: Platform.OS === 'ios' ? 24 : 12,
           elevation: 10,
@@ -819,11 +700,15 @@ export default function StoreManagerDashboard() {
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
               <View style={{ marginBottom: 14 }}>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Store</Text>
-                <TextInput
-                  value={requestStore}
-                  editable={false}
-                  style={{ backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: '#4B5563', fontWeight: '500' }}
-                />
+                <TouchableOpacity 
+                  onPress={() => setIsStoreModalOpen(true)}
+                  style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <Text style={{ fontSize: 14, color: selectedStore ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
+                    {selectedStore ? selectedStore.store_name : 'Select a store...'}
+                  </Text>
+                  <Ionicons name="chevron-down-outline" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
               </View>
 
               <View style={{ flexDirection: 'row', marginBottom: 14 }}>
@@ -839,12 +724,15 @@ export default function StoreManagerDashboard() {
 
                 <View style={{ flex: 1, marginLeft: 6 }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Role</Text>
-                  <TextInput
-                    value={requestRole}
-                    onChangeText={setRequestRole}
-                    placeholder="Select a role..."
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
-                  />
+                  <TouchableOpacity 
+                    onPress={() => setIsJobModalOpen(true)}
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <Text style={{ fontSize: 14, color: selectedJob ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
+                      {selectedJob ? selectedJob.title : 'Select a role...'}
+                    </Text>
+                    <Ionicons name="chevron-down-outline" size={16} color="#9CA3AF" />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -900,6 +788,76 @@ export default function StoreManagerDashboard() {
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Publish to Worker Pool</Text>
               </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* JOB SELECTOR MODAL */}
+      <Modal visible={isJobModalOpen} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>Select Role</Text>
+              <TouchableOpacity onPress={() => setIsJobModalOpen(false)}>
+                <Ionicons name="close-circle" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {availableJobs.map((job: any, index: number) => (
+                <TouchableOpacity
+                  key={job.job_id || index}
+                  onPress={() => {
+                    setSelectedJob(job);
+                    setIsJobModalOpen(false);
+                  }}
+                  style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <Text style={{ fontSize: 16, color: '#1A1A1A', fontWeight: selectedJob?.job_id === job.job_id ? '700' : '500' }}>
+                    {job.title}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#6B7280' }}>₹{job.base_compensation}/hr</Text>
+                </TouchableOpacity>
+              ))}
+              {availableJobs.length === 0 && (
+                <Text style={{ textAlign: 'center', color: '#6B7280', padding: 20 }}>No roles available</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* STORE SELECTOR MODAL */}
+      <Modal visible={isStoreModalOpen} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>Select Store</Text>
+              <TouchableOpacity onPress={() => setIsStoreModalOpen(false)}>
+                <Ionicons name="close-circle" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {availableStores.map((store: any, index: number) => (
+                <TouchableOpacity
+                  key={store.store_id || index}
+                  onPress={() => {
+                    setSelectedStore(store);
+                    setIsStoreModalOpen(false);
+                  }}
+                  style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <View>
+                    <Text style={{ fontSize: 16, color: '#1A1A1A', fontWeight: selectedStore?.store_id === store.store_id ? '700' : '500' }}>
+                      {store.store_name}
+                    </Text>
+                    {store.city && <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>{store.city}</Text>}
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {availableStores.length === 0 && (
+                <Text style={{ textAlign: 'center', color: '#6B7280', padding: 20 }}>No stores available</Text>
+              )}
             </ScrollView>
           </View>
         </View>
