@@ -1,3 +1,35 @@
+from fastapi import APIRouter, Depends, status
+from typing import Dict, Any
+from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse
+from db.jobs_db import create_job_request, get_all_jobs
+from utils.jwt_auth import get_current_user
+
+router = APIRouter()
+
+@router.get("/roles", response_model=list[JobRoleResponse])
+async def fetch_available_job_roles(user_id: str = Depends(get_current_user)):
+    """
+    Fetches all available job roles for the dropdown.
+    """
+    jobs = get_all_jobs()
+    return jobs
+
+@router.post("/", response_model=JobRequestResponse, status_code=status.HTTP_201_CREATED)
+async def raise_job_request(
+    request: JobRequestCreate,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Endpoint for a store manager to raise a manpower request.
+    The store_manager's user_id is extracted from the JWT token.
+    """
+    # Convert request to dict, ensuring date/time are stringified
+    request_data = request.model_dump(mode='json')
+    
+    # Call the database function
+    created_request = create_job_request(user_id=user_id, request_data=request_data)
+    
+    return created_request
 from fastapi import APIRouter, HTTPException, Depends
 from utils.jwt_auth import get_current_user
 from utils.supabase_client import supabase
@@ -213,3 +245,75 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
     except Exception as e:
         print(f"Error confirming job step: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+@router.get("/manager/requests")
+async def get_manager_requests(user_id: str = Depends(get_current_user)):
+    try:
+        # First find the store_assignment for this manager
+        assignment = supabase.table("user_store_assignment").select("store_id, stores(store_name)").eq("user_id", user_id).execute()
+        if not assignment.data:
+            return {"status": "success", "requests": [], "store_name": None}
+            
+        store_id = assignment.data[0]["store_id"]
+        store_name = None
+        store_info = assignment.data[0].get("stores")
+        if store_info:
+            if isinstance(store_info, list) and len(store_info) > 0:
+                store_name = store_info[0].get("store_name")
+            elif isinstance(store_info, dict):
+                store_name = store_info.get("store_name")
+        
+        # Now fetch requests for this store
+        response = supabase.table("manpower_requests").select(
+            "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
+            "jobs(job_id, job_name, base_compensation), "
+            "stores(store_id, store_name, address, city), "
+            "worker_job_assignments(worker_id, assignment_status, users!fk_wja_worker(first_name, last_name, profile_pic_url))"
+        ).eq("store_id", store_id).order("created_at", desc=True).execute()
+        
+        requests = []
+        for r in response.data:
+            job_info = r.get("jobs") or {}
+            if isinstance(job_info, list) and len(job_info) > 0:
+                job_info = job_info[0]
+            
+            store_info = r.get("stores") or {}
+            if isinstance(store_info, list) and len(store_info) > 0:
+                store_info = store_info[0]
+                
+            raw_workers = r.get("worker_job_assignments") or []
+            accepted_workers = []
+            for w in raw_workers:
+                user_info = w.get("users") or {}
+                # The profile_pic_url might not exist, default to None
+                avatar_url = user_info.get("profile_pic_url")
+                name = f"{user_info.get('first_name', '')} {user_info.get('last_name', '')}".strip() or "Unknown Worker"
+                accepted_workers.append({
+                    "id": w.get("worker_id"),
+                    "name": name,
+                    "status": w.get("assignment_status"),
+                    "avatarUrl": avatar_url,
+                    "role": job_info.get("job_name", "")
+                })
+                
+            requests.append({
+                "request_id": r.get("request_id", ""),
+                "workers_needed": r.get("workers_needed", 1),
+                "workers_filled": len([w for w in accepted_workers if w["status"] in ["accepted", "completed"]]),
+                "shift_date": r.get("shift_date", ""),
+                "start_time": r.get("start_time", ""),
+                "hours_duration": float(r.get("hours_duration", 0)),
+                "request_status": r.get("request_status", ""),
+                "approval_status": r.get("approval_status", ""),
+                "job_id": job_info.get("job_id", ""),
+                "job_name": job_info.get("job_name", ""),
+                "base_compensation": float(job_info.get("base_compensation", 0)),
+                "store_id": store_info.get("store_id", ""),
+                "store_name": store_info.get("store_name", ""),
+                "accepted_workers": accepted_workers
+            })
+            
+        return {"status": "success", "requests": requests, "store_name": store_name}
+    except Exception as e:
+        print(f"Error fetching manager requests: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+

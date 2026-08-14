@@ -416,7 +416,7 @@ export default function LibraryScreen() {
               ) : jobsTab === 'available' ? (
                 availableJobs.length === 0 ? (
                  <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
-                   <Text className="text-6xl mb-6">🔍</Text>
+                   {/* <Text className="text-6xl mb-6">🔍</Text> */}
                    <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Jobs Available</Text>
                    <Text className="text-gray-500 text-center leading-relaxed">
                      Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
@@ -478,7 +478,7 @@ export default function LibraryScreen() {
               ) : (
                 acceptedJobs.length === 0 ? (
                  <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
-                   <Text className="text-6xl mb-6">📅</Text>
+                   {/* <Text className="text-6xl mb-6">📅</Text> */}
                    <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Accepted Jobs</Text>
                    <Text className="text-gray-500 text-center leading-relaxed">
                      You haven't accepted any jobs yet. Check the Available tab for opportunities.
