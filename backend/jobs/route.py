@@ -106,11 +106,42 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
         print(f"Error accepting job: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/cancel/{request_id}")
+async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
+    try:
+        # 1. Check if the job is accepted by this user
+        existing = supabase.table("worker_job_assignments").select("job_assignment_id").eq("request_id", request_id).eq("worker_id", user_id).execute()
+        if not existing.data:
+            raise HTTPException(status_code=400, detail="You have not accepted this job")
+            
+        # 1.5 Check time restriction (cannot cancel < 3 hours before start)
+        req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
+        if req_res.data:
+            from datetime import datetime
+            shift_date = req_res.data[0].get("shift_date")
+            start_time = req_res.data[0].get("start_time")
+            if shift_date and start_time:
+                shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
+                diff = shift_datetime - datetime.now()
+                if diff.total_seconds() > 0 and diff.total_seconds() < 3 * 3600:
+                    raise HTTPException(status_code=400, detail="Cannot cancel job less than 3 hours before start time")
+                    
+        # 2. Delete the assignment
+        supabase.table("worker_job_assignments").delete().eq("request_id", request_id).eq("worker_id", user_id).execute()
+        
+        # 3. Update the manpower request status back to 'open'
+        supabase.table("manpower_requests").update({"request_status": "open"}).eq("request_id", request_id).execute()
+        
+        return {"status": "success", "message": "Job successfully cancelled"}
+    except Exception as e:
+        print(f"Error cancelling job: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/accepted", response_model=MyAcceptedJobsResponse)
 async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
     try:
         response = supabase.table("worker_job_assignments").select(
-            "assignment_status, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city))"
+            "assignment_status, t90_status, t60_status, arrival_status, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city))"
         ).eq("worker_id", user_id).execute()
         
         jobs = []
@@ -141,10 +172,44 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),
-                city=store_info.get("city")
+                city=store_info.get("city"),
+                t90_status=r.get("t90_status", "pending"),
+                t60_status=r.get("t60_status", "pending"),
+                arrival_status=r.get("arrival_status", "pending")
             ))
             
         return MyAcceptedJobsResponse(status="success", jobs=jobs)
     except Exception as e:
         print(f"Error fetching accepted jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+from pydantic import BaseModel
+class ConfirmJobRequest(BaseModel):
+    step: str # 't90', 't60', or 'arrival'
+
+@router.post("/confirm/{request_id}")
+async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id: str = Depends(get_current_user)):
+    try:
+        step = payload.step
+        if step not in ['t90', 't60', 'arrival']:
+            raise HTTPException(status_code=400, detail="Invalid step")
+            
+        # Check if the job is accepted by this user
+        existing = supabase.table("worker_job_assignments").select("job_assignment_id").eq("request_id", request_id).eq("worker_id", user_id).execute()
+        if not existing.data:
+            raise HTTPException(status_code=400, detail="You have not accepted this job")
+            
+        update_data = {}
+        if step == 't90':
+            update_data = {"t90_status": "confirmed", "t90_accepted_at": "now()"}
+        elif step == 't60':
+            update_data = {"t60_status": "confirmed", "t60_accepted_at": "now()"}
+        elif step == 'arrival':
+            update_data = {"arrival_status": "arrived", "arrival_accepted_at": "now()"}
+            
+        supabase.table("worker_job_assignments").update(update_data).eq("request_id", request_id).eq("worker_id", user_id).execute()
+        
+        return {"status": "success", "message": f"Job step {step} confirmed"}
+    except Exception as e:
+        print(f"Error confirming job step: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

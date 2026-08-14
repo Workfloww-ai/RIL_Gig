@@ -55,6 +55,73 @@ export default function LibraryScreen() {
     }
   };
 
+  const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
+
+  const handleCancelJob = async (request_id: string) => {
+    setCancellingJobId(request_id);
+    try {
+      await apiClient.delete(`/jobs/cancel/${request_id}`);
+      showToast('Job cancelled successfully!');
+      fetchJobs();
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || 'Failed to cancel job');
+    } finally {
+      setCancellingJobId(null);
+    }
+  };
+
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
+
+  const handleCheckIn = async (request_id: string, step: 't90' | 't60' | 'arrival') => {
+    setCheckingInId(`${request_id}-${step}`);
+    try {
+      await apiClient.post(`/jobs/confirm/${request_id}`, { step });
+      showToast(`Checked in for ${step === 'arrival' ? 'Arrival' : step === 't60' ? '60 mins' : '90 mins'}!`);
+      fetchJobs();
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || 'Failed to check in');
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
+  const getStepState = (status: string, shift_date: string, start_time: string, step: 't90' | 't60' | 'arrival') => {
+    if (status === 'confirmed' || status === 'arrived') return 'confirmed';
+    
+    // shift_date is YYYY-MM-DD
+    // start_time is HH:MM:SS
+    const shiftDateTime = new Date(`${shift_date}T${start_time}`);
+    const now = new Date();
+    
+    // Difference in minutes
+    const diffMs = shiftDateTime.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (step === 't90') {
+      if (diffMins > 90) return 'locked';
+      if (diffMins <= 90 && diffMins > 85) return 'active';
+      return 'missed';
+    }
+    if (step === 't60') {
+      if (diffMins > 60) return 'locked';
+      if (diffMins <= 60 && diffMins > 55) return 'active';
+      return 'missed';
+    }
+    if (step === 'arrival') {
+      if (diffMins > 0) return 'locked';
+      if (diffMins <= 0 && diffMins > -5) return 'active';
+      return 'missed';
+    }
+    return 'locked';
+  };
+
+  const canCancelJob = (shift_date: string, start_time: string) => {
+    const shiftDateTime = new Date(`${shift_date}T${start_time}`);
+    const now = new Date();
+    const diffMs = shiftDateTime.getTime() - now.getTime();
+    return diffMs > 3 * 60 * 60 * 1000;
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -371,8 +438,8 @@ export default function LibraryScreen() {
                           </View>
                         </View>
                         <View className="bg-green-50 px-3 py-2.5 rounded-2xl items-center border border-green-100 min-w-[75px] shadow-sm">
-                          <Text className="text-green-700 font-bold text-xl">₹{job.base_compensation}</Text>
-                          <Text className="text-green-600 text-[9px] font-bold uppercase tracking-wider mt-0.5">per hour</Text>
+                          <Text className="text-green-700 font-bold text-xl">₹{job.base_compensation*job.hours_duration}</Text>
+                          <Text className="text-green-600 text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration==1?"Hour":"Hours"}</Text>
                         </View>
                       </View>
 
@@ -418,7 +485,8 @@ export default function LibraryScreen() {
                    </Text>
                  </View>
                 ) : (
-                  acceptedJobs.map((job) => (
+                  acceptedJobs.map((job) => {
+                    return (
                     <View key={job.request_id} className="bg-white rounded-3xl p-5 mb-5 shadow-sm border border-gray-100">
                       <View className="flex-row justify-between items-start mb-4">
                         <View className="flex-1 pr-4">
@@ -433,8 +501,8 @@ export default function LibraryScreen() {
                           </View>
                         </View>
                         <View className="bg-primary-50 px-3 py-2.5 rounded-2xl items-center border border-primary-100 min-w-[75px] shadow-sm">
-                          <Text className="text-primary-700 font-bold text-xl">₹{job.base_compensation}</Text>
-                          <Text className="text-primary-600 text-[9px] font-bold uppercase tracking-wider mt-0.5">per hour</Text>
+                          <Text className="text-primary-700 font-bold text-xl">₹{job.base_compensation*job.hours_duration}</Text>
+                          <Text className="text-primary-600 text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration==1?"Hour":"Hours"}</Text>
                         </View>
                       </View>
 
@@ -463,10 +531,109 @@ export default function LibraryScreen() {
                           </View>
                         </View>
                       </View>
+
+                      {job.assignment_status === 'accepted' && (() => {
+                        const t90State = getStepState(job.t90_status, job.shift_date, job.start_time, 't90');
+                        const t60State = getStepState(job.t60_status, job.shift_date, job.start_time, 't60');
+                        const arrivalState = getStepState(job.arrival_status, job.shift_date, job.start_time, 'arrival');
+                        return (
+                        <View className="mb-3 border border-gray-100 rounded-2xl bg-white p-3">
+                          <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2">Check-in Process</Text>
+                          <View className="flex-row justify-between items-start">
+                            
+                            {/* T-90 */}
+                            <View className="items-center w-[30%]">
+                              <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t90State === 'confirmed' ? 'bg-green-100' : t90State === 'missed' ? 'bg-red-100' : 'bg-gray-100'}`}>
+                                <Feather name={t90State === 'confirmed' ? 'check' : t90State === 'missed' ? 'x' : 'clock'} size={14} color={t90State === 'confirmed' ? '#10B981' : t90State === 'missed' ? '#EF4444' : '#9CA3AF'} />
+                              </View>
+                              <Text className="text-[9px] font-bold text-gray-700 text-center">{t90State === 'missed' ? 'Missed' : '90m Before'}</Text>
+                              {t90State === 'active' && (
+                                <TouchableOpacity 
+                                  onPress={() => handleCheckIn(job.request_id, 't90')} 
+                                  disabled={checkingInId !== null}
+                                  className="bg-primary-600 px-2 py-1.5 rounded mt-1.5 w-full items-center"
+                                >
+                                  {checkingInId === `${job.request_id}-t90` ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <Text className="text-[8px] text-white font-bold uppercase">Confirm</Text>
+                                  )}
+                                </TouchableOpacity>
+                              )}
+                            </View>
+
+                            <View className={`h-[2px] flex-1 mt-3 mx-1 ${t90State === 'confirmed' ? 'bg-green-300' : 'bg-gray-200'}`} />
+
+                            {/* T-60 */}
+                            <View className="items-center w-[30%]">
+                              <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t60State === 'confirmed' ? 'bg-green-100' : t60State === 'missed' ? 'bg-red-100' : 'bg-gray-100'}`}>
+                                <Feather name={t60State === 'confirmed' ? 'check' : t60State === 'missed' ? 'x' : 'navigation'} size={14} color={t60State === 'confirmed' ? '#10B981' : t60State === 'missed' ? '#EF4444' : '#9CA3AF'} />
+                              </View>
+                              <Text className="text-[9px] font-bold text-gray-700 text-center">{t60State === 'missed' ? 'Missed' : '60m Before'}</Text>
+                              {t90State !== 'locked' && t60State === 'active' && (
+                                <TouchableOpacity 
+                                  onPress={() => handleCheckIn(job.request_id, 't60')} 
+                                  disabled={checkingInId !== null}
+                                  className="bg-primary-600 px-2 py-1.5 rounded mt-1.5 w-full items-center"
+                                >
+                                  {checkingInId === `${job.request_id}-t60` ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <Text className="text-[8px] text-white font-bold uppercase">En Route</Text>
+                                  )}
+                                </TouchableOpacity>
+                              )}
+                            </View>
+
+                            <View className={`h-[2px] flex-1 mt-3 mx-1 ${t60State === 'confirmed' ? 'bg-green-300' : 'bg-gray-200'}`} />
+
+                            {/* Arrival */}
+                            <View className="items-center w-[30%]">
+                              <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${arrivalState === 'confirmed' ? 'bg-green-100' : arrivalState === 'missed' ? 'bg-red-100' : 'bg-gray-100'}`}>
+                                <Feather name={arrivalState === 'confirmed' ? 'check' : arrivalState === 'missed' ? 'x' : 'map-pin'} size={14} color={arrivalState === 'confirmed' ? '#10B981' : arrivalState === 'missed' ? '#EF4444' : '#9CA3AF'} />
+                              </View>
+                              <Text className="text-[9px] font-bold text-gray-700 text-center">{arrivalState === 'missed' ? 'Missed' : 'On Arrival'}</Text>
+                              {t60State !== 'locked' && arrivalState === 'active' && (
+                                <TouchableOpacity 
+                                  onPress={() => handleCheckIn(job.request_id, 'arrival')} 
+                                  disabled={checkingInId !== null}
+                                  className="bg-primary-600 px-2 py-1.5 rounded mt-1.5 w-full items-center"
+                                >
+                                  {checkingInId === `${job.request_id}-arrival` ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <Text className="text-[8px] text-white font-bold uppercase">Arrived</Text>
+                                  )}
+                                </TouchableOpacity>
+                              )}
+                            </View>
+
+                          </View>
+                        </View>
+                        );
+                      })()}
+
+                      {job.assignment_status === 'accepted' && canCancelJob(job.shift_date, job.start_time) && (
+                        <TouchableOpacity
+                          onPress={() => handleCancelJob(job.request_id)}
+                          disabled={cancellingJobId !== null && cancellingJobId !== job.request_id}
+                          className="mt-2 bg-red-50 border border-red-200 py-3 rounded-xl items-center flex-row justify-center"
+                        >
+                          {cancellingJobId === job.request_id ? (
+                            <ActivityIndicator size="small" color="#EF4444" />
+                          ) : (
+                            <>
+                              <Feather name="x-circle" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                              <Text className="text-red-600 font-bold">Cancel Job</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      )}
                     </View>
-                  ))
-                )
-              )}
+                  );
+                })
+              )
+            )}
             </View>
           )}
         </View>
