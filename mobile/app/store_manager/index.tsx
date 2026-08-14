@@ -60,6 +60,7 @@ export default function StoreManagerDashboard() {
   // Navigation tab state: 'home' | 'requests' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'requests' | 'profile'>('home');
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+  const [managerStoreName, setManagerStoreName] = useState<string>('Loading store...');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -109,8 +110,10 @@ export default function StoreManagerDashboard() {
   const fetchRequests = async () => {
     try {
       const res = await apiClient.get('/jobs/manager/requests');
-      if (res.data && res.data.requests) {
-        setJobsList(res.data.requests);
+      if (res.data) {
+        if (res.data.requests) setJobsList(res.data.requests);
+        if (res.data.store_name) setManagerStoreName(res.data.store_name);
+        else setManagerStoreName('Unassigned Store');
       }
     } catch (error) {
       console.error('Failed to fetch manager requests', error);
@@ -258,7 +261,7 @@ export default function StoreManagerDashboard() {
             <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>
               Hi, {userProfile ? `${userProfile.first_name}` : 'Rajesh'}
             </Text>
-            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>Reliance Smart – Phoenix Marketcity</Text>
+            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>{managerStoreName}</Text>
           </View>
           <TouchableOpacity
             onPress={() => router.push('/store_manager/profile')}
@@ -486,8 +489,8 @@ export default function StoreManagerDashboard() {
                 <Text style={{ color: '#10472B', fontSize: 32, fontWeight: '700' }}>RK</Text>
               </View>
 
-              <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 2, letterSpacing: -0.3 }}>RAJESH KUMAR</Text>
-              <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 12 }}>Store Manager • Reliance Smart</Text>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 2, letterSpacing: -0.3 }}>{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'RAJESH KUMAR'}</Text>
+              <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 12 }}>Store Manager • {managerStoreName}</Text>
 
               {/* Rating Badge */}
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#FDE68A' }}>

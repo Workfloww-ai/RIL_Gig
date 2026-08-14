@@ -49,5 +49,5 @@ def get_all_jobs():
     Fetches all available jobs to populate the dropdown on the frontend.
     Avoids SELECT * per enterprise guidelines.
     """
-    response = supabase.table("jobs").select("job_id, title, base_compensation").execute()
+    response = supabase.table("jobs").select("job_id, job_name, base_compensation").execute()
     return response.data

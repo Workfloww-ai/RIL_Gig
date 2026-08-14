@@ -185,11 +185,18 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
 async def get_manager_requests(user_id: str = Depends(get_current_user)):
     try:
         # First find the store_assignment for this manager
-        assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+        assignment = supabase.table("user_store_assignment").select("store_id, stores(store_name)").eq("user_id", user_id).execute()
         if not assignment.data:
-            return {"status": "success", "requests": []}
+            return {"status": "success", "requests": [], "store_name": None}
             
         store_id = assignment.data[0]["store_id"]
+        store_name = None
+        store_info = assignment.data[0].get("stores")
+        if store_info:
+            if isinstance(store_info, list) and len(store_info) > 0:
+                store_name = store_info[0].get("store_name")
+            elif isinstance(store_info, dict):
+                store_name = store_info.get("store_name")
         
         # Now fetch requests for this store
         response = supabase.table("manpower_requests").select(
@@ -241,7 +248,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                 "accepted_workers": accepted_workers
             })
             
-        return {"status": "success", "requests": requests}
+        return {"status": "success", "requests": requests, "store_name": store_name}
     except Exception as e:
         print(f"Error fetching manager requests: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

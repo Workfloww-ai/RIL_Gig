@@ -214,7 +214,7 @@ export default function StoreManagerRequestsScreen() {
                     style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                   >
                     <Text style={{ fontSize: 14, color: selectedJob ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
-                      {selectedJob ? selectedJob.title : 'Select a role...'}
+                      {selectedJob ? selectedJob.job_name : 'Select a role...'}
                     </Text>
                     <Ionicons name="chevron-down-outline" size={16} color="#9CA3AF" />
                   </TouchableOpacity>
@@ -298,7 +298,7 @@ export default function StoreManagerRequestsScreen() {
                   style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                 >
                   <Text style={{ fontSize: 16, color: '#1A1A1A', fontWeight: selectedJob?.job_id === job.job_id ? '700' : '500' }}>
-                    {job.title}
+                    {job.job_name}
                   </Text>
                   <Text style={{ fontSize: 14, color: '#6B7280' }}>₹{job.base_compensation}/hr</Text>
                 </TouchableOpacity>

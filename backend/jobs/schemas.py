@@ -4,7 +4,7 @@ from datetime import date, time
 
 class JobRoleResponse(BaseModel):
     job_id: str
-    title: str
+    job_name: str
     base_compensation: float
 
 class JobRequestCreate(BaseModel):
