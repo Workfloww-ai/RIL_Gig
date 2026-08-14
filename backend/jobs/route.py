@@ -45,6 +45,32 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
         # Allow either 'approved' or 'confirmed'
         requests = [r for r in response.data if str(r.get("approval_status")).lower() in ("approved", "confirmed")]
         
+        import datetime
+        current_time = datetime.datetime.now()
+        
+        valid_requests = []
+        for r in requests:
+            shift_date_str = r.get("shift_date")
+            start_time_str = r.get("start_time")
+            
+            if shift_date_str and start_time_str:
+                try:
+                    if len(start_time_str.split(':')) == 2:
+                        start_time_str += ":00"
+                    job_datetime_str = f"{shift_date_str} {start_time_str}"
+                    job_datetime = datetime.datetime.strptime(job_datetime_str, "%Y-%m-%d %H:%M:%S")
+                    
+                    if job_datetime < current_time:
+                        # Job is in the past, update its status to closed
+                        supabase.table("manpower_requests").update({"request_status": "closed"}).eq("request_id", r["request_id"]).execute()
+                        continue
+                except Exception as e:
+                    print(f"Error parsing date/time for request {r['request_id']}: {e}")
+            
+            valid_requests.append(r)
+            
+        requests = valid_requests
+        
         # Get user's currently accepted jobs to filter them out
         assignments = supabase.table("worker_job_assignments").select("request_id").eq("worker_id", user_id).execute()
         accepted_ids = {a["request_id"] for a in assignments.data}

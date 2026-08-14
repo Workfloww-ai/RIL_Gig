@@ -66,11 +66,11 @@ export default function StoreManagerRequestsScreen() {
                   paddingHorizontal: 12,
                   paddingVertical: 5,
                   borderRadius: 999,
-                  backgroundColor: job.approval_status === 'approved' ? '#DCFCE7' : '#FEF3C7',
+                  backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2',
                 }}
               >
-                <Text style={{ fontSize: 11, fontWeight: '700', color: job.approval_status === 'approved' ? '#15803D' : '#D97706' }}>
-                  {job.approval_status === 'approved' ? 'Approved' : 'Pending Approval'}
+                <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>
+                  {job.request_status || 'Open'}
                 </Text>
               </View>
             </View>

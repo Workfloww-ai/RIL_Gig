@@ -201,11 +201,11 @@ export default function LibraryScreen() {
   }, [justCompleted, isAllCompleted]);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 pt-8">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
         
         {/* Header Area */}
-        <View className="bg-primary-600 pt-8 pb-4 px-6 rounded-b-3xl">
+        <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 16, paddingHorizontal: 24 }}>
           <View className="flex-row justify-between items-center mb-6">
             <View className="flex-row items-center">
               <TouchableOpacity 

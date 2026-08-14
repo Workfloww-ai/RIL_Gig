@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/authStore';
 import { apiClient } from '../../src/api/client';
 import RaiseRequestModal from '../../src/components/RaiseRequestModal';
@@ -57,6 +58,7 @@ interface JobRequest {
 export default function StoreManagerDashboard() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
+  const insets = useSafeAreaInsets();
 
   // Navigation tab state: 'home' | 'requests' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'requests' | 'profile'>('home');
@@ -178,22 +180,22 @@ export default function StoreManagerDashboard() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
       {/* ==================== 1. TOP HEADER ==================== */}
       <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 24, paddingHorizontal: 20 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>
-              Hi, {userProfile ? `${userProfile.first_name}` : 'Rajesh'}
-            </Text>
-            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>{managerStoreName}</Text>
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => router.push('/store_manager/profile')}
-            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)' }}
+            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)', marginRight: 12 }}
             activeOpacity={0.8}
           >
             <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>
               {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'R'}
             </Text>
           </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>
+              Hi, {userProfile ? `${userProfile.first_name}` : 'Rajesh'}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>{managerStoreName}</Text>
+          </View>
         </View>
       </View>
 
@@ -206,14 +208,14 @@ export default function StoreManagerDashboard() {
             {/* Section Title + Single '+' Raise Request Button */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Jobs in Process</Text>
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 onPress={() => setIsRaiseModalOpen(true)}
                 style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
                 activeOpacity={0.85}
               >
                 <Ionicons name="add-outline" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Raise Request</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
 
             {/* List of Jobs in Process (Click to view assigned workers) */}
@@ -234,8 +236,8 @@ export default function StoreManagerDashboard() {
                     <View style={{ flex: 1, marginRight: 12 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                         <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
-                        <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803D' }}>{job.request_status}</Text>
+                        <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
                         </View>
                       </View>
 
@@ -276,11 +278,11 @@ export default function StoreManagerDashboard() {
                                   {worker.avatarUrl ? (
                                     <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
                                   ) : (
-                                    <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0)}</Text>
+                                    <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0).toUpperCase()}</Text>
                                   )}
                                 </View>
                                 <View>
-                                  <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name}</Text>
+                                  <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
                                   <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
                                 </View>
                               </View>
@@ -376,11 +378,11 @@ export default function StoreManagerDashboard() {
                       paddingHorizontal: 12,
                       paddingVertical: 5,
                       borderRadius: 999,
-                      backgroundColor: job.request_status === 'Pending Approval' ? '#FEF3C7' : '#DCFCE7',
+                      backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2',
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status === 'Pending Approval' ? '#D97706' : '#15803D' }}>
-                      {job.request_status}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>
+                      {job.request_status || 'Open'}
                     </Text>
                   </View>
                 </View>
@@ -411,7 +413,7 @@ export default function StoreManagerDashboard() {
                 <Text style={{ color: '#10472B', fontSize: 32, fontWeight: '700' }}>RK</Text>
               </View>
 
-              <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 2, letterSpacing: -0.3 }}>{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'RAJESH KUMAR'}</Text>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 2, letterSpacing: -0.3 }}>{userProfile ? (userProfile.first_name + ' ' + userProfile.last_name).toUpperCase() : 'RAJESH KUMAR'}</Text>
               <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 12 }}>Store Manager • {managerStoreName}</Text>
 
               {/* Rating Badge */}
@@ -465,7 +467,7 @@ export default function StoreManagerDashboard() {
           flexDirection: 'row',
           justifyContent: 'space-around',
           paddingVertical: 12,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+          paddingBottom: Platform.OS === 'ios' ? Math.max(24, insets.bottom) : Math.max(12, insets.bottom),
           elevation: 10,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -3 },
@@ -496,14 +498,14 @@ export default function StoreManagerDashboard() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/store_manager/profile')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => {}} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons
-            name={activeTab === 'profile' ? 'person' : 'person-outline'}
+            name="bar-chart-outline"
             size={22}
-            color={activeTab === 'profile' ? '#E31B23' : '#9CA3AF'}
+            color="#9CA3AF"
           />
-          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: activeTab === 'profile' ? '#E31B23' : '#9CA3AF' }}>
-            Profile
+          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: '#9CA3AF' }}>
+            Insights
           </Text>
         </TouchableOpacity>
       </View>
