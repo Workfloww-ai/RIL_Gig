@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, Any
-from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse
+from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse
 from db.jobs_db import create_job_request, get_all_jobs
 from utils.jwt_auth import get_current_user
+from utils.supabase_client import supabase
 
 router = APIRouter()
 
@@ -30,12 +31,6 @@ async def raise_job_request(
     created_request = create_job_request(user_id=user_id, request_data=request_data)
     
     return created_request
-from fastapi import APIRouter, HTTPException, Depends
-from utils.jwt_auth import get_current_user
-from utils.supabase_client import supabase
-from .schemas import AvailableJobsResponse, JobResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse
-
-router = APIRouter()
 
 @router.get("/available", response_model=AvailableJobsResponse)
 async def get_available_jobs(user_id: str = Depends(get_current_user)):
@@ -267,7 +262,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city), "
-            "worker_job_assignments(worker_id, assignment_status, users!fk_wja_worker(first_name, last_name, profile_pic_url))"
+            "worker_job_assignments(worker_id, assignment_status, users!fk_wja_worker(first_name, last_name))"
         ).eq("store_id", store_id).order("created_at", desc=True).execute()
         
         requests = []
@@ -285,13 +280,13 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
             for w in raw_workers:
                 user_info = w.get("users") or {}
                 # The profile_pic_url might not exist, default to None
-                avatar_url = user_info.get("profile_pic_url")
+                # avatar_url = user_info.get("profile_pic_url")
                 name = f"{user_info.get('first_name', '')} {user_info.get('last_name', '')}".strip() or "Unknown Worker"
                 accepted_workers.append({
                     "id": w.get("worker_id"),
                     "name": name,
                     "status": w.get("assignment_status"),
-                    "avatarUrl": avatar_url,
+                    # "avatarUrl": avatar_url,
                     "role": job_info.get("job_name", "")
                 })
                 

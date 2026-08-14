@@ -12,9 +12,10 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
 import { apiClient } from '../../src/api/client';
+import RaiseRequestModal from '../../src/components/RaiseRequestModal';
 
 // Data Interfaces
 interface AcceptanceStatus {
@@ -87,25 +88,13 @@ export default function StoreManagerDashboard() {
   const [selectedTags, setSelectedTags] = useState<string[]>(['On-Time Arrival', 'High Efficiency']);
   const [feedbackText, setFeedbackText] = useState<string>('');
 
-  // Raise Request Form State
-  const [requestStore] = useState('Reliance Smart – Phoenix Marketcity');
-  const [requestDate, setRequestDate] = useState('12/08/2026');
-  const [requestRole, setRequestRole] = useState('Inventory Restocking Associate');
-  const [requestStartTime, setRequestStartTime] = useState('02:00 PM');
-  const [requestHours, setRequestHours] = useState('4');
-  const [requestNumWorkers, setRequestNumWorkers] = useState('2');
-  const [requestCompensation, setRequestCompensation] = useState('800');
-
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
   
   // Available Jobs and Stores for Modal
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
-  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
-  const [availableStores, setAvailableStores] = useState<any[]>([]);
-  const [selectedStore, setSelectedStore] = useState<any>(null);
 
   const fetchRequests = async () => {
     try {
@@ -122,34 +111,11 @@ export default function StoreManagerDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const [jobsRes, storesRes] = await Promise.all([
-          apiClient.get('/jobs/roles'),
-          apiClient.get('/stores/')
-        ]);
-        setAvailableJobs(jobsRes.data);
-        if (storesRes.data && storesRes.data.stores) {
-          setAvailableStores(storesRes.data.stores);
-        }
-        await fetchRequests();
-      } catch (error) {
-        console.error('Failed to fetch jobs or stores', error);
-      }
+      await fetchRequests();
     };
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (selectedJob && requestHours) {
-      const hours = parseFloat(requestHours);
-      if (!isNaN(hours) && hours > 0) {
-        const total = selectedJob.base_compensation * hours;
-        setRequestCompensation(total.toString());
-      } else {
-        setRequestCompensation('0');
-      }
-    }
-  }, [selectedJob, requestHours]);
 
   // Toggle expandable job card
   const toggleExpandJob = (jobId: string) => {
@@ -200,50 +166,6 @@ export default function StoreManagerDashboard() {
       setSelectedTags(selectedTags.filter((t) => t !== tag));
     } else {
       setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
-  // Create new manpower request
-  const handlePublishRequest = async () => {
-    if (!selectedJob || !requestStartTime || !requestDate) {
-      Alert.alert('Missing Details', 'Please fill in all required job request fields.');
-      return;
-    }
-
-    const dateParts = requestDate.split('/');
-    let formattedDate = requestDate;
-    if (dateParts.length === 3) {
-      formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-    }
-
-    let formattedTime = requestStartTime;
-    const timeParts = requestStartTime.split(' ');
-    if (timeParts.length === 2) {
-      const [time, period] = timeParts;
-      let [hours, minutes] = time.split(':');
-      let hr = parseInt(hours, 10);
-      if (period.toUpperCase() === 'PM' && hr !== 12) hr += 12;
-      if (period.toUpperCase() === 'AM' && hr === 12) hr = 0;
-      formattedTime = `${hr.toString().padStart(2, '0')}:${minutes}:00`;
-    }
-
-    const payload = {
-      job_id: selectedJob.job_id,
-      workers_needed: parseInt(requestNumWorkers) || 1,
-      shift_date: formattedDate,
-      start_time: formattedTime,
-      hours_duration: parseFloat(requestHours) || 4
-    };
-
-    try {
-      await apiClient.post('/jobs/', payload);
-      setIsRaiseModalOpen(false);
-      setSelectedJob(null);
-      Alert.alert('Request Published', 'Your manpower request has been successfully published to the worker pool!');
-      fetchRequests();
-    } catch (error) {
-      console.error("Error creating request", error);
-      Alert.alert('Error', 'Failed to publish request.');
     }
   };
 
@@ -689,182 +611,12 @@ export default function StoreManagerDashboard() {
         </View>
       </Modal>
 
-      {/* ==================== RAISE MANPOWER REQUEST MODAL ==================== */}
-      <Modal visible={isRaiseModalOpen} transparent animationType="slide">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Raise Manpower Request</Text>
-              <TouchableOpacity onPress={() => setIsRaiseModalOpen(false)}>
-                <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
-              <View style={{ marginBottom: 14 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Store</Text>
-                <TouchableOpacity 
-                  onPress={() => setIsStoreModalOpen(true)}
-                  style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-                >
-                  <Text style={{ fontSize: 14, color: selectedStore ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
-                    {selectedStore ? selectedStore.store_name : 'Select a store...'}
-                  </Text>
-                  <Ionicons name="chevron-down-outline" size={16} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ flexDirection: 'row', marginBottom: 14 }}>
-                <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Date</Text>
-                  <TextInput
-                    value={requestDate}
-                    onChangeText={setRequestDate}
-                    placeholder="dd/mm/yyyy"
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
-                  />
-                </View>
-
-                <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Role</Text>
-                  <TouchableOpacity 
-                    onPress={() => setIsJobModalOpen(true)}
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-                  >
-                    <Text style={{ fontSize: 14, color: selectedJob ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
-                      {selectedJob ? selectedJob.title : 'Select a role...'}
-                    </Text>
-                    <Ionicons name="chevron-down-outline" size={16} color="#9CA3AF" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: 'row', marginBottom: 14 }}>
-                <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Start Time</Text>
-                  <TextInput
-                    value={requestStartTime}
-                    onChangeText={setRequestStartTime}
-                    placeholder="--:-- --"
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
-                  />
-                </View>
-
-                <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>How many hours?</Text>
-                  <TextInput
-                    value={requestHours}
-                    onChangeText={setRequestHours}
-                    keyboardType="numeric"
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
-                  />
-                </View>
-              </View>
-
-              <View style={{ flexDirection: 'row', marginBottom: 24 }}>
-                <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Number of Workers</Text>
-                  <TextInput
-                    value={requestNumWorkers}
-                    onChangeText={setRequestNumWorkers}
-                    keyboardType="numeric"
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
-                  />
-                </View>
-
-                <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Compensation (Fixed ₹)</Text>
-                  <TextInput
-                    value={requestCompensation}
-                    onChangeText={setRequestCompensation}
-                    keyboardType="numeric"
-                    placeholder="Auto-set by role"
-                    style={{ backgroundColor: '#F7F8F9', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A', fontWeight: '700' }}
-                  />
-                </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={handlePublishRequest}
-                style={{ backgroundColor: '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
-                activeOpacity={0.85}
-              >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Publish to Worker Pool</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* JOB SELECTOR MODAL */}
-      <Modal visible={isJobModalOpen} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, maxHeight: '80%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>Select Role</Text>
-              <TouchableOpacity onPress={() => setIsJobModalOpen(false)}>
-                <Ionicons name="close-circle" size={24} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {availableJobs.map((job: any, index: number) => (
-                <TouchableOpacity
-                  key={job.job_id || index}
-                  onPress={() => {
-                    setSelectedJob(job);
-                    setIsJobModalOpen(false);
-                  }}
-                  style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <Text style={{ fontSize: 16, color: '#1A1A1A', fontWeight: selectedJob?.job_id === job.job_id ? '700' : '500' }}>
-                    {job.title}
-                  </Text>
-                  <Text style={{ fontSize: 14, color: '#6B7280' }}>₹{job.base_compensation}/hr</Text>
-                </TouchableOpacity>
-              ))}
-              {availableJobs.length === 0 && (
-                <Text style={{ textAlign: 'center', color: '#6B7280', padding: 20 }}>No roles available</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* STORE SELECTOR MODAL */}
-      <Modal visible={isStoreModalOpen} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, maxHeight: '80%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>Select Store</Text>
-              <TouchableOpacity onPress={() => setIsStoreModalOpen(false)}>
-                <Ionicons name="close-circle" size={24} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {availableStores.map((store: any, index: number) => (
-                <TouchableOpacity
-                  key={store.store_id || index}
-                  onPress={() => {
-                    setSelectedStore(store);
-                    setIsStoreModalOpen(false);
-                  }}
-                  style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <View>
-                    <Text style={{ fontSize: 16, color: '#1A1A1A', fontWeight: selectedStore?.store_id === store.store_id ? '700' : '500' }}>
-                      {store.store_name}
-                    </Text>
-                    {store.city && <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>{store.city}</Text>}
-                  </View>
-                </TouchableOpacity>
-              ))}
-              {availableStores.length === 0 && (
-                <Text style={{ textAlign: 'center', color: '#6B7280', padding: 20 }}>No stores available</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <RaiseRequestModal 
+        visible={isRaiseModalOpen} 
+        onClose={() => setIsRaiseModalOpen(false)} 
+        onSuccess={fetchRequests} 
+        managerStoreName={managerStoreName} 
+      />
     </SafeAreaView>
   );
 }
