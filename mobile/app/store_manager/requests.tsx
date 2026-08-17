@@ -45,7 +45,14 @@ export default function StoreManagerRequestsScreen() {
     try {
       const res = await apiClient.get('/jobs/manager/requests');
       if (res.data) {
-        if (res.data.requests) setRequestsList(res.data.requests);
+        if (res.data.requests) {
+          const sortedRequests = [...res.data.requests].sort((a: any, b: any) => {
+            const dateA = new Date(a.shift_date || 0).getTime();
+            const dateB = new Date(b.shift_date || 0).getTime();
+            return dateB - dateA;
+          });
+          setRequestsList(sortedRequests);
+        }
         if (res.data.store_name) setManagerStoreName(res.data.store_name);
         else setManagerStoreName('Unassigned Store');
       }

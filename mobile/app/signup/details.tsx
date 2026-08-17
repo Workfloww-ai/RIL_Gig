@@ -21,7 +21,7 @@ const signupSchema = z.object({
   pincode: z.string().length(6, "Pincode must be 6 digits"),
   dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD").min(1, "Date of birth is required"),
   gender: z.string().min(1, "Gender is required"),
-  upi_id: z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, "Invalid UPI ID").optional().or(z.literal('')),
+  upi_id: z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, "Invalid UPI ID").min(1, "UPI ID is required"),
   alternate_number: z.string().regex(/^\d{10}$/, "Must be exactly 10 digits").optional().or(z.literal('')),
 });
 
@@ -102,6 +102,12 @@ export default function SignupDetailsScreen() {
         <Text className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Create Profile</Text>
         <Text className="text-gray-500 mb-8 text-base font-medium">Tell us a bit about yourself to get started.</Text>
 
+        {Object.keys(errors).length > 0 && (
+          <View className="bg-red-50 border border-red-200 p-4 rounded-xl mb-6">
+            <Text className="text-red-600 font-medium">Please fill all mandatory fields correctly before proceeding.</Text>
+          </View>
+        )}
+
         <View className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
           <Controller
             control={control}
@@ -131,7 +137,7 @@ export default function SignupDetailsScreen() {
             name="gender"
             render={({ field: { value } }) => (
               <View className="mb-4">
-                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">Gender *</Text>
+                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">Gender <Text className="text-red-500">*</Text></Text>
                 <TouchableOpacity 
                   onPress={() => setShowGenderModal(true)}
                   className={`w-full bg-gray-50 border ${errors.gender ? 'border-red-500' : 'border-gray-200'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
@@ -152,7 +158,7 @@ export default function SignupDetailsScreen() {
             name="dob"
             render={({ field: { value } }) => (
               <View className="mb-4">
-                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">Date of Birth *</Text>
+                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">Date of Birth <Text className="text-red-500">*</Text></Text>
                 <TouchableOpacity 
                   onPress={() => setShowDatePicker(true)}
                   className={`w-full bg-gray-50 border ${errors.dob ? 'border-red-500' : 'border-gray-200'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
@@ -192,7 +198,7 @@ export default function SignupDetailsScreen() {
             name="state"
             render={({ field: { value } }) => (
               <View className="mb-4">
-                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">State *</Text>
+                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">State <Text className="text-red-500">*</Text></Text>
                 <TouchableOpacity 
                   onPress={() => setShowStateModal(true)}
                   className={`w-full bg-gray-50 border ${errors.state ? 'border-red-500' : 'border-gray-200'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
@@ -213,7 +219,7 @@ export default function SignupDetailsScreen() {
             name="city"
             render={({ field: { value } }) => (
               <View className="mb-4">
-                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">City *</Text>
+                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">City <Text className="text-red-500">*</Text></Text>
                 <TouchableOpacity 
                   onPress={() => {
                     if (selectedStateCode) setShowCityModal(true);
@@ -245,7 +251,7 @@ export default function SignupDetailsScreen() {
             control={control}
             name="upi_id"
             render={({ field: { onChange, value } }) => (
-              <Input label="UPI ID (Optional)" placeholder="name@bank" value={value} onChangeText={onChange} error={errors.upi_id?.message} />
+              <Input label="UPI ID *" placeholder="name@bank" value={value} onChangeText={onChange} error={errors.upi_id?.message} />
             )}
           />
           <Text className="text-gray-400 text-xs ml-1 -mt-2 mb-2">Used for quick payouts.</Text>

@@ -20,6 +20,8 @@ export default function DocumentsScreen() {
   const [documents, setDocuments] = useState<DocumentEntry[]>([]);
   const [docNumbers, setDocNumbers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [topError, setTopError] = useState<string>('');
 
   const requiredDocs = [
     { key: 'Aadhar Card', name: 'Aadhar Card', placeholder: 'Aadhar Number' },
@@ -31,10 +33,26 @@ export default function DocumentsScreen() {
   const getDoc = (name: string) => documents.find(d => d.doc_name === name);
 
   const pickImage = async (docName: string) => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
+    let result;
+
+    if (docName === 'Live Photo') {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (permissionResult.granted === false) {
+        Alert.alert("Camera Permission Required", "We need access to your camera to take a live photo.");
+        return;
+      }
+
+      result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+    }
 
     if (!result.canceled) {
       const asset = result.assets[0];
@@ -50,16 +68,51 @@ export default function DocumentsScreen() {
           type: asset.mimeType || 'image/jpeg'
         }];
       });
+      
+      // Clear error for this doc when uploaded
+      if (errors[docName]) {
+        setErrors(prev => ({ ...prev, [docName]: '' }));
+      }
     }
   };
 
   const updateDocNumber = (docName: string, number: string) => {
     setDocNumbers(prev => ({ ...prev, [docName]: number }));
+    // Clear error for this doc number when user types
+    if (errors[`${docName}_number`]) {
+      setErrors(prev => ({ ...prev, [`${docName}_number`]: '' }));
+    }
   };
 
   const submitDocuments = async () => {
-    if (documents.length < 4) {
-      Alert.alert('Missing Documents', 'Please upload all 4 required documents to proceed.');
+    setErrors({});
+    setTopError('');
+    let hasError = false;
+    const newErrors: Record<string, string> = {};
+
+    // Validate documents and numbers
+    requiredDocs.forEach(reqDoc => {
+      const doc = getDoc(reqDoc.name);
+      if (!doc) {
+        newErrors[reqDoc.name] = `${reqDoc.name} is required`;
+        hasError = true;
+      }
+      
+      if (reqDoc.name !== 'Live Photo') {
+        const num = docNumbers[reqDoc.name] || '';
+        if (!num && reqDoc.name !== 'Certification/Marksheet') {
+          newErrors[`${reqDoc.name}_number`] = `${reqDoc.name} number is required`;
+          hasError = true;
+        } else if (reqDoc.name === 'PAN Card' && num.length !== 10) {
+          newErrors[`${reqDoc.name}_number`] = 'PAN Card number must be exactly 10 characters';
+          hasError = true;
+        }
+      }
+    });
+
+    if (hasError) {
+      setErrors(newErrors);
+      setTopError('Please fill all mandatory fields correctly before proceeding.');
       return;
     }
 
@@ -101,18 +154,30 @@ export default function DocumentsScreen() {
         <Text className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">Documents</Text>
         <Text className="text-gray-500 mb-8 text-lg font-medium">Upload your KYC documents.</Text>
 
+        {topError ? (
+          <View className="bg-red-50 border border-red-200 p-4 rounded-xl mb-6">
+            <Text className="text-red-600 font-medium">{topError}</Text>
+          </View>
+        ) : null}
+
         {requiredDocs.map((reqDoc, index) => {
           const doc = getDoc(reqDoc.name);
+          const docError = errors[reqDoc.name];
+          const numError = errors[`${reqDoc.name}_number`];
+          
           return (
-            <View key={index} className="bg-gray-50 p-5 rounded-2xl border border-gray-100 mb-6">
-              <Text className="font-bold text-gray-800 text-lg mb-2">{reqDoc.name}</Text>
+            <View key={index} className={`bg-gray-50 p-5 rounded-2xl border ${docError ? 'border-red-500' : 'border-gray-100'} mb-6`}>
+              <Text className="font-bold text-gray-800 text-lg mb-2">
+                {reqDoc.name} <Text className="text-red-500">*</Text>
+              </Text>
               
               {reqDoc.name !== 'Live Photo' && (
                 <Input 
-                  label={`${reqDoc.name} Number`} 
+                  label={`${reqDoc.name} Number${reqDoc.name !== 'Certification/Marksheet' ? ' *' : ''}`} 
                   placeholder={reqDoc.placeholder} 
                   value={docNumbers[reqDoc.name] || ''} 
                   onChangeText={(val) => updateDocNumber(reqDoc.name, val)} 
+                  error={numError}
                 />
               )}
               
@@ -130,6 +195,7 @@ export default function DocumentsScreen() {
                   </View>
                 )}
               </View>
+              {docError && <Text className="text-red-500 text-sm mt-2">{docError}</Text>}
             </View>
           );
         })}

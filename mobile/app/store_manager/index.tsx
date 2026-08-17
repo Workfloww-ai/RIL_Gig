@@ -102,7 +102,14 @@ export default function StoreManagerDashboard() {
     try {
       const res = await apiClient.get('/jobs/manager/requests');
       if (res.data) {
-        if (res.data.requests) setJobsList(res.data.requests);
+        if (res.data.requests) {
+          const sortedJobs = [...res.data.requests].sort((a: any, b: any) => {
+            const dateA = new Date(a.shift_date || 0).getTime();
+            const dateB = new Date(b.shift_date || 0).getTime();
+            return dateB - dateA;
+          });
+          setJobsList(sortedJobs);
+        }
         if (res.data.store_name) setManagerStoreName(res.data.store_name);
         else setManagerStoreName('Unassigned Store');
       }
