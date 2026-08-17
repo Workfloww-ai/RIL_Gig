@@ -98,18 +98,18 @@ export default function LibraryScreen() {
     const diffMins = Math.floor(diffMs / 60000);
     
     if (step === 't90') {
-      if (diffMins > 90) return 'locked';
-      if (diffMins <= 90 && diffMins > 85) return 'active';
+      if (diffMins > 100) return 'locked';
+      if (diffMins <= 100 && diffMins > 90) return 'active';
       return 'missed';
     }
     if (step === 't60') {
-      if (diffMins > 60) return 'locked';
-      if (diffMins <= 60 && diffMins > 55) return 'active';
+      if (diffMins > 70) return 'locked';
+      if (diffMins <= 70 && diffMins > 60) return 'active';
       return 'missed';
     }
     if (step === 'arrival') {
       if (diffMins > 0) return 'locked';
-      if (diffMins <= 0 && diffMins > -5) return 'active';
+      if (diffMins <= 0 && diffMins > -15) return 'active'; // Give them 15 mins to arrive
       return 'missed';
     }
     return 'locked';

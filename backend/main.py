@@ -8,11 +8,27 @@ from content.route import router as content_router
 from jobs.route import router as jobs_router
 from stores.route import router as stores_router
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from jobs.cron_tasks import check_t60_status
+
 app = FastAPI(
     title="Reliance Project",
     description="Backend API",
     version="1.0.0"
 )
+
+scheduler = BackgroundScheduler()
+
+@app.on_event("startup")
+def start_scheduler():
+    scheduler.add_job(check_t60_status, 'interval', minutes=1)
+    scheduler.start()
+    print("[System] Background scheduler started (running every 1 min)")
+
+@app.on_event("shutdown")
+def shutdown_scheduler():
+    scheduler.shutdown()
+    print("[System] Background scheduler stopped")
 
 # Configure CORS
 app.add_middleware(

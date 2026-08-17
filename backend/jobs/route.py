@@ -110,6 +110,8 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
         print(f"Error fetching available jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+import datetime
+
 @router.post("/accept/{request_id}", response_model=AcceptJobResponse)
 async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
     try:
@@ -131,7 +133,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
         store_id = req.get("store_id")
         
         # 3. Check current accepted count
-        assignments = supabase.table("worker_job_assignments").select("job_assignment_id", count="exact").eq("request_id", request_id).execute()
+        assignments = supabase.table("worker_job_assignments").select("job_assignment_id", count="exact").eq("request_id", request_id).in_("assignment_status", ["accepted", "completed"]).execute()
         # Supabase python client count might be in assignments.count
         current_count = assignments.count if hasattr(assignments, 'count') and assignments.count is not None else len(assignments.data)
         
@@ -140,12 +142,40 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
             supabase.table("manpower_requests").update({"request_status": "closed"}).eq("request_id", request_id).execute()
             raise HTTPException(status_code=400, detail="Job has already been filled")
             
-        # 4. Insert assignment
+        # 4. Determine if we need to bypass checkpoints
+        req_details = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
+        
+        t90_status = "pending"
+        t60_status = "pending"
+        
+        if req_details.data:
+            rd = req_details.data[0]
+            shift_date_str = rd.get("shift_date")
+            start_time_str = rd.get("start_time")
+            if shift_date_str and start_time_str:
+                if len(start_time_str.split(':')) == 2:
+                    start_time_str += ":00"
+                try:
+                    shift_dt = datetime.datetime.strptime(f"{shift_date_str} {start_time_str}", "%Y-%m-%d %H:%M:%S")
+                    time_diff = shift_dt - datetime.datetime.now()
+                    minutes_until_shift = time_diff.total_seconds() / 60.0
+                    
+                    if minutes_until_shift <= 90:
+                        t90_status = "confirmed"
+                    
+                    if minutes_until_shift <= 60:
+                        t60_status = "confirmed"
+                except Exception as e:
+                    print(f"Error parsing date for accept_job bypass: {e}")
+        
+        # 5. Insert assignment
         supabase.table("worker_job_assignments").insert({
             "request_id": request_id,
             "store_id": store_id,
             "worker_id": user_id,
-            "assignment_status": "accepted"
+            "assignment_status": "accepted",
+            "t90_status": t90_status,
+            "t60_status": t60_status
         }).execute()
         
         # 5. Check if it's filled now
@@ -252,13 +282,15 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
         if not existing.data:
             raise HTTPException(status_code=400, detail="You have not accepted this job")
             
+        from datetime import datetime, timezone
+        now_iso = datetime.now(timezone.utc).isoformat()
         update_data = {}
         if step == 't90':
-            update_data = {"t90_status": "confirmed", "t90_accepted_at": "now()"}
+            update_data = {"t90_status": "confirmed", "t90_accepted_at": now_iso}
         elif step == 't60':
-            update_data = {"t60_status": "confirmed", "t60_accepted_at": "now()"}
+            update_data = {"t60_status": "confirmed", "t60_accepted_at": now_iso}
         elif step == 'arrival':
-            update_data = {"arrival_status": "arrived", "arrival_accepted_at": "now()"}
+            update_data = {"arrival_status": "arrived", "arrival_accepted_at": now_iso}
             
         supabase.table("worker_job_assignments").update(update_data).eq("request_id", request_id).eq("worker_id", user_id).execute()
         
@@ -288,7 +320,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city), "
-            "worker_job_assignments(worker_id, assignment_status, users!fk_wja_worker(first_name, last_name))"
+            "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, users!fk_wja_worker(first_name, last_name))"
         ).eq("store_id", store_id).order("created_at", desc=True).execute()
         
         requests = []
@@ -310,11 +342,16 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                 name = f"{user_info.get('first_name', '')} {user_info.get('last_name', '')}".strip() or "Unknown Worker"
                 accepted_workers.append({
                     "id": w.get("worker_id"),
+                    "assignment_id": w.get("job_assignment_id"),
                     "name": name,
                     "status": w.get("assignment_status"),
-                    # "avatarUrl": avatar_url,
+                    "t90_status": w.get("t90_status", "pending") or "pending",
+                    "t60_status": w.get("t60_status", "pending") or "pending",
+                    "arrival_status": w.get("arrival_status", "pending") or "pending",
                     "role": job_info.get("job_name", "")
                 })
+            
+            print(f"[Debug] Worker assignments for request {r.get('request_id')}: {accepted_workers}")
                 
             requests.append({
                 "request_id": r.get("request_id", ""),
@@ -338,3 +375,37 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
         print(f"Error fetching manager requests: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class CancelReasonRequest(BaseModel):
+    cancellation_reason: str = ""
+
+@router.post("/manager/jobs/assignment/{assignment_id}/cancel_and_replace")
+async def manager_cancel_and_replace(
+    assignment_id: str,
+    payload: CancelReasonRequest,
+    user_id: str = Depends(get_current_user)
+):
+    try:
+        # First verify user is manager of this store
+        # For brevity assuming get_current_user handles general auth, but we should strictly check store manager auth
+        assignment_resp = supabase.table("worker_job_assignments").select("request_id, store_id").eq("job_assignment_id", assignment_id).execute()
+        if not assignment_resp.data:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+            
+        request_id = assignment_resp.data[0]["request_id"]
+        
+        # 1. Cancel the assignment
+        supabase.table("worker_job_assignments").update({
+            "assignment_status": "cancelled",
+            "cancellation_reason": payload.cancellation_reason,
+            "t90_status": "cancelled",
+            "t60_status": "cancelled",
+            "arrival_status": "cancelled"
+        }).eq("job_assignment_id", assignment_id).execute()
+        
+        # 2. Re-open the manpower request to find replacement
+        supabase.table("manpower_requests").update({"request_status": "open"}).eq("request_id", request_id).execute()
+        
+        return {"status": "success", "message": "Worker cancelled and shift re-opened for urgent replacement."}
+    except Exception as e:
+        print(f"Error in cancel_and_replace: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -15,6 +15,31 @@ export default function StoreManagerRequestsScreen() {
   // Request state
   const [requestsList, setRequestsList] = useState<any[]>([]);
 
+  const getWorkerStatusDisplay = (worker: any, minutesUntilShift: number, shiftHasStarted: boolean) => {
+    if (worker.status === 'cancelled') return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
+
+    if (worker.arrival_status === 'arrived') return { label: '✅ Arrived', color: '#059669', showCancel: false };
+
+    if (shiftHasStarted) {
+      if (worker.arrival_status === 'pending') return { label: '🔴 No Show (Pending Arrival)', color: '#EF4444', showCancel: false };
+    }
+    
+    // Instantly reflect missed checkpoints as cancelled before the cron job officially cancels them
+    if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
+      return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
+    }
+    if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
+      return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
+    }
+    
+    // If they are not cancelled, and T-60 or T-90 is confirmed, they are Enroute.
+    if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
+      return { label: '🟢 Enroute', color: '#10B981', showCancel: false };
+    }
+    
+    return { label: '⚪ Pending', color: '#6B7280', showCancel: false };
+  };
+
   // Fetch available jobs and manager requests on mount
   const fetchRequests = async () => {
     try {

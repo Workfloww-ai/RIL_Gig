@@ -138,15 +138,15 @@ export default function StoreManagerDashboard() {
     if (!selectedWorker) return;
 
     setJobsList((prevJobs) =>
-      prevJobs.map((job) => ({
-        ...job,
-        accepted_workers: (job.accepted_workers || []).map((w: any) => {
+      prevJobs.map((j) => ({
+        ...j,
+        accepted_workers: j.accepted_workers?.map((w: any) => {
           if (w.id === selectedWorker.id) {
             return {
               ...w,
               status: 'completed',
               rating: {
-                score: ratingScore,
+                stars: ratingScore,
                 tags: selectedTags,
                 feedback: feedbackText,
               },
@@ -162,13 +162,56 @@ export default function StoreManagerDashboard() {
     Alert.alert('Rating Submitted', 'Thank you! The worker performance has been rated and shift payout is approved.');
   };
 
-  // Toggle feedback tags
+
+
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter((t) => t !== tag));
     } else {
       setSelectedTags([...selectedTags, tag]);
     }
+  };
+
+  const getWorkerStatusDisplay = (worker: any, job: any) => {
+    if (worker.status === 'cancelled') return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
+    
+    let shiftHasStarted = false;
+    let minutesUntilShift = 999;
+    
+    if (job.shift_date && job.start_time) {
+      const shiftDateTime = new Date(`${job.shift_date}T${job.start_time}`);
+      const now = new Date();
+      if (now >= shiftDateTime) {
+        shiftHasStarted = true;
+      }
+      minutesUntilShift = (shiftDateTime.getTime() - now.getTime()) / (1000 * 60);
+    }
+
+    if (worker.status === 'cancelled') return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
+
+    if (worker.arrival_status === 'arrived') return { label: 'Arrived', bgColor: '#D1FAE5', textColor: '#059669' };
+
+    if (shiftHasStarted) {
+      if (worker.arrival_status === 'pending') return { label: 'No Show', bgColor: '#FEE2E2', textColor: '#EF4444' };
+    }
+
+    // Instantly reflect missed checkpoints as cancelled before the cron job officially cancels them
+    if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
+      return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
+    }
+    if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
+      return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
+    }
+    
+    // If they are not cancelled, and T-60 or T-90 is confirmed (or they bypassed it), they are Enroute.
+    if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
+      return { label: 'Enroute', bgColor: '#D1FAE5', textColor: '#059669' };
+    }
+    
+    // Default / raw status formatting
+    if (worker.status === 'Review Pending') return { label: 'Review Pending', bgColor: '#FEF3C7', textColor: '#D97706' };
+    if (worker.status === 'completed') return { label: 'Completed', bgColor: '#DCFCE7', textColor: '#15803D' };
+    return { label: worker.status.charAt(0).toUpperCase() + worker.status.slice(1), bgColor: '#F3E8FF', textColor: '#7E22CE' };
   };
 
   const handleLogout = () => {
@@ -208,14 +251,6 @@ export default function StoreManagerDashboard() {
             {/* Section Title + Single '+' Raise Request Button */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Jobs in Process</Text>
-              {/* <TouchableOpacity
-                onPress={() => setIsRaiseModalOpen(true)}
-                style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="add-outline" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Raise Request</Text>
-              </TouchableOpacity> */}
             </View>
 
             {/* List of Jobs in Process (Click to view assigned workers) */}
@@ -266,85 +301,74 @@ export default function StoreManagerDashboard() {
                       {acceptedWorkers.length === 0 ? (
                         <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No workers assigned yet for this job.</Text>
                       ) : (
-                        acceptedWorkers.map((worker: any) => (
-                          <View
-                            key={worker.id}
-                            style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' }}
-                          >
-                            {/* Worker Header */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#C3D3CA' }}>
-                                  {worker.avatarUrl ? (
-                                    <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
-                                  ) : (
-                                    <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0).toUpperCase()}</Text>
-                                  )}
+                        acceptedWorkers.map((worker: any) => {
+                          const statusInfo = getWorkerStatusDisplay(worker, job);
+                          return (
+                            <View
+                              key={worker.id}
+                              style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' }}
+                            >
+                              {/* Worker Header */}
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                  <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#C3D3CA' }}>
+                                    {worker.avatarUrl ? (
+                                      <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
+                                    ) : (
+                                      <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0).toUpperCase()}</Text>
+                                    )}
+                                  </View>
+                                  <View>
+                                    <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
+                                    <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
+                                  </View>
                                 </View>
-                                <View>
-                                  <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
-                                  <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
-                                </View>
-                              </View>
 
-                              {/* Worker Status Badge */}
-                              <View
-                                style={{
-                                  paddingHorizontal: 10,
-                                  paddingVertical: 4,
-                                  borderRadius: 999,
-                                  backgroundColor:
-                                    worker.status === 'Review Pending'
-                                      ? '#FEF3C7'
-                                      : worker.status === 'accepted'
-                                      ? '#F3E8FF'
-                                      : worker.status === 'completed'
-                                      ? '#DCFCE7'
-                                      : '#E0F2FE',
-                                }}
-                              >
-                                <Text
+                                {/* Worker Status Badge */}
+                                <View
                                   style={{
-                                    fontSize: 11,
-                                    fontWeight: '700',
-                                    color:
-                                      worker.status === 'Review Pending'
-                                        ? '#D97706'
-                                        : worker.status === 'accepted'
-                                        ? '#7E22CE'
-                                        : worker.status === 'completed'
-                                        ? '#15803D'
-                                        : '#0369A1',
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 4,
+                                    borderRadius: 999,
+                                    backgroundColor: statusInfo.bgColor,
                                   }}
                                 >
-                                  {worker.status}
-                                </Text>
+                                  <Text
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: '700',
+                                      color: statusInfo.textColor,
+                                    }}
+                                  >
+                                    {statusInfo.label}
+                                  </Text>
+                                </View>
                               </View>
+
+                              {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
+                              {worker.status === 'Review Pending' && (
+                                <TouchableOpacity
+                                  onPress={() => handleOpenRating(worker)}
+                                  style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
+                                  activeOpacity={0.85}
+                                >
+                                  <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
+                                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Worker & Approve Shift</Text>
+                                </TouchableOpacity>
+                              )}
+
+                              {/* RATED STATUS SUMMARY */}
+                              {worker.status === 'completed' && worker.rating && (
+                                <View style={{ backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <Text style={{ color: '#10472B', fontSize: 12, fontWeight: '700' }}>
+                                    {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
+                                  </Text>
+                                  <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '600' }}>Approved ✓</Text>
+                                </View>
+                              )}
                             </View>
-
-                            {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
-                            {worker.status === 'Review Pending' && (
-                              <TouchableOpacity
-                                onPress={() => handleOpenRating(worker)}
-                                style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
-                                activeOpacity={0.85}
-                              >
-                                <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
-                                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Worker & Approve Shift</Text>
-                              </TouchableOpacity>
-                            )}
-
-                            {/* RATED STATUS SUMMARY */}
-                            {worker.status === 'completed' && worker.rating && (
-                              <View style={{ backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <Text style={{ color: '#10472B', fontSize: 12, fontWeight: '700' }}>
-                                  {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
-                                </Text>
-                                <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '600' }}>Approved ✓</Text>
-                              </View>
-                            )}
-                          </View>
-                        ))
+                          );
+                        })
                       )}
                     </View>
                   )}
@@ -445,7 +469,7 @@ export default function StoreManagerDashboard() {
             {/* Logout Button */}
             <TouchableOpacity
               onPress={handleLogout}
-              style={{ backgroundColor: '#FEF2F2', borderRadius: 24, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FEE2E2', flexDirection: 'row', justifyContent: 'center', marginBottom: 40 }}
+              style={{ backgroundColor: '#FEF2F2', borderRadius: 24, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FEE2F2', flexDirection: 'row', justifyContent: 'center', marginBottom: 40 }}
               activeOpacity={0.85}
             >
               <Text style={{ color: '#E31B23', fontWeight: '700', fontSize: 16 }}>Logout</Text>
