@@ -386,7 +386,7 @@ export default function LibraryScreen() {
           );
         })()}
 
-        {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && (
+        {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && isCurrentlyRunning(job.shift_date, job.start_time, job.hours_duration) && (
           <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
             {startOtps[job.request_id] ? (
               <View className="items-center">
