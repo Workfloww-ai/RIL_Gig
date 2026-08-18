@@ -75,7 +75,15 @@ class AcceptedJobResponse(BaseModel):
     t90_status: str
     t60_status: str
     arrival_status: str
+    rating_score: Optional[int] = None
+    rating_tags: Optional[List[str]] = None
+    rating_feedback: Optional[str] = None
 
 class MyAcceptedJobsResponse(BaseModel):
     status: str
     jobs: List[AcceptedJobResponse]
+
+class CompleteJobRequest(BaseModel):
+    rating_score: int
+    rating_tags: List[str]
+    rating_feedback: str = ""

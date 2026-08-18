@@ -413,6 +413,39 @@ export default function LibraryScreen() {
           </View>
         )}
 
+        {job.assignment_status === 'completed' && job.rating_score && (
+          <View className="mt-3 bg-green-50 border border-green-200 p-4 rounded-xl items-center shadow-sm">
+            <Text className="text-gray-600 text-[10px] uppercase font-bold tracking-wider mb-2">Manager Rating</Text>
+            <View className="flex-row mb-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Feather 
+                  key={star} 
+                  name="star" 
+                  size={20} 
+                  color={star <= job.rating_score ? "#EAB308" : "#D1D5DB"} 
+                  style={{ marginRight: 4 }} 
+                  fill={star <= job.rating_score ? "#EAB308" : "transparent"}
+                />
+              ))}
+            </View>
+            <Text className="text-xl font-black text-green-700 mb-2">{job.rating_score}.0 / 5.0</Text>
+            
+            {job.rating_tags && job.rating_tags.length > 0 && (
+              <View className="flex-row flex-wrap justify-center mt-1">
+                {job.rating_tags.map((tag: string, idx: number) => (
+                  <View key={idx} className="bg-white border border-green-200 px-2 py-1 rounded-md m-1">
+                    <Text className="text-green-700 text-[10px] font-bold">{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            
+            {job.rating_feedback ? (
+              <Text className="text-gray-600 text-xs text-center mt-3 italic">"{job.rating_feedback}"</Text>
+            ) : null}
+          </View>
+        )}
+
         {job.assignment_status === 'accepted' && canCancelJob(job.shift_date, job.start_time) && (
           <TouchableOpacity
             onPress={() => handleCancelJob(job.request_id)}
