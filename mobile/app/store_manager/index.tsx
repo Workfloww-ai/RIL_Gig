@@ -85,6 +85,41 @@ export default function StoreManagerDashboard() {
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<AcceptedWorker | null>(null);
 
+  // OTP Verification State
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [otpWorkerId, setOtpWorkerId] = useState<string>('');
+  const [otpAssignmentId, setOtpAssignmentId] = useState<string>('');
+  const [otpInput, setOtpInput] = useState<string>('');
+  const [verifyingOtp, setVerifyingOtp] = useState<boolean>(false);
+
+  const handleOpenOtpModal = (workerId: string, assignmentId: string) => {
+    setOtpWorkerId(workerId);
+    setOtpAssignmentId(assignmentId);
+    setOtpInput('');
+    setIsOtpModalOpen(true);
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpInput.length !== 4) {
+      Alert.alert('Invalid', 'OTP must be 4 digits');
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      await apiClient.post(`/jobs/manager/jobs/assignment/${otpAssignmentId}/verify-otp`, {
+        otp_code: otpInput,
+        worker_id: otpWorkerId
+      });
+      Alert.alert('Success', 'Job started successfully');
+      setIsOtpModalOpen(false);
+      fetchRequests();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to verify OTP');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
   // Rating Form State
   const [ratingScore, setRatingScore] = useState<number>(5);
   const [selectedTags, setSelectedTags] = useState<string[]>(['On-Time Arrival', 'High Efficiency']);
@@ -395,6 +430,18 @@ export default function StoreManagerDashboard() {
                                 </View>
                               </View>
 
+                              {/* VERIFY OTP ACTION BUTTON */}
+                              {worker.arrival_status === 'arrived' && worker.status === 'accepted' && (
+                                <TouchableOpacity
+                                  onPress={() => handleOpenOtpModal(worker.id, worker.assignment_id)}
+                                  style={{ backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
+                                  activeOpacity={0.85}
+                                >
+                                  <Feather name="key" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Verify Start OTP</Text>
+                                </TouchableOpacity>
+                              )}
+
                               {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
                               {worker.status === 'Review Pending' && (
                                 <TouchableOpacity
@@ -583,6 +630,42 @@ export default function StoreManagerDashboard() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ==================== OTP VERIFICATION MODAL ==================== */}
+      <Modal visible={isOtpModalOpen} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, width: '100%', maxWidth: 400 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Verify Start OTP</Text>
+              <TouchableOpacity onPress={() => setIsOtpModalOpen(false)}>
+                <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: '#666666', fontSize: 14, marginBottom: 20 }}>
+              Ask the worker for their 4-digit start OTP to officially begin their shift.
+            </Text>
+            
+            <TextInput
+              style={{ backgroundColor: '#F3F4F6', borderRadius: 12, padding: 16, fontSize: 24, fontWeight: '700', textAlign: 'center', letterSpacing: 8, marginBottom: 24 }}
+              keyboardType="number-pad"
+              maxLength={4}
+              placeholder="0000"
+              value={otpInput}
+              onChangeText={setOtpInput}
+            />
+
+            <TouchableOpacity
+              onPress={handleVerifyOtp}
+              disabled={verifyingOtp || otpInput.length !== 4}
+              style={{ backgroundColor: (verifyingOtp || otpInput.length !== 4) ? '#9CA3AF' : '#10B981', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
+                {verifyingOtp ? 'Verifying...' : 'Verify & Start Job'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* ==================== WORKER RATING MODAL ==================== */}
       <Modal visible={isRatingModalOpen} transparent animationType="slide">

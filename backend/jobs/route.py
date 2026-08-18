@@ -409,3 +409,71 @@ async def manager_cancel_and_replace(
     except Exception as e:
         print(f"Error in cancel_and_replace: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+import random
+import string
+
+class VerifyOtpRequest(BaseModel):
+    otp_code: str
+    worker_id: str
+
+@router.post("/accept/{request_id}/start-otp")
+async def generate_start_otp(request_id: str, user_id: str = Depends(get_current_user)):
+    try:
+        # Check if the job is accepted by this user
+        existing = supabase.table("worker_job_assignments").select("job_assignment_id, arrival_status").eq("request_id", request_id).eq("worker_id", user_id).execute()
+        if not existing.data:
+            raise HTTPException(status_code=400, detail="You have not accepted this job")
+            
+        otp_code = ''.join(random.choices(string.digits, k=4))
+        
+        # Check if OTP already exists
+        existing_otp = supabase.table("otp_codes").select("id").eq("request_id", request_id).eq("worker_id", user_id).execute()
+        
+        if existing_otp.data:
+            supabase.table("otp_codes").update({"otp_code": otp_code, "is_verified": False}).eq("id", existing_otp.data[0]["id"]).execute()
+        else:
+            supabase.table("otp_codes").insert({
+                "request_id": request_id,
+                "worker_id": user_id,
+                "otp_code": otp_code,
+                "is_verified": False
+            }).execute()
+            
+        return {"status": "success", "otp_code": otp_code}
+    except Exception as e:
+        print(f"Error generating OTP: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/manager/jobs/assignment/{assignment_id}/verify-otp")
+async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_id: str = Depends(get_current_user)):
+    try:
+        assignment_resp = supabase.table("worker_job_assignments").select("request_id, store_id").eq("job_assignment_id", assignment_id).execute()
+        if not assignment_resp.data:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+            
+        request_id = assignment_resp.data[0]["request_id"]
+        
+        otp_resp = supabase.table("otp_codes").select("id, otp_code, is_verified").eq("request_id", request_id).eq("worker_id", payload.worker_id).execute()
+        
+        if not otp_resp.data:
+            raise HTTPException(status_code=400, detail="No OTP requested for this job")
+            
+        if otp_resp.data[0]["is_verified"]:
+            raise HTTPException(status_code=400, detail="OTP already verified")
+            
+        if otp_resp.data[0]["otp_code"] != payload.otp_code:
+            raise HTTPException(status_code=400, detail="Invalid OTP code")
+            
+        supabase.table("otp_codes").update({"is_verified": True}).eq("id", otp_resp.data[0]["id"]).execute()
+        
+        supabase.table("worker_job_assignments").update({
+            "assignment_status": "started"
+        }).eq("job_assignment_id", assignment_id).execute()
+        
+        return {"status": "success", "message": "Job started successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error verifying OTP: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

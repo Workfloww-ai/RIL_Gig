@@ -111,6 +111,24 @@ export default function LibraryScreen() {
     }
   };
 
+  const [generatingOtpId, setGeneratingOtpId] = useState<string | null>(null);
+  const [startOtps, setStartOtps] = useState<Record<string, string>>({});
+
+  const handleStartOtp = async (request_id: string) => {
+    setGeneratingOtpId(request_id);
+    try {
+      const res = await apiClient.post(`/jobs/accept/${request_id}/start-otp`);
+      if (res.data && res.data.otp_code) {
+        setStartOtps(prev => ({ ...prev, [request_id]: res.data.otp_code }));
+        showToast('Start OTP generated successfully! Show this to store manager.');
+      }
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || 'Failed to generate OTP');
+    } finally {
+      setGeneratingOtpId(null);
+    }
+  };
+
   const getStepState = (status: string, shift_date: string, start_time: string, step: 't90' | 't60' | 'arrival') => {
     if (status === 'confirmed' || status === 'arrived') return 'confirmed';
     
@@ -653,6 +671,33 @@ export default function LibraryScreen() {
                         </View>
                         );
                       })()}
+
+                      {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && (
+                        <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
+                          {startOtps[job.request_id] ? (
+                            <View className="items-center">
+                              <Text className="text-gray-600 text-xs mb-1">Your Start OTP</Text>
+                              <Text className="text-2xl font-black text-green-700 tracking-widest">{startOtps[job.request_id]}</Text>
+                              <Text className="text-gray-500 text-[10px] mt-1 text-center">Show this code to the store manager to start your shift.</Text>
+                            </View>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={() => handleStartOtp(job.request_id)}
+                              disabled={generatingOtpId === job.request_id}
+                              className="bg-green-600 w-full py-3 rounded-lg items-center flex-row justify-center"
+                            >
+                              {generatingOtpId === job.request_id ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                              ) : (
+                                <>
+                                  <Feather name="key" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                                  <Text className="text-white font-bold">Start Job (Get OTP)</Text>
+                                </>
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
 
                       {job.assignment_status === 'accepted' && canCancelJob(job.shift_date, job.start_time) && (
                         <TouchableOpacity
