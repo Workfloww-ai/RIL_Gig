@@ -21,7 +21,7 @@ scheduler = BackgroundScheduler()
 
 @app.on_event("startup")
 def start_scheduler():
-    scheduler.add_job(check_t60_status, 'interval', minutes=1)
+    scheduler.add_job(check_t60_status, 'interval', minutes=3)
     scheduler.start()
     print("[System] Background scheduler started (running every 1 min)")
 
