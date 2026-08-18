@@ -173,7 +173,7 @@ export default function DocumentsScreen() {
               
               {reqDoc.name !== 'Live Photo' && (
                 <Input 
-                  label={`${reqDoc.name} Number${reqDoc.name !== 'Certification/Marksheet' ? ' *' : ''}`} 
+                  label={undefined} 
                   placeholder={reqDoc.placeholder} 
                   value={docNumbers[reqDoc.name] || ''} 
                   onChangeText={(val) => updateDocNumber(reqDoc.name, val)} 

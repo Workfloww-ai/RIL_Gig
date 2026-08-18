@@ -92,7 +92,7 @@ export default function StoreManagerDashboard() {
 
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
-  
+
   // Available Jobs and Stores for Modal
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
@@ -181,10 +181,10 @@ export default function StoreManagerDashboard() {
 
   const getWorkerStatusDisplay = (worker: any, job: any) => {
     if (worker.status === 'cancelled') return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
-    
+
     let shiftHasStarted = false;
     let minutesUntilShift = 999;
-    
+
     if (job.shift_date && job.start_time) {
       const shiftDateTime = new Date(`${job.shift_date}T${job.start_time}`);
       const now = new Date();
@@ -209,12 +209,12 @@ export default function StoreManagerDashboard() {
     if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
       return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
     }
-    
+
     // If they are not cancelled, and T-60 or T-90 is confirmed (or they bypassed it), they are Enroute.
     if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
       return { label: 'Enroute', bgColor: '#D1FAE5', textColor: '#059669' };
     }
-    
+
     // Default / raw status formatting
     if (worker.status === 'Review Pending') return { label: 'Review Pending', bgColor: '#FEF3C7', textColor: '#D97706' };
     if (worker.status === 'completed') return { label: 'Completed', bgColor: '#DCFCE7', textColor: '#15803D' };
@@ -251,7 +251,7 @@ export default function StoreManagerDashboard() {
 
       {/* ==================== 2. MAIN SCROLLABLE BODY CONTENT ==================== */}
       <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        
+
         {/* ==================== HOME TAB (JOBS IN PROCESS & EXPANDABLE ASSIGNED WORKERS) ==================== */}
         {activeTab === 'home' && (
           <View>
@@ -463,7 +463,7 @@ export default function StoreManagerDashboard() {
               </TouchableOpacity>
 
               <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Gig Worker Escalations</Text>
+                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Sahyogi Escalations</Text>
                 <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
               </TouchableOpacity>
 
@@ -529,7 +529,7 @@ export default function StoreManagerDashboard() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => {}} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => { }} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons
             name="bar-chart-outline"
             size={22}
@@ -586,10 +586,10 @@ export default function StoreManagerDashboard() {
               {ratingScore === 5
                 ? '★ 5.0 - Outstanding Effort!'
                 : ratingScore === 4
-                ? '★ 4.0 - Very Good Work'
-                : ratingScore === 3
-                ? '★ 3.0 - Good Effort'
-                : '★ Needs Improvement'}
+                  ? '★ 4.0 - Very Good Work'
+                  : ratingScore === 3
+                    ? '★ 3.0 - Good Effort'
+                    : '★ Needs Improvement'}
             </Text>
 
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Strengths & Highlights</Text>
@@ -644,11 +644,11 @@ export default function StoreManagerDashboard() {
         </View>
       </Modal>
 
-      <RaiseRequestModal 
-        visible={isRaiseModalOpen} 
-        onClose={() => setIsRaiseModalOpen(false)} 
-        onSuccess={fetchRequests} 
-        managerStoreName={managerStoreName} 
+      <RaiseRequestModal
+        visible={isRaiseModalOpen}
+        onClose={() => setIsRaiseModalOpen(false)}
+        onSuccess={fetchRequests}
+        managerStoreName={managerStoreName}
       />
     </SafeAreaView>
   );

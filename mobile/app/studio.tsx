@@ -124,6 +124,13 @@ export default function StudioScreen() {
     }
   };
 
+  const forward10s = () => {
+    if (player && player.duration) {
+      const newPosition = Math.min(player.duration, player.currentTime + 10);
+      player.currentTime = newPosition;
+    }
+  };
+
   if (loading || !module) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center pt-8">
@@ -144,8 +151,8 @@ export default function StudioScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50 pt-8">
       <View className="bg-white px-4 py-4 flex-row items-center border-b border-gray-100 shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-gray-500 font-bold">← Back</Text>
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-gray-100 rounded-full mr-3">
+          <Feather name="arrow-left" size={20} color="#4B5563" />
         </TouchableOpacity>
         <View className="flex-1">
           <Text className="text-primary-600 text-[10px] font-bold tracking-widest uppercase text-center mb-0.5">
@@ -155,7 +162,7 @@ export default function StudioScreen() {
             {module.title}
           </Text>
         </View>
-        <View className="w-12" />
+        <View className="w-10" />
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -189,32 +196,36 @@ export default function StudioScreen() {
             ) : (
               <View className="w-full h-full relative">
                 {/* Video Player */}
-                <View className="absolute inset-0" style={{ display: activeTab === 'video' && !isFullscreen ? 'flex' : 'none' }}>
-                  <VideoView
-                    ref={videoRef}
-                    player={videoPlayer}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="contain"
-                    nativeControls={false}
-                  />
-                </View>
+                {activeTab === 'video' && !isFullscreen && (
+                  <View className="absolute inset-0">
+                    <VideoView
+                      ref={videoRef}
+                      player={videoPlayer}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="contain"
+                      nativeControls={false}
+                    />
+                  </View>
+                )}
                 
                 {/* Audio Player */}
-                <View className="absolute inset-0" style={{ display: activeTab === 'audio' && !isFullscreen ? 'flex' : 'none' }}>
-                  <VideoView
-                    player={audioPlayer}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="contain"
-                    nativeControls={false}
-                  />
-                  {/* Podcast Graphic Overlay */}
-                  <View className="absolute inset-0 bg-gradient-to-br from-primary-900 to-primary-700 items-center justify-center" pointerEvents="none">
-                    <View className="w-28 h-28 bg-white/10 rounded-full items-center justify-center border border-white/20 mb-3 shadow-xl">
-                      <Text className="text-6xl">🎙️</Text>
+                {activeTab === 'audio' && !isFullscreen && (
+                  <View className="absolute inset-0">
+                    <VideoView
+                      player={audioPlayer}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="contain"
+                      nativeControls={false}
+                    />
+                    {/* Podcast Graphic Overlay */}
+                    <View className="absolute inset-0 bg-gradient-to-br from-primary-900 to-primary-700 items-center justify-center" pointerEvents="none">
+                      <View className="w-28 h-28 bg-white/10 rounded-full items-center justify-center border border-white/20 mb-3 shadow-xl">
+                        <Text className="text-6xl">🎙️</Text>
+                      </View>
+                      <Text className="text-white/90 font-bold tracking-widest text-xs">PODCAST EPISODE</Text>
                     </View>
-                    <Text className="text-white/90 font-bold tracking-widest text-xs">PODCAST EPISODE</Text>
                   </View>
-                </View>
+                )}
 
                 {/* Invisible Overlay to Capture Taps when controls are hidden */}
                 {!showControls && (
@@ -223,30 +234,38 @@ export default function StudioScreen() {
 
                 {/* Overlay Controls */}
                 {showControls && (
-                  <Pressable className="absolute inset-0 flex-row items-center justify-center gap-6 z-20" onPress={resetControlsTimeout}>
-                    {/* Rewind */}
-                    <TouchableOpacity onPress={rewind10s} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm relative">
-                      <Feather name="rotate-ccw" size={18} color="white" style={{ marginBottom: 4 }} />
-                      <Text className="text-white text-[8px] font-bold absolute bottom-2">10s</Text>
-                    </TouchableOpacity>
+                  <>
+                    <Pressable className="absolute inset-0 z-20" onPress={resetControlsTimeout} />
+                    
+                    <View className="absolute inset-0 items-center justify-center z-30" pointerEvents="box-none">
+                      <TouchableOpacity
+                        onPress={togglePlayPause}
+                        className="w-16 h-16 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-xl"
+                      >
+                        {player?.playing ? (
+                          <Feather name="pause" size={28} color="white" />
+                        ) : (
+                          <Feather name="play" size={28} color="white" style={{ marginLeft: 4 }} />
+                        )}
+                      </TouchableOpacity>
+                    </View>
 
-                    {/* Play/Pause */}
-                    <TouchableOpacity
-                      onPress={togglePlayPause}
-                      className="w-16 h-16 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-xl"
-                    >
-                      {player?.playing ? (
-                        <Feather name="pause" size={28} color="white" />
-                      ) : (
-                        <Feather name="play" size={28} color="white" style={{ marginLeft: 4 }} />
-                      )}
-                    </TouchableOpacity>
+                    <View className="absolute bottom-3 right-3 flex-row items-center gap-3 z-30" pointerEvents="box-none">
+                      <TouchableOpacity onPress={rewind10s} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm relative">
+                        <Feather name="rotate-ccw" size={16} color="white" style={{ marginBottom: 4 }} />
+                        <Text className="text-white text-[7px] font-bold absolute bottom-1.5">10s</Text>
+                      </TouchableOpacity>
 
-                    {/* Fullscreen */}
-                    <TouchableOpacity onPress={toggleFullscreen} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
-                      <Feather name="maximize" size={18} color="white" />
-                    </TouchableOpacity>
-                  </Pressable>
+                      <TouchableOpacity onPress={forward10s} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm relative">
+                        <Feather name="rotate-cw" size={16} color="white" style={{ marginBottom: 4 }} />
+                        <Text className="text-white text-[7px] font-bold absolute bottom-1.5">10s</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity onPress={toggleFullscreen} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
+                        <Feather name="maximize" size={16} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  </>
                 )}
               </View>
             )}
@@ -319,12 +338,10 @@ export default function StudioScreen() {
 
           {/* Fullscreen Overlay Controls */}
           {showControls && (
-            <Pressable className="absolute inset-0 flex-row items-center justify-center gap-8 z-20" onPress={resetControlsTimeout}>
-                <TouchableOpacity onPress={rewind10s} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md relative">
-                  <Feather name="rotate-ccw" size={24} color="white" style={{ marginBottom: 6 }} />
-                  <Text className="text-white text-[10px] font-bold absolute bottom-2.5">10s</Text>
-                </TouchableOpacity>
-
+            <>
+              <Pressable className="absolute inset-0 z-20" onPress={resetControlsTimeout} />
+              
+              <View className="absolute inset-0 items-center justify-center z-30" pointerEvents="box-none">
                 <TouchableOpacity 
                   onPress={togglePlayPause} 
                   className="w-24 h-24 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-2xl backdrop-blur-md"
@@ -335,11 +352,24 @@ export default function StudioScreen() {
                     <Feather name="play" size={42} color="white" style={{ marginLeft: 6 }} />
                   )}
                 </TouchableOpacity>
+              </View>
 
-                <TouchableOpacity onPress={toggleFullscreen} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
-                  <Feather name="minimize" size={24} color="white" />
+              <View className="absolute bottom-10 right-10 flex-row items-center gap-6 z-30" pointerEvents="box-none">
+                <TouchableOpacity onPress={rewind10s} className="w-14 h-14 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md relative">
+                  <Feather name="rotate-ccw" size={20} color="white" style={{ marginBottom: 4 }} />
+                  <Text className="text-white text-[9px] font-bold absolute bottom-2">10s</Text>
                 </TouchableOpacity>
-            </Pressable>
+
+                <TouchableOpacity onPress={forward10s} className="w-14 h-14 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md relative">
+                  <Feather name="rotate-cw" size={20} color="white" style={{ marginBottom: 4 }} />
+                  <Text className="text-white text-[9px] font-bold absolute bottom-2">10s</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={toggleFullscreen} className="w-14 h-14 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
+                  <Feather name="minimize" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+            </>
           )}
 
           {/* Fullscreen Progress Bar */}

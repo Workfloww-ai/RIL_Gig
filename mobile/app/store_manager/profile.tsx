@@ -103,7 +103,7 @@ export default function StoreManagerProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity className="py-3 flex-row items-center justify-between border-b border-gray-100">
-            <Text className="text-gray-900 font-semibold text-sm">Gig Worker Escalations</Text>
+            <Text className="text-gray-900 font-semibold text-sm">Sahyogi Escalations</Text>
             <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
