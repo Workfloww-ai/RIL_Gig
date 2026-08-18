@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { useAuthStore } from '../src/store/authStore';
 
@@ -44,10 +45,10 @@ export default function ProfileScreen() {
     <SafeAreaView className="flex-1 bg-gray-50 pt-8">
       {/* Header */}
       <View className="bg-white px-6 py-4 flex-row items-center border-b border-gray-100 shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4 p-2 -ml-2">
-          <Text className="text-gray-500 font-bold text-lg">← Back</Text>
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-gray-100 rounded-full mr-3">
+          <Feather name="arrow-left" size={20} color="#4B5563" />
         </TouchableOpacity>
-        <Text className="font-bold text-gray-900 text-lg flex-1 text-center pr-8">My Profile</Text>
+        <Text className="font-bold text-gray-900 text-lg flex-1 text-center pr-13">My Profile</Text>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
