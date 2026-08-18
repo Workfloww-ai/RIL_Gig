@@ -124,9 +124,9 @@ export default function StudioScreen() {
     }
   };
 
-  const forward10s = () => {
-    if (player && player.duration) {
-      const newPosition = Math.min(player.duration, player.currentTime + 10);
+  const rewind10s = () => {
+    if (player) {
+      const newPosition = Math.max(0, player.currentTime - 10);
       player.currentTime = newPosition;
     }
   };
@@ -237,7 +237,11 @@ export default function StudioScreen() {
                   <>
                     <Pressable className="absolute inset-0 z-20" onPress={resetControlsTimeout} />
                     
-                    <View className="absolute inset-0 items-center justify-center z-30" pointerEvents="box-none">
+                    <View className="absolute inset-0 flex-row items-center justify-center gap-6 z-30" pointerEvents="box-none">
+                      <TouchableOpacity onPress={rewind10s} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
+                        <Feather name="rotate-ccw" size={20} color="white" />
+                      </TouchableOpacity>
+
                       <TouchableOpacity
                         onPress={togglePlayPause}
                         className="w-16 h-16 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-xl"
@@ -248,19 +252,11 @@ export default function StudioScreen() {
                           <Feather name="play" size={28} color="white" style={{ marginLeft: 4 }} />
                         )}
                       </TouchableOpacity>
+
+                      <View className="w-12 h-12" />
                     </View>
 
-                    <View className="absolute bottom-3 right-3 flex-row items-center gap-3 z-30" pointerEvents="box-none">
-                      <TouchableOpacity onPress={rewind10s} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm relative">
-                        <Feather name="rotate-ccw" size={16} color="white" style={{ marginBottom: 4 }} />
-                        <Text className="text-white text-[7px] font-bold absolute bottom-1.5">10s</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity onPress={forward10s} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm relative">
-                        <Feather name="rotate-cw" size={16} color="white" style={{ marginBottom: 4 }} />
-                        <Text className="text-white text-[7px] font-bold absolute bottom-1.5">10s</Text>
-                      </TouchableOpacity>
-
+                    <View className="absolute bottom-3 right-3 z-30" pointerEvents="box-none">
                       <TouchableOpacity onPress={toggleFullscreen} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
                         <Feather name="maximize" size={16} color="white" />
                       </TouchableOpacity>
@@ -341,7 +337,11 @@ export default function StudioScreen() {
             <>
               <Pressable className="absolute inset-0 z-20" onPress={resetControlsTimeout} />
               
-              <View className="absolute inset-0 items-center justify-center z-30" pointerEvents="box-none">
+              <View className="absolute inset-0 flex-row items-center justify-center gap-10 z-30" pointerEvents="box-none">
+                <TouchableOpacity onPress={rewind10s} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
+                  <Feather name="rotate-ccw" size={28} color="white" />
+                </TouchableOpacity>
+
                 <TouchableOpacity 
                   onPress={togglePlayPause} 
                   className="w-24 h-24 rounded-full bg-primary-600/90 items-center justify-center border border-white/30 shadow-2xl backdrop-blur-md"
@@ -352,21 +352,13 @@ export default function StudioScreen() {
                     <Feather name="play" size={42} color="white" style={{ marginLeft: 6 }} />
                   )}
                 </TouchableOpacity>
+
+                <View className="w-16 h-16" />
               </View>
 
-              <View className="absolute bottom-10 right-10 flex-row items-center gap-6 z-30" pointerEvents="box-none">
-                <TouchableOpacity onPress={rewind10s} className="w-14 h-14 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md relative">
-                  <Feather name="rotate-ccw" size={20} color="white" style={{ marginBottom: 4 }} />
-                  <Text className="text-white text-[9px] font-bold absolute bottom-2">10s</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={forward10s} className="w-14 h-14 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md relative">
-                  <Feather name="rotate-cw" size={20} color="white" style={{ marginBottom: 4 }} />
-                  <Text className="text-white text-[9px] font-bold absolute bottom-2">10s</Text>
-                </TouchableOpacity>
-
+              <View className="absolute bottom-10 right-10 z-30" pointerEvents="box-none">
                 <TouchableOpacity onPress={toggleFullscreen} className="w-14 h-14 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
-                  <Feather name="minimize" size={20} color="white" />
+                  <Feather name="minimize" size={24} color="white" />
                 </TouchableOpacity>
               </View>
             </>
