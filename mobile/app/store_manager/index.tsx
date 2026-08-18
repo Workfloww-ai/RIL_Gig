@@ -297,6 +297,145 @@ export default function StoreManagerDashboard() {
     router.replace('/');
   };
 
+  // Split jobs into Today and Others
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayJobs = sortedJobsList.filter(job => job.shift_date === todayStr);
+  const otherJobs = sortedJobsList.filter(job => job.shift_date !== todayStr);
+
+  const renderJobCard = (job: any) => {
+    const isExpanded = expandedJobId === job.request_id;
+    const acceptedWorkers = job.accepted_workers || [];
+    return (
+      <View
+        key={job.request_id}
+        style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
+      >
+        {/* Job Card Header (Clickable to Expand / Collapse) */}
+        <TouchableOpacity
+          onPress={() => toggleExpandJob(job.request_id)}
+          style={{ padding: 18, backgroundColor: isExpanded ? '#FAFBFB' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+          activeOpacity={0.8}
+        >
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
+              <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
+              </View>
+            </View>
+
+            <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#10472B' }}>
+                {acceptedWorkers.length} {acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#1A1A1A" />
+          </View>
+        </TouchableOpacity>
+
+        {/* EXPANDED SECTION: ASSIGNED WORKERS & STATUS FOR THIS JOB */}
+        {isExpanded && (
+          <View style={{ padding: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#FFFFFF' }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+              Assigned Workers & Check-in Status
+            </Text>
+
+            {acceptedWorkers.length === 0 ? (
+              <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No workers assigned yet for this job.</Text>
+            ) : (
+              acceptedWorkers.map((worker: any) => {
+                const statusInfo = getWorkerStatusDisplay(worker, job);
+                return (
+                  <View
+                    key={worker.id}
+                    style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' }}
+                  >
+                    {/* Worker Header */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#C3D3CA' }}>
+                          {worker.avatarUrl ? (
+                            <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
+                          ) : (
+                            <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0).toUpperCase()}</Text>
+                          )}
+                        </View>
+                        <View>
+                          <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
+                          <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
+                        </View>
+                      </View>
+
+                      {/* Worker Status Badge */}
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 999,
+                          backgroundColor: statusInfo.bgColor,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: statusInfo.textColor,
+                          }}
+                        >
+                          {statusInfo.label}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* VERIFY OTP ACTION BUTTON */}
+                    {worker.arrival_status === 'arrived' && worker.status === 'accepted' && (
+                      <TouchableOpacity
+                        onPress={() => handleOpenOtpModal(worker.id, worker.assignment_id)}
+                        style={{ backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
+                        activeOpacity={0.85}
+                      >
+                        <Feather name="key" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Verify Start OTP</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
+                    {worker.status === 'Review Pending' && (
+                      <TouchableOpacity
+                        onPress={() => handleOpenRating(worker)}
+                        style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
+                        activeOpacity={0.85}
+                      >
+                        <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Worker & Approve Shift</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* RATED STATUS SUMMARY */}
+                    {worker.status === 'completed' && worker.rating && (
+                      <View style={{ backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ color: '#10472B', fontSize: 12, fontWeight: '700' }}>
+                          {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
+                        </Text>
+                        <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '600' }}>Approved ✓</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
       {/* ==================== 1. TOP HEADER ==================== */}
@@ -338,140 +477,21 @@ export default function StoreManagerDashboard() {
               </TouchableOpacity>
             </View>
 
-            {/* List of Jobs in Process (Click to view assigned workers) */}
-            {sortedJobsList.map((job) => {
-              const isExpanded = expandedJobId === job.request_id;
-              const acceptedWorkers = job.accepted_workers || [];
-              return (
-                <View
-                  key={job.request_id}
-                  style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
-                >
-                  {/* Job Card Header (Clickable to Expand / Collapse) */}
-                  <TouchableOpacity
-                    onPress={() => toggleExpandJob(job.request_id)}
-                    style={{ padding: 18, backgroundColor: isExpanded ? '#FAFBFB' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                    activeOpacity={0.8}
-                  >
-                    <View style={{ flex: 1, marginRight: 12 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
-                        <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
-                        </View>
-                      </View>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12 }}>Today</Text>
+            {todayJobs.length === 0 ? (
+              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
+                <Text style={{ color: '#6B7280', fontSize: 14 }}>No job scheduled for today</Text>
+              </View>
+            ) : (
+              todayJobs.map(renderJobCard)
+            )}
 
-                      <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
-
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#10472B' }}>
-                          {acceptedWorkers.length} {acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#1A1A1A" />
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* EXPANDED SECTION: ASSIGNED WORKERS & STATUS FOR THIS JOB */}
-                  {isExpanded && (
-                    <View style={{ padding: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#FFFFFF' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
-                        Assigned Workers & Check-in Status
-                      </Text>
-
-                      {acceptedWorkers.length === 0 ? (
-                        <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No workers assigned yet for this job.</Text>
-                      ) : (
-                        acceptedWorkers.map((worker: any) => {
-                          const statusInfo = getWorkerStatusDisplay(worker, job);
-                          return (
-                            <View
-                              key={worker.id}
-                              style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' }}
-                            >
-                              {/* Worker Header */}
-                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                  <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#C3D3CA' }}>
-                                    {worker.avatarUrl ? (
-                                      <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
-                                    ) : (
-                                      <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0).toUpperCase()}</Text>
-                                    )}
-                                  </View>
-                                  <View>
-                                    <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
-                                    <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
-                                  </View>
-                                </View>
-
-                                {/* Worker Status Badge */}
-                                <View
-                                  style={{
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 4,
-                                    borderRadius: 999,
-                                    backgroundColor: statusInfo.bgColor,
-                                  }}
-                                >
-                                  <Text
-                                    style={{
-                                      fontSize: 11,
-                                      fontWeight: '700',
-                                      color: statusInfo.textColor,
-                                    }}
-                                  >
-                                    {statusInfo.label}
-                                  </Text>
-                                </View>
-                              </View>
-
-                              {/* VERIFY OTP ACTION BUTTON */}
-                              {worker.arrival_status === 'arrived' && worker.status === 'accepted' && (
-                                <TouchableOpacity
-                                  onPress={() => handleOpenOtpModal(worker.id, worker.assignment_id)}
-                                  style={{ backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
-                                  activeOpacity={0.85}
-                                >
-                                  <Feather name="key" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-                                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Verify Start OTP</Text>
-                                </TouchableOpacity>
-                              )}
-
-                              {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
-                              {worker.status === 'Review Pending' && (
-                                <TouchableOpacity
-                                  onPress={() => handleOpenRating(worker)}
-                                  style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
-                                  activeOpacity={0.85}
-                                >
-                                  <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
-                                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Worker & Approve Shift</Text>
-                                </TouchableOpacity>
-                              )}
-
-                              {/* RATED STATUS SUMMARY */}
-                              {worker.status === 'completed' && worker.rating && (
-                                <View style={{ backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <Text style={{ color: '#10472B', fontSize: 12, fontWeight: '700' }}>
-                                    {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
-                                  </Text>
-                                  <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '600' }}>Approved ✓</Text>
-                                </View>
-                              )}
-                            </View>
-                          );
-                        })
-                      )}
-                    </View>
-                  )}
-                </View>
-              );
-            })}
+            {otherJobs.length > 0 && (
+              <>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12, marginTop: 8 }}>All Jobs</Text>
+                {otherJobs.map(renderJobCard)}
+              </>
+            )}
           </View>
         )}
 
