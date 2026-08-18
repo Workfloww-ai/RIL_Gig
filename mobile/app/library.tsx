@@ -103,6 +103,9 @@ export default function LibraryScreen() {
     try {
       await apiClient.post(`/jobs/confirm/${request_id}`, { step });
       showToast(`Checked in for ${step === 'arrival' ? 'Arrival' : step === 't60' ? '60 mins' : '90 mins'}!`);
+      if (step === 'arrival') {
+        await handleStartOtp(request_id);
+      }
       fetchJobs();
     } catch (err: any) {
       showToast(err.response?.data?.detail || 'Failed to check in');

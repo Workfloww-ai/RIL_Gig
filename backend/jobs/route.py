@@ -421,19 +421,40 @@ class VerifyOtpRequest(BaseModel):
 async def generate_start_otp(request_id: str, user_id: str = Depends(get_current_user)):
     try:
         # Check if the job is accepted by this user
-        existing = supabase.table("worker_job_assignments").select("job_assignment_id, arrival_status").eq("request_id", request_id).eq("worker_id", user_id).execute()
+        existing = supabase.table("worker_job_assignments").select("job_assignment_id, arrival_status, assignment_status").eq("request_id", request_id).eq("worker_id", user_id).execute()
         if not existing.data:
             raise HTTPException(status_code=400, detail="You have not accepted this job")
             
+        assignment = existing.data[0]
+        if assignment.get("assignment_status") != "accepted":
+            raise HTTPException(status_code=400, detail="Job is not in a valid state to generate OTP")
+            
+        # Check if shift time has started
+        req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
+        if req_res.data:
+            rd = req_res.data[0]
+            shift_date = rd.get("shift_date")
+            start_time = rd.get("start_time")
+            if shift_date and start_time:
+                from datetime import datetime
+                if len(start_time.split(':')) == 2:
+                    start_time += ":00"
+                try:
+                    shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
+                    if datetime.now() < shift_datetime:
+                        raise HTTPException(status_code=400, detail="Shift has not started yet")
+                except Exception as e:
+                    print(f"Error parsing date in start-otp: {e}")
+
         otp_code = ''.join(random.choices(string.digits, k=4))
         
         # Check if OTP already exists
-        existing_otp = supabase.table("otp_codes").select("id").eq("request_id", request_id).eq("worker_id", user_id).execute()
+        existing_otp = supabase.table("job_start_otps").select("id").eq("request_id", request_id).eq("worker_id", user_id).execute()
         
         if existing_otp.data:
-            supabase.table("otp_codes").update({"otp_code": otp_code, "is_verified": False}).eq("id", existing_otp.data[0]["id"]).execute()
+            supabase.table("job_start_otps").update({"otp_code": otp_code, "is_verified": False}).eq("id", existing_otp.data[0]["id"]).execute()
         else:
-            supabase.table("otp_codes").insert({
+            supabase.table("job_start_otps").insert({
                 "request_id": request_id,
                 "worker_id": user_id,
                 "otp_code": otp_code,
@@ -441,6 +462,8 @@ async def generate_start_otp(request_id: str, user_id: str = Depends(get_current
             }).execute()
             
         return {"status": "success", "otp_code": otp_code}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error generating OTP: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -454,7 +477,7 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
             
         request_id = assignment_resp.data[0]["request_id"]
         
-        otp_resp = supabase.table("otp_codes").select("id, otp_code, is_verified").eq("request_id", request_id).eq("worker_id", payload.worker_id).execute()
+        otp_resp = supabase.table("job_start_otps").select("id, otp_code, is_verified").eq("request_id", request_id).eq("worker_id", payload.worker_id).execute()
         
         if not otp_resp.data:
             raise HTTPException(status_code=400, detail="No OTP requested for this job")
@@ -465,7 +488,7 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
         if otp_resp.data[0]["otp_code"] != payload.otp_code:
             raise HTTPException(status_code=400, detail="Invalid OTP code")
             
-        supabase.table("otp_codes").update({"is_verified": True}).eq("id", otp_resp.data[0]["id"]).execute()
+        supabase.table("job_start_otps").update({"is_verified": True}).eq("id", otp_resp.data[0]["id"]).execute()
         
         supabase.table("worker_job_assignments").update({
             "assignment_status": "started"
