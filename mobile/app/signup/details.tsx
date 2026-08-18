@@ -22,7 +22,7 @@ const signupSchema = z.object({
   dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD").min(1, "Date of birth is required"),
   gender: z.string().min(1, "Gender is required"),
   upi_id: z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, "Invalid UPI ID").min(1, "UPI ID is required"),
-  alternate_number: z.string().regex(/^\d{10}$/, "Must be exactly 10 digits").optional().or(z.literal('')),
+  alternate_number: z.string().regex(/^\d{10}$/, "Must be exactly 10 digits").or(z.literal('')),
 });
 
 type SignupFormData = z.infer<typeof signupSchema>;
@@ -180,7 +180,7 @@ export default function SignupDetailsScreen() {
             control={control}
             name="alternate_number"
             render={({ field: { onChange, value } }) => (
-              <Input label="Alternate Mobile (Optional)" placeholder="e.g. 9876543210" keyboardType="numeric" maxLength={10} value={value} onChangeText={onChange} error={errors.alternate_number?.message} />
+              <Input label="Alternate Mobile *" placeholder="e.g. 9876543210" keyboardType="numeric" maxLength={10} value={value} onChangeText={onChange} error={errors.alternate_number?.message} />
             )}
           />
 
