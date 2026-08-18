@@ -156,10 +156,17 @@ export default function LibraryScreen() {
     }
     if (step === 'arrival') {
       if (diffMins > 0) return 'locked';
-      if (diffMins <= 0 && diffMins > -15) return 'active'; // Give them 15 mins to arrive
+      if (diffMins <= 0 && diffMins > -10) return 'active'; // Give them 10 mins to arrive
       return 'missed';
     }
     return 'locked';
+  };
+
+  const isCurrentlyRunning = (shift_date: string, start_time: string, hours_duration: number) => {
+    const shiftDateTime = new Date(`${shift_date}T${start_time}`);
+    const endDateTime = new Date(shiftDateTime.getTime() + hours_duration * 60 * 60 * 1000);
+    const now = new Date();
+    return now <= endDateTime;
   };
 
   const canCancelJob = (shift_date: string, start_time: string) => {
@@ -675,7 +682,7 @@ export default function LibraryScreen() {
                         );
                       })()}
 
-                      {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && (
+                      {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && isCurrentlyRunning(job.shift_date, job.start_time, job.hours_duration) && (
                         <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
                           {startOtps[job.request_id] ? (
                             <View className="items-center">
