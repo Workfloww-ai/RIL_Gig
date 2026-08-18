@@ -386,32 +386,65 @@ export default function LibraryScreen() {
  );
  })()}
 
- {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && isCurrentlyRunning(job.shift_date, job.start_time, job.hours_duration) && (
- <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
- {startOtps[job.request_id] ? (
- <View className="items-center">
- <Text className="text-gray-600 text-xs mb-1">Your Start OTP</Text>
- <Text className="text-2xl font-black text-green-700 tracking-widest">{startOtps[job.request_id]}</Text>
- <Text className="text-gray-500 text-[10px] mt-1 text-center">Show this code to the store manager to start your shift.</Text>
- </View>
- ) : (
- <TouchableOpacity
- onPress={() => handleStartOtp(job.request_id)}
- disabled={generatingOtpId === job.request_id}
- className="bg-green-600 w-full py-3 rounded-lg items-center flex-row justify-center"
- >
- {generatingOtpId === job.request_id ? (
- <ActivityIndicator size="small" color="#FFFFFF" />
- ) : (
- <>
- <Feather name="key" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
- <Text className="text-white font-bold">Start Job (Get OTP)</Text>
- </>
- )}
- </TouchableOpacity>
- )}
- </View>
- )}
+        {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && isCurrentlyRunning(job.shift_date, job.start_time, job.hours_duration) && (
+          <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
+            {startOtps[job.request_id] ? (
+              <View className="items-center">
+                <Text className="text-gray-600 text-xs mb-1">Your Start OTP</Text>
+                <Text className="text-2xl font-black text-green-700 tracking-widest">{startOtps[job.request_id]}</Text>
+                <Text className="text-gray-500 text-[10px] mt-1 text-center">Show this code to the store manager to start your shift.</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => handleStartOtp(job.request_id)}
+                disabled={generatingOtpId === job.request_id}
+                className="bg-green-600 w-full py-3 rounded-lg items-center flex-row justify-center"
+              >
+                {generatingOtpId === job.request_id ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Feather name="key" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text className="text-white font-bold">Start Job (Get OTP)</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {job.assignment_status === 'completed' && job.rating_score && (
+          <View className="mt-3 bg-green-50 border border-green-200 p-4 rounded-xl items-center shadow-sm">
+            <Text className="text-gray-600 text-[10px] uppercase font-bold tracking-wider mb-2">Manager Rating</Text>
+            <View className="flex-row mb-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Feather 
+                  key={star} 
+                  name="star" 
+                  size={20} 
+                  color={star <= job.rating_score ? "#EAB308" : "#D1D5DB"} 
+                  style={{ marginRight: 4 }} 
+                  fill={star <= job.rating_score ? "#EAB308" : "transparent"}
+                />
+              ))}
+            </View>
+            <Text className="text-xl font-black text-green-700 mb-2">{job.rating_score}.0 / 5.0</Text>
+            
+            {job.rating_tags && job.rating_tags.length > 0 && (
+              <View className="flex-row flex-wrap justify-center mt-1">
+                {job.rating_tags.map((tag: string, idx: number) => (
+                  <View key={idx} className="bg-white border border-green-200 px-2 py-1 rounded-md m-1">
+                    <Text className="text-green-700 text-[10px] font-bold">{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            
+            {job.rating_feedback ? (
+              <Text className="text-gray-600 text-xs text-center mt-3 italic">"{job.rating_feedback}"</Text>
+            ) : null}
+          </View>
+        )}
 
  {job.assignment_status === 'accepted' && canCancelJob(job.shift_date, job.start_time) && (
  <TouchableOpacity

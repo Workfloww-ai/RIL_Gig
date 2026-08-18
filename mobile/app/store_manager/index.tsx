@@ -124,6 +124,7 @@ export default function StoreManagerDashboard() {
   const [ratingScore, setRatingScore] = useState<number>(5);
   const [selectedTags, setSelectedTags] = useState<string[]>(['On-Time Arrival', 'High Efficiency']);
   const [feedbackText, setFeedbackText] = useState<string>('');
+  const [submittingRating, setSubmittingRating] = useState<boolean>(false);
 
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
@@ -212,32 +213,25 @@ export default function StoreManagerDashboard() {
   };
 
   // Submit Rating
-  const handleSubmitRating = () => {
+  const handleSubmitRating = async () => {
     if (!selectedWorker) return;
-
-    setJobsList((prevJobs) =>
-      prevJobs.map((j) => ({
-        ...j,
-        accepted_workers: j.accepted_workers?.map((w: any) => {
-          if (w.id === selectedWorker.id) {
-            return {
-              ...w,
-              status: 'completed',
-              rating: {
-                stars: ratingScore,
-                tags: selectedTags,
-                feedback: feedbackText,
-              },
-            };
-          }
-          return w;
-        }),
-      }))
-    );
-
-    setIsRatingModalOpen(false);
-    setSelectedWorker(null);
-    Alert.alert('Rating Submitted', 'Thank you! The worker performance has been rated and shift payout is approved.');
+    setSubmittingRating(true);
+    try {
+      await apiClient.post(`/jobs/manager/jobs/assignment/${selectedWorker.assignment_id}/complete`, {
+        rating_score: ratingScore,
+        rating_tags: selectedTags,
+        rating_feedback: feedbackText
+      });
+      
+      setIsRatingModalOpen(false);
+      setSelectedWorker(null);
+      Alert.alert('Success', 'Thank you! The worker performance has been rated and shift is completed.');
+      fetchRequests();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to submit rating');
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
 
@@ -289,7 +283,7 @@ export default function StoreManagerDashboard() {
     }
 
     // Default / raw status formatting
-    if (worker.status === 'Review Pending') return { label: 'Review Pending', bgColor: '#FEF3C7', textColor: '#D97706' };
+    if (worker.status === 'started') return { label: 'Started', bgColor: '#FEF3C7', textColor: '#D97706' };
     if (worker.status === 'completed') return { label: 'Completed', bgColor: '#DCFCE7', textColor: '#15803D' };
     return { label: worker.status.charAt(0).toUpperCase() + worker.status.slice(1), bgColor: '#F3E8FF', textColor: '#7E22CE' };
   };
@@ -408,7 +402,7 @@ export default function StoreManagerDashboard() {
                     )}
 
                     {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
-                    {worker.status === 'Review Pending' && (
+                    {worker.status === 'started' && (
                       <TouchableOpacity
                         onPress={() => handleOpenRating(worker)}
                         style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
@@ -783,10 +777,13 @@ export default function StoreManagerDashboard() {
 
             <TouchableOpacity
               onPress={handleSubmitRating}
-              style={{ backgroundColor: '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+              disabled={submittingRating}
+              style={{ backgroundColor: submittingRating ? '#9CA3AF' : '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
               activeOpacity={0.85}
             >
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Submit Rating & Approve Shift</Text>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
+                {submittingRating ? 'Submitting...' : 'Submit Rating & Approve Shift'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
