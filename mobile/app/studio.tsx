@@ -124,12 +124,7 @@ export default function StudioScreen() {
     }
   };
 
-  const rewind10s = () => {
-    if (player) {
-      const newPosition = Math.max(0, player.currentTime - 10);
-      player.currentTime = newPosition;
-    }
-  };
+  
 
   if (loading || !module) {
     return (
