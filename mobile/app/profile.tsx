@@ -58,7 +58,7 @@ export default function ProfileScreen() {
           </View>
           
           <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName.toUpperCase()}</Text>
-          <Text className="text-gray-500 text-sm font-medium mb-3">Gig Worker</Text>
+          <Text className="text-gray-500 text-sm font-medium mb-3">Sahyogi</Text>
           
           {/* Hardcoded Rating */}
           <View className="flex-row items-center bg-yellow-50 px-4 py-2 rounded-full border border-yellow-100">

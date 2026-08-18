@@ -51,6 +51,7 @@ export default function LoginScreen() {
         <View className="mb-12">
           <Text className="text-5xl font-bold text-gray-900 mb-3 tracking-tight">SAH<Text className="text-primary-500">YOGI</Text></Text>
           <Text className="text-gray-500 text-lg font-medium">Enter your mobile number to get started.</Text>
+          
         </View>
         
         <Input 
@@ -65,6 +66,10 @@ export default function LoginScreen() {
         
         <View className="mt-4">
           <Button title="Continue" onPress={handleContinue} loading={loading} />
+        </View>
+        
+        <View className="absolute bottom-8 left-0 right-0 items-center">
+          <Text className="text-gray-400 text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
