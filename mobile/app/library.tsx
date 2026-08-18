@@ -5,6 +5,8 @@ import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { Button } from '../src/components/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 
 interface Module {
   id: string;
@@ -33,6 +35,30 @@ export default function LibraryScreen() {
   const [activeTab, setActiveTab] = useState<'modules' | 'certificate' | 'jobs'>('modules');
   const [showCongrats, setShowCongrats] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  const certificateRef = React.useRef<ViewShot>(null);
+
+  const shareCertificate = async () => {
+    try {
+      if (certificateRef.current && certificateRef.current.capture) {
+        const uri = await certificateRef.current.capture();
+        const isAvailable = await Sharing.isAvailableAsync();
+        
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, { 
+            UTI: 'public.png', 
+            mimeType: 'image/png', 
+            dialogTitle: 'Save or Share Certificate' 
+          });
+        } else {
+          showToast('Sharing is not available on this device');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to capture certificate', error);
+      showToast('Failed to prepare certificate image');
+    }
+  };
   
   const [jobsTab, setJobsTab] = useState<'available' | 'accepted'>('available');
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
@@ -347,40 +373,55 @@ export default function LibraryScreen() {
           </View>
           )}
 
-          {activeTab === 'certificate' && (
+           {activeTab === 'certificate' && (
              <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center min-h-[400px]">
                {/* Certificate Template */}
-               <View className="w-full aspect-[1.4] bg-white border-8 border-primary-900 rounded-xl p-4 items-center justify-between relative shadow-lg overflow-hidden">
-                  <View className="absolute top-0 left-0 right-0 h-32 bg-primary-50 opacity-50" />
-                  <View className="items-center mt-4">
-                    <Text className="text-3xl font-serif font-bold text-primary-900 mb-1">CERTIFICATE</Text>
-                    <Text className="text-[10px] text-primary-600 tracking-widest uppercase font-bold">of completion</Text>
-                  </View>
-                  
-                  <View className="items-center my-6 z-10 w-full px-2">
-                    <Text className="text-gray-500 italic text-xs mb-3">This is proudly presented to</Text>
-                    <Text className="text-2xl font-bold text-gray-900 border-b border-gray-300 pb-1 w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
-                      {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Student Name'}
-                    </Text>
-                    <Text className="text-gray-500 italic mt-3 text-center text-xs">For successfully completing all required training modules in thE Sahyogi program.</Text>
-                  </View>
+               <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
+                 <View className="w-full aspect-[1.4] bg-[#FFFFFF] border-8 border-[#10472B] rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden">
+                    {/* Branding Logo - Top Left */}
+                    <View className="absolute top-3 left-3 z-20">
+                      <Image 
+                        source={require('../assets/images/logo-sahyogi.png')} 
+                        style={{ width: 55, height: 25, resizeMode: 'contain' }} 
+                      />
+                    </View>
 
-                  <View className="flex-row justify-between w-full px-2 mb-2 items-end z-10">
-                     <View className="items-center w-24">
-                       <Text className="text-gray-800 font-bold border-b border-gray-300 pb-1 mb-1 w-full text-center text-xs">
-                         {new Date().toLocaleDateString()}
-                       </Text>
-                       <Text className="text-gray-400 text-[8px] uppercase">Date</Text>
-                     </View>
-                     <View className="w-14 h-14 rounded-full bg-primary-600 items-center justify-center transform rotate-12 shadow-sm border-2 border-white">
-                       <Text className="text-white text-[8px] font-bold text-center leading-tight">Sahyogi{'\n'}Certified</Text>
-                     </View>
-                  </View>
+                    {/* Main Content Centered */}
+                    <View className="items-center z-10 w-full mt-2">
+                      <Text className="text-2xl font-serif font-bold text-[#10472B] mb-0.5">CERTIFICATE</Text>
+                      <Text className="text-[9px] text-[#10472B] tracking-widest uppercase font-bold mb-3">of completion</Text>
+                      <Text className="text-[#666666] italic text-[10px] mb-1">This is proudly presented to</Text>
+                      <View className="px-4 w-full border-b border-[#E5E7EB] pb-1 mb-2">
+                        <Text className="text-xl font-bold text-[#1A1A1A] w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
+                          {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'STUDENT NAME'}
+                        </Text>
+                      </View>
+                      <Text className="text-[#666666] italic text-center text-[9px] px-6 leading-tight">
+                        For successfully completing all required training modules in the Sahyogi program.
+                      </Text>
+                    </View>
+
+                    {/* Date - Bottom Left */}
+                    <View className="absolute bottom-3 left-4 items-center w-20 z-10">
+                      <Text className="text-[#1A1A1A] font-bold border-b border-gray-300 pb-0.5 w-full text-center text-[10px]">
+                        {new Date().toLocaleDateString()}
+                      </Text>
+                      <Text className="text-[#666666] text-[7px] uppercase font-bold tracking-wider mt-0.5">Date</Text>
+                    </View>
+
+                    {/* Seal - Bottom Right */}
+                    <View className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#E31B23] items-center justify-center transform rotate-12 shadow-sm border-2 border-[#FFFFFF] z-10">
+                      <Text className="text-white text-[7px] font-bold text-center leading-tight">Sahyogi{'\n'}Certified</Text>
+                    </View>
+                 </View>
+               </ViewShot>
+
+               <View className="mt-8 items-center justify-center w-full">
+                 <TouchableOpacity onPress={shareCertificate} className="bg-[#E31B23] px-8 py-3.5 rounded-full flex-row items-center shadow-md">
+                   <Feather name="share" size={18} color="white" style={{ marginRight: 8 }} />
+                   <Text className="font-bold text-white tracking-wide text-sm">Share Certificate</Text>
+                 </TouchableOpacity>
                </View>
-
-               <TouchableOpacity className="mt-8 bg-gray-100 px-6 py-3 rounded-full flex-row items-center border border-gray-200">
-                 <Text className="font-bold text-gray-700">↓ Download PDF</Text>
-               </TouchableOpacity>
              </View>
           )}
 

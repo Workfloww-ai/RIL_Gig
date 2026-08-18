@@ -93,10 +93,46 @@ export default function StoreManagerDashboard() {
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
   
+  // Sort State
+  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_desc');
+  const [isSortModalOpen, setIsSortModalOpen] = useState(false);
+
   // Available Jobs and Stores for Modal
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+
+  const sortedJobsList = React.useMemo(() => {
+    return [...jobsList].sort((a, b) => {
+      if (sortOption === 'date_desc') {
+        const dateA = new Date(a.shift_date || 0).getTime();
+        const dateB = new Date(b.shift_date || 0).getTime();
+        return dateB - dateA;
+      }
+      if (sortOption === 'date_asc') {
+        const dateA = new Date(a.shift_date || 0).getTime();
+        const dateB = new Date(b.shift_date || 0).getTime();
+        return dateA - dateB;
+      }
+      if (sortOption === 'open_first') {
+        const isAOpen = a.request_status?.toLowerCase() === 'open' ? 1 : 0;
+        const isBOpen = b.request_status?.toLowerCase() === 'open' ? 1 : 0;
+        if (isAOpen !== isBOpen) return isBOpen - isAOpen;
+        const dateA = new Date(a.shift_date || 0).getTime();
+        const dateB = new Date(b.shift_date || 0).getTime();
+        return dateB - dateA; // secondary sort by date
+      }
+      if (sortOption === 'closed_first') {
+        const isAClosed = a.request_status?.toLowerCase() === 'closed' ? 1 : 0;
+        const isBClosed = b.request_status?.toLowerCase() === 'closed' ? 1 : 0;
+        if (isAClosed !== isBClosed) return isBClosed - isAClosed;
+        const dateA = new Date(a.shift_date || 0).getTime();
+        const dateB = new Date(b.shift_date || 0).getTime();
+        return dateB - dateA; // secondary sort by date
+      }
+      return 0;
+    });
+  }, [jobsList, sortOption]);
 
   const fetchRequests = async () => {
     try {
@@ -255,13 +291,20 @@ export default function StoreManagerDashboard() {
         {/* ==================== HOME TAB (JOBS IN PROCESS & EXPANDABLE ASSIGNED WORKERS) ==================== */}
         {activeTab === 'home' && (
           <View>
-            {/* Section Title + Single '+' Raise Request Button */}
+            {/* Section Title + Sort Filter Button */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Jobs in Process</Text>
+              <TouchableOpacity
+                onPress={() => setIsSortModalOpen(true)}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="filter" size={18} color="#10472B" />
+              </TouchableOpacity>
             </View>
 
             {/* List of Jobs in Process (Click to view assigned workers) */}
-            {jobsList.map((job) => {
+            {sortedJobsList.map((job) => {
               const isExpanded = expandedJobId === job.request_id;
               const acceptedWorkers = job.accepted_workers || [];
               return (
@@ -650,6 +693,53 @@ export default function StoreManagerDashboard() {
         onSuccess={fetchRequests} 
         managerStoreName={managerStoreName} 
       />
+
+      {/* ==================== SORTING MODAL ==================== */}
+      <Modal visible={isSortModalOpen} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Sort Jobs By</Text>
+              <TouchableOpacity onPress={() => setIsSortModalOpen(false)}>
+                <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              onPress={() => { setSortOption('date_desc'); setIsSortModalOpen(false); }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+            >
+              <Text style={{ fontSize: 16, color: sortOption === 'date_desc' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'date_desc' ? '700' : '500' }}>Date (Newest First)</Text>
+              {sortOption === 'date_desc' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => { setSortOption('date_asc'); setIsSortModalOpen(false); }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+            >
+              <Text style={{ fontSize: 16, color: sortOption === 'date_asc' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'date_asc' ? '700' : '500' }}>Date (Oldest First)</Text>
+              {sortOption === 'date_asc' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => { setSortOption('open_first'); setIsSortModalOpen(false); }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+            >
+              <Text style={{ fontSize: 16, color: sortOption === 'open_first' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'open_first' ? '700' : '500' }}>Status (Open First)</Text>
+              {sortOption === 'open_first' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => { setSortOption('closed_first'); setIsSortModalOpen(false); }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 }}
+            >
+              <Text style={{ fontSize: 16, color: sortOption === 'closed_first' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'closed_first' ? '700' : '500' }}>Status (Closed First)</Text>
+              {sortOption === 'closed_first' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+            </TouchableOpacity>
+
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
