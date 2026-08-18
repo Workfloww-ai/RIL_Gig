@@ -267,6 +267,8 @@ export default function StoreManagerDashboard() {
 
     if (worker.status === 'cancelled') return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
 
+    if (worker.status === 'started') return { label: 'Verified', bgColor: '#10B981', textColor: '#FFFFFF' };
+    
     if (worker.arrival_status === 'arrived') return { label: 'Arrived', bgColor: '#D1FAE5', textColor: '#059669' };
 
     if (shiftHasStarted) {
