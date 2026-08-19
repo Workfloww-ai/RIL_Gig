@@ -30,7 +30,7 @@ async def check_mobile(payload: MobileCheckRequest):
 
 @router.get("/me")
 async def get_my_profile(user_id: str = Depends(get_current_user)):
-    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id").eq("user_id", user_id).execute()
+    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id, ratings, shifts_completed").eq("user_id", user_id).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="User not found")
     

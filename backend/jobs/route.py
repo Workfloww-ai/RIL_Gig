@@ -444,13 +444,18 @@ async def generate_start_otp(request_id: str, user_id: str = Depends(get_current
             shift_date = rd.get("shift_date")
             start_time = rd.get("start_time")
             if shift_date and start_time:
-                from datetime import datetime
+                from datetime import datetime, timedelta
                 if len(start_time.split(':')) == 2:
                     start_time += ":00"
                 try:
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                    if datetime.now() < shift_datetime:
-                        raise HTTPException(status_code=400, detail="Shift has not started yet")
+                    if datetime.now() < shift_datetime - timedelta(minutes=10):
+                        raise HTTPException(status_code=400, detail="Cannot generate OTP more than 10 minutes before shift")
+                    if datetime.now() > shift_datetime:
+                        supabase.table("worker_job_assignments").update({
+                            "assignment_status": "no_show"
+                        }).eq("job_assignment_id", assignment.get("job_assignment_id")).execute()
+                        raise HTTPException(status_code=400, detail="Shift start time has already passed. Marked as No Show.")
                 except Exception as e:
                     print(f"Error parsing date in start-otp: {e}")
 
@@ -485,6 +490,26 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
             
         request_id = assignment_resp.data[0]["request_id"]
         
+        # Validate time limit before verifying
+        req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
+        if req_res.data:
+            rd = req_res.data[0]
+            shift_date = rd.get("shift_date")
+            start_time = rd.get("start_time")
+            if shift_date and start_time:
+                from datetime import datetime
+                if len(start_time.split(':')) == 2:
+                    start_time += ":00"
+                try:
+                    shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
+                    if datetime.now() > shift_datetime:
+                        supabase.table("worker_job_assignments").update({
+                            "assignment_status": "no_show"
+                        }).eq("job_assignment_id", assignment_id).execute()
+                        raise HTTPException(status_code=400, detail="Job start time has passed. Worker marked as No Show.")
+                except Exception as e:
+                    print(f"Error parsing date in verify-otp: {e}")
+
         otp_resp = supabase.table("job_start_otps").select("id, otp_code, is_verified").eq("request_id", request_id).eq("worker_id", payload.worker_id).execute()
         
         if not otp_resp.data:
@@ -519,7 +544,7 @@ async def manager_complete_job(
         from datetime import datetime, timezone
         
         # Verify assignment exists
-        assignment_resp = supabase.table("worker_job_assignments").select("request_id, store_id, assignment_status").eq("job_assignment_id", assignment_id).execute()
+        assignment_resp = supabase.table("worker_job_assignments").select("request_id, store_id, assignment_status, worker_id").eq("job_assignment_id", assignment_id).execute()
         if not assignment_resp.data:
             raise HTTPException(status_code=404, detail="Assignment not found")
             
@@ -537,6 +562,20 @@ async def manager_complete_job(
             "rated_by": user_id,
             "rated_at": now_iso
         }).eq("job_assignment_id", assignment_id).execute()
+        
+        worker_id = assignment_resp.data[0].get("worker_id")
+        
+        # Recalculate average rating and shifts completed
+        if worker_id:
+            ratings_resp = supabase.table("worker_job_assignments").select("rating_score").eq("worker_id", worker_id).not_.is_("rating_score", "null").execute()
+            if ratings_resp.data:
+                total_score = sum([r.get("rating_score", 0) for r in ratings_resp.data])
+                num_rated_shifts = len(ratings_resp.data)
+                avg_score = round(total_score / num_rated_shifts)
+                supabase.table("users").update({
+                    "ratings": avg_score,
+                    "shifts_completed": num_rated_shifts
+                }).eq("user_id", worker_id).execute()
         
         return {"status": "success", "message": "Shift completed and rating saved successfully"}
     except HTTPException:

@@ -263,11 +263,11 @@ export default function StoreManagerDashboard() {
 
     if (worker.status === 'started') return { label: 'Verified', bgColor: '#10B981', textColor: '#FFFFFF' };
     
-    if (worker.arrival_status === 'arrived') return { label: 'Arrived', bgColor: '#D1FAE5', textColor: '#059669' };
-
     if (shiftHasStarted) {
-      if (worker.arrival_status === 'pending') return { label: 'No Show', bgColor: '#FEE2E2', textColor: '#EF4444' };
+      if (worker.status === 'accepted') return { label: 'No Show', bgColor: '#FEE2E2', textColor: '#EF4444' };
     }
+
+    if (worker.arrival_status === 'arrived') return { label: 'Arrived', bgColor: '#D1FAE5', textColor: '#059669' };
 
     // Instantly reflect missed checkpoints as cancelled before the cron job officially cancels them
     if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
@@ -293,14 +293,30 @@ export default function StoreManagerDashboard() {
     router.replace('/');
   };
 
-  // Split jobs into Today and Others
+  // Split jobs into Today, Upcoming and Past
   const todayStr = new Date().toISOString().split('T')[0];
   const todayJobs = sortedJobsList.filter(job => job.shift_date === todayStr);
-  const otherJobs = sortedJobsList.filter(job => job.shift_date !== todayStr);
+  const upcomingJobs = sortedJobsList.filter(job => job.shift_date > todayStr);
+  const pastJobs = sortedJobsList.filter(job => job.shift_date < todayStr);
 
   const renderJobCard = (job: any) => {
     const isExpanded = expandedJobId === job.request_id;
     const acceptedWorkers = job.accepted_workers || [];
+    
+    let shiftHasStarted = false;
+    let isJobEnded = false;
+    if (job.shift_date && job.start_time) {
+      const shiftDateTime = new Date(`${job.shift_date}T${job.start_time}`);
+      if (new Date() >= shiftDateTime) {
+        shiftHasStarted = true;
+      }
+      const hoursDuration = job.hours_duration || 0;
+      const endDateTime = new Date(shiftDateTime.getTime() + hoursDuration * 60 * 60 * 1000);
+      if (new Date() >= endDateTime) {
+        isJobEnded = true;
+      }
+    }
+
     return (
       <View
         key={job.request_id}
@@ -390,7 +406,7 @@ export default function StoreManagerDashboard() {
                     </View>
 
                     {/* VERIFY OTP ACTION BUTTON */}
-                    {worker.arrival_status === 'arrived' && worker.status === 'accepted' && (
+                    {worker.arrival_status === 'arrived' && worker.status === 'accepted' && !shiftHasStarted && (
                       <TouchableOpacity
                         onPress={() => handleOpenOtpModal(worker.id, worker.assignment_id)}
                         style={{ backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
@@ -402,7 +418,7 @@ export default function StoreManagerDashboard() {
                     )}
 
                     {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
-                    {worker.status === 'started' && (
+                    {worker.status === 'started' && isJobEnded && (
                       <TouchableOpacity
                         onPress={() => handleOpenRating(worker)}
                         style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
@@ -464,13 +480,22 @@ export default function StoreManagerDashboard() {
             {/* Section Title + Sort Filter Button */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Jobs in Process</Text>
-              <TouchableOpacity
-                onPress={() => setIsSortModalOpen(true)}
-                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="filter" size={18} color="#10472B" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row' }}>
+                <TouchableOpacity
+                  onPress={fetchRequests}
+                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, marginRight: 10 }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="refresh-cw" size={16} color="#10472B" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setIsSortModalOpen(true)}
+                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="filter" size={18} color="#10472B" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12 }}>Today</Text>
@@ -482,10 +507,17 @@ export default function StoreManagerDashboard() {
               todayJobs.map(renderJobCard)
             )}
 
-            {otherJobs.length > 0 && (
+            {upcomingJobs.length > 0 && (
               <>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12, marginTop: 8 }}>All Jobs</Text>
-                {otherJobs.map(renderJobCard)}
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12, marginTop: 8 }}>Upcoming Jobs</Text>
+                {upcomingJobs.map(renderJobCard)}
+              </>
+            )}
+
+            {pastJobs.length > 0 && (
+              <>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12, marginTop: 8 }}>Past Jobs</Text>
+                {pastJobs.map(renderJobCard)}
               </>
             )}
           </View>

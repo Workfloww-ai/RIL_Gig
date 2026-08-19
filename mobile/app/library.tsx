@@ -155,8 +155,8 @@ export default function LibraryScreen() {
  return 'missed';
  }
  if (step === 'arrival') {
- if (diffMins > 0) return 'locked';
- if (diffMins <= 0 && diffMins > -10) return 'active'; // Give them 10 mins to arrive
+ if (diffMins > 10) return 'locked';
+ if (diffMins <= 10 && diffMins >= 0) return 'active'; // Give them 10 mins prior to arrive
  return 'missed';
  }
  return 'locked';
@@ -167,6 +167,12 @@ export default function LibraryScreen() {
  const endDateTime = new Date(shiftDateTime.getTime() + hours_duration * 60 * 60 * 1000);
  const now = new Date();
  return now <= endDateTime;
+ };
+
+ const isBeforeStart = (shift_date: string, start_time: string) => {
+ const shiftDateTime = new Date(`${shift_date}T${start_time}`);
+ const now = new Date();
+ return now <= shiftDateTime;
  };
 
  const canCancelJob = (shift_date: string, start_time: string) => {
@@ -254,9 +260,10 @@ export default function LibraryScreen() {
  }
  }, [justCompleted, isAllCompleted]);
 
- const todayStr = new Date().toISOString().split('T')[0];
- const todayAcceptedJobs = acceptedJobs.filter(job => job.shift_date === todayStr);
- const otherAcceptedJobs = acceptedJobs.filter(job => job.shift_date !== todayStr);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayAcceptedJobs = acceptedJobs.filter(job => job.shift_date === todayStr);
+  const upcomingAcceptedJobs = acceptedJobs.filter(job => job.shift_date > todayStr);
+  const pastAcceptedJobs = acceptedJobs.filter(job => job.shift_date < todayStr);
 
  const renderAcceptedJobCard = (job: any) => {
  return (
@@ -299,8 +306,34 @@ export default function LibraryScreen() {
  <View className="items-center">
  <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Status</Text>
  <View className="flex-row items-center">
- <Feather name="check-circle" size={12} color="#10B981" style={{ marginRight: 5 }} />
- <Text className="text-green-600 font-bold text-xs uppercase">{job.assignment_status}</Text>
+ {(() => {
+   let statusText = job.assignment_status.toUpperCase();
+   let iconName = "check-circle";
+   let textColor = "text-green-600";
+   let iconColor = "#10B981";
+
+   if (job.assignment_status === 'accepted' && !isBeforeStart(job.shift_date, job.start_time)) {
+     statusText = "NO SHOW";
+     iconName = "x-circle";
+     textColor = "text-red-600";
+     iconColor = "#EF4444";
+   } else if (job.assignment_status === 'started') {
+     iconName = "play-circle";
+     textColor = "text-blue-600";
+     iconColor = "#2563EB";
+   } else if (job.assignment_status === 'cancelled') {
+     iconName = "x-circle";
+     textColor = "text-gray-500";
+     iconColor = "#6B7280";
+   }
+
+   return (
+     <>
+       <Feather name={iconName as any} size={12} color={iconColor} style={{ marginRight: 5 }} />
+       <Text className={`${textColor} font-bold text-xs uppercase`}>{statusText}</Text>
+     </>
+   );
+ })()}
  </View>
  </View>
  </View>
@@ -386,7 +419,7 @@ export default function LibraryScreen() {
  );
  })()}
 
-        {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && isCurrentlyRunning(job.shift_date, job.start_time, job.hours_duration) && (
+        {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && isBeforeStart(job.shift_date, job.start_time) && (
           <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
             {startOtps[job.request_id] ? (
               <View className="items-center">
@@ -410,6 +443,16 @@ export default function LibraryScreen() {
                 )}
               </TouchableOpacity>
             )}
+          </View>
+        )}
+
+        {job.arrival_status === 'arrived' && job.assignment_status === 'started' && (
+          <View className="mt-3 bg-green-50 border border-green-200 p-4 rounded-xl items-center shadow-sm">
+            <View className="bg-green-100 p-2 rounded-full mb-2">
+              <Feather name="check-circle" size={28} color="#15803D" />
+            </View>
+            <Text className="text-xl font-black text-green-700">Verified</Text>
+            {/* <Text className="text-green-600 text-[11px] mt-1 text-center font-medium">Your shift has officially begun. Great job!</Text> */}
           </View>
         )}
 
@@ -776,10 +819,17 @@ export default function LibraryScreen() {
  todayAcceptedJobs.map(renderAcceptedJobCard)
  )}
 
- {otherAcceptedJobs.length > 0 && (
+ {upcomingAcceptedJobs.length > 0 && (
  <>
- <Text className="text-base font-bold text-gray-900 mb-3 ml-1 mt-4">All Jobs</Text>
- {otherAcceptedJobs.map(renderAcceptedJobCard)}
+ <Text className="text-base font-bold text-gray-900 mb-3 ml-1 mt-4">Upcoming Jobs</Text>
+ {upcomingAcceptedJobs.map(renderAcceptedJobCard)}
+ </>
+ )}
+
+ {pastAcceptedJobs.length > 0 && (
+ <>
+ <Text className="text-base font-bold text-gray-900 mb-3 ml-1 mt-4">Past Jobs</Text>
+ {pastAcceptedJobs.map(renderAcceptedJobCard)}
  </>
  )}
  </>

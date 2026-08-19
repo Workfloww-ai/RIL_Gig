@@ -8,7 +8,7 @@ import { useAuthStore } from '../src/store/authStore';
 export default function ProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore(state => state.logout);
-  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string} | null>(null);
+  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string, ratings?: number, shifts_completed?: number} | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -61,10 +61,12 @@ export default function ProfileScreen() {
           <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName.toUpperCase()}</Text>
           <Text className="text-gray-500 text-sm font-medium mb-3">Sahyogi</Text>
           
-          {/* Hardcoded Rating */}
+          {/* Dynamic Rating */}
           <View className="flex-row items-center bg-yellow-50 px-4 py-2 rounded-full border border-yellow-100">
-            <Text className="text-yellow-500 mr-2 text-lg">⭐⭐⭐⭐⭐</Text>
-            <Text className="text-yellow-700 font-bold">5.0</Text>
+            <Text className="text-yellow-500 mr-2 text-lg">
+              {'⭐'.repeat(userProfile?.ratings || 5)}
+            </Text>
+            <Text className="text-yellow-700 font-bold">{userProfile?.ratings ? `${userProfile.ratings}.0` : '5.0'}</Text>
           </View>
           <Text className="text-gray-400 text-xs mt-2">Rated by Store Managers</Text>
         </View>
@@ -84,7 +86,7 @@ export default function ProfileScreen() {
               <Text className="text-blue-500 text-xl">📋</Text>
             </View>
             <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Shifts Completed</Text>
-            <Text className="text-2xl font-bold text-gray-900 text-center">24</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">{userProfile?.shifts_completed || 0}</Text>
           </View>
         </View>
 
