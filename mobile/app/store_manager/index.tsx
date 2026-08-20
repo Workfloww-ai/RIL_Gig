@@ -85,24 +85,103 @@ export default function StoreManagerDashboard() {
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<AcceptedWorker | null>(null);
 
+  // OTP Verification State
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [otpWorkerId, setOtpWorkerId] = useState<string>('');
+  const [otpAssignmentId, setOtpAssignmentId] = useState<string>('');
+  const [otpInput, setOtpInput] = useState<string>('');
+  const [verifyingOtp, setVerifyingOtp] = useState<boolean>(false);
+
+  const handleOpenOtpModal = (workerId: string, assignmentId: string) => {
+    setOtpWorkerId(workerId);
+    setOtpAssignmentId(assignmentId);
+    setOtpInput('');
+    setIsOtpModalOpen(true);
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpInput.length !== 4) {
+      Alert.alert('Invalid', 'OTP must be 4 digits');
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      await apiClient.post(`/jobs/manager/jobs/assignment/${otpAssignmentId}/verify-otp`, {
+        otp_code: otpInput,
+        worker_id: otpWorkerId
+      });
+      Alert.alert('Success', 'Job started successfully');
+      setIsOtpModalOpen(false);
+      fetchRequests();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to verify OTP');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
   // Rating Form State
   const [ratingScore, setRatingScore] = useState<number>(5);
   const [selectedTags, setSelectedTags] = useState<string[]>(['On-Time Arrival', 'High Efficiency']);
   const [feedbackText, setFeedbackText] = useState<string>('');
+  const [submittingRating, setSubmittingRating] = useState<boolean>(false);
 
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
   
+  // Sort State
+  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_desc');
+  const [isSortModalOpen, setIsSortModalOpen] = useState(false);
+
   // Available Jobs and Stores for Modal
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
 
+  const sortedJobsList = React.useMemo(() => {
+    return [...jobsList].sort((a, b) => {
+      if (sortOption === 'date_desc') {
+        const dateA = new Date(a.shift_date || 0).getTime();
+        const dateB = new Date(b.shift_date || 0).getTime();
+        return dateB - dateA;
+      }
+      if (sortOption === 'date_asc') {
+        const dateA = new Date(a.shift_date || 0).getTime();
+        const dateB = new Date(b.shift_date || 0).getTime();
+        return dateA - dateB;
+      }
+      if (sortOption === 'open_first') {
+        const isAOpen = a.request_status?.toLowerCase() === 'open' ? 1 : 0;
+        const isBOpen = b.request_status?.toLowerCase() === 'open' ? 1 : 0;
+        if (isAOpen !== isBOpen) return isBOpen - isAOpen;
+        const dateA = new Date(a.shift_date || 0).getTime();
+        const dateB = new Date(b.shift_date || 0).getTime();
+        return dateB - dateA; // secondary sort by date
+      }
+      if (sortOption === 'closed_first') {
+        const isAClosed = a.request_status?.toLowerCase() === 'closed' ? 1 : 0;
+        const isBClosed = b.request_status?.toLowerCase() === 'closed' ? 1 : 0;
+        if (isAClosed !== isBClosed) return isBClosed - isAClosed;
+        const dateA = new Date(a.shift_date || 0).getTime();
+        const dateB = new Date(b.shift_date || 0).getTime();
+        return dateB - dateA; // secondary sort by date
+      }
+      return 0;
+    });
+  }, [jobsList, sortOption]);
+
   const fetchRequests = async () => {
     try {
       const res = await apiClient.get('/jobs/manager/requests');
       if (res.data) {
-        if (res.data.requests) setJobsList(res.data.requests);
+        if (res.data.requests) {
+          const sortedJobs = [...res.data.requests].sort((a: any, b: any) => {
+            const dateA = new Date(a.shift_date || 0).getTime();
+            const dateB = new Date(b.shift_date || 0).getTime();
+            return dateB - dateA;
+          });
+          setJobsList(sortedJobs);
+        }
         if (res.data.store_name) setManagerStoreName(res.data.store_name);
         else setManagerStoreName('Unassigned Store');
       }
@@ -134,32 +213,25 @@ export default function StoreManagerDashboard() {
   };
 
   // Submit Rating
-  const handleSubmitRating = () => {
+  const handleSubmitRating = async () => {
     if (!selectedWorker) return;
-
-    setJobsList((prevJobs) =>
-      prevJobs.map((j) => ({
-        ...j,
-        accepted_workers: j.accepted_workers?.map((w: any) => {
-          if (w.id === selectedWorker.id) {
-            return {
-              ...w,
-              status: 'completed',
-              rating: {
-                stars: ratingScore,
-                tags: selectedTags,
-                feedback: feedbackText,
-              },
-            };
-          }
-          return w;
-        }),
-      }))
-    );
-
-    setIsRatingModalOpen(false);
-    setSelectedWorker(null);
-    Alert.alert('Rating Submitted', 'Thank you! The worker performance has been rated and shift payout is approved.');
+    setSubmittingRating(true);
+    try {
+      await apiClient.post(`/jobs/manager/jobs/assignment/${selectedWorker.assignment_id}/complete`, {
+        rating_score: ratingScore,
+        rating_tags: selectedTags,
+        rating_feedback: feedbackText
+      });
+      
+      setIsRatingModalOpen(false);
+      setSelectedWorker(null);
+      Alert.alert('Success', 'Thank you! The worker performance has been rated and shift is completed.');
+      fetchRequests();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to submit rating');
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
 
@@ -174,10 +246,10 @@ export default function StoreManagerDashboard() {
 
   const getWorkerStatusDisplay = (worker: any, job: any) => {
     if (worker.status === 'cancelled') return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
-    
+
     let shiftHasStarted = false;
     let minutesUntilShift = 999;
-    
+
     if (job.shift_date && job.start_time) {
       const shiftDateTime = new Date(`${job.shift_date}T${job.start_time}`);
       const now = new Date();
@@ -189,11 +261,13 @@ export default function StoreManagerDashboard() {
 
     if (worker.status === 'cancelled') return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
 
-    if (worker.arrival_status === 'arrived') return { label: 'Arrived', bgColor: '#D1FAE5', textColor: '#059669' };
-
+    if (worker.status === 'started') return { label: 'Verified', bgColor: '#10B981', textColor: '#FFFFFF' };
+    
     if (shiftHasStarted) {
-      if (worker.arrival_status === 'pending') return { label: 'No Show', bgColor: '#FEE2E2', textColor: '#EF4444' };
+      if (worker.status === 'accepted') return { label: 'No Show', bgColor: '#FEE2E2', textColor: '#EF4444' };
     }
+
+    if (worker.arrival_status === 'arrived') return { label: 'Arrived', bgColor: '#D1FAE5', textColor: '#059669' };
 
     // Instantly reflect missed checkpoints as cancelled before the cron job officially cancels them
     if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
@@ -202,14 +276,14 @@ export default function StoreManagerDashboard() {
     if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
       return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
     }
-    
+
     // If they are not cancelled, and T-60 or T-90 is confirmed (or they bypassed it), they are Enroute.
     if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
       return { label: 'Enroute', bgColor: '#D1FAE5', textColor: '#059669' };
     }
-    
+
     // Default / raw status formatting
-    if (worker.status === 'Review Pending') return { label: 'Review Pending', bgColor: '#FEF3C7', textColor: '#D97706' };
+    if (worker.status === 'started') return { label: 'Started', bgColor: '#FEF3C7', textColor: '#D97706' };
     if (worker.status === 'completed') return { label: 'Completed', bgColor: '#DCFCE7', textColor: '#15803D' };
     return { label: worker.status.charAt(0).toUpperCase() + worker.status.slice(1), bgColor: '#F3E8FF', textColor: '#7E22CE' };
   };
@@ -217,6 +291,161 @@ export default function StoreManagerDashboard() {
   const handleLogout = () => {
     if (logout) logout();
     router.replace('/');
+  };
+
+  // Split jobs into Today, Upcoming and Past
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayJobs = sortedJobsList.filter(job => job.shift_date === todayStr);
+  const upcomingJobs = sortedJobsList.filter(job => job.shift_date > todayStr);
+  const pastJobs = sortedJobsList.filter(job => job.shift_date < todayStr);
+
+  const renderJobCard = (job: any) => {
+    const isExpanded = expandedJobId === job.request_id;
+    const acceptedWorkers = job.accepted_workers || [];
+    
+    let shiftHasStarted = false;
+    let isJobEnded = false;
+    if (job.shift_date && job.start_time) {
+      const shiftDateTime = new Date(`${job.shift_date}T${job.start_time}`);
+      if (new Date() >= shiftDateTime) {
+        shiftHasStarted = true;
+      }
+      const hoursDuration = job.hours_duration || 0;
+      const endDateTime = new Date(shiftDateTime.getTime() + hoursDuration * 60 * 60 * 1000);
+      if (new Date() >= endDateTime) {
+        isJobEnded = true;
+      }
+    }
+
+    return (
+      <View
+        key={job.request_id}
+        style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
+      >
+        {/* Job Card Header (Clickable to Expand / Collapse) */}
+        <TouchableOpacity
+          onPress={() => toggleExpandJob(job.request_id)}
+          style={{ padding: 18, backgroundColor: isExpanded ? '#FAFBFB' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+          activeOpacity={0.8}
+        >
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
+              <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
+              </View>
+            </View>
+
+            <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#10472B' }}>
+                {acceptedWorkers.length} {acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#1A1A1A" />
+          </View>
+        </TouchableOpacity>
+
+        {/* EXPANDED SECTION: ASSIGNED WORKERS & STATUS FOR THIS JOB */}
+        {isExpanded && (
+          <View style={{ padding: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#FFFFFF' }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+              Assigned Workers & Check-in Status
+            </Text>
+
+            {acceptedWorkers.length === 0 ? (
+              <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No workers assigned yet for this job.</Text>
+            ) : (
+              acceptedWorkers.map((worker: any) => {
+                const statusInfo = getWorkerStatusDisplay(worker, job);
+                return (
+                  <View
+                    key={worker.id}
+                    style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' }}
+                  >
+                    {/* Worker Header */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#C3D3CA' }}>
+                          {worker.avatarUrl ? (
+                            <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
+                          ) : (
+                            <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0).toUpperCase()}</Text>
+                          )}
+                        </View>
+                        <View>
+                          <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
+                          <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
+                        </View>
+                      </View>
+
+                      {/* Worker Status Badge */}
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 999,
+                          backgroundColor: statusInfo.bgColor,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: statusInfo.textColor,
+                          }}
+                        >
+                          {statusInfo.label}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* VERIFY OTP ACTION BUTTON */}
+                    {worker.arrival_status === 'arrived' && worker.status === 'accepted' && !shiftHasStarted && (
+                      <TouchableOpacity
+                        onPress={() => handleOpenOtpModal(worker.id, worker.assignment_id)}
+                        style={{ backgroundColor: '#10B981', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
+                        activeOpacity={0.85}
+                      >
+                        <Feather name="key" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Verify Start OTP</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
+                    {worker.status === 'started' && isJobEnded && (
+                      <TouchableOpacity
+                        onPress={() => handleOpenRating(worker)}
+                        style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
+                        activeOpacity={0.85}
+                      >
+                        <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Worker & Approve Shift</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* RATED STATUS SUMMARY */}
+                    {worker.status === 'completed' && worker.rating && (
+                      <View style={{ backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ color: '#10472B', fontSize: 12, fontWeight: '700' }}>
+                          {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
+                        </Text>
+                        <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '600' }}>Approved ✓</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+      </View>
+    );
   };
 
   return (
@@ -244,137 +473,53 @@ export default function StoreManagerDashboard() {
 
       {/* ==================== 2. MAIN SCROLLABLE BODY CONTENT ==================== */}
       <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        
+
         {/* ==================== HOME TAB (JOBS IN PROCESS & EXPANDABLE ASSIGNED WORKERS) ==================== */}
         {activeTab === 'home' && (
           <View>
-            {/* Section Title + Single '+' Raise Request Button */}
+            {/* Section Title + Sort Filter Button */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Jobs in Process</Text>
+              <View style={{ flexDirection: 'row' }}>
+                <TouchableOpacity
+                  onPress={fetchRequests}
+                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, marginRight: 10 }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="refresh-cw" size={16} color="#10472B" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setIsSortModalOpen(true)}
+                  style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="filter" size={18} color="#10472B" />
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* List of Jobs in Process (Click to view assigned workers) */}
-            {jobsList.map((job) => {
-              const isExpanded = expandedJobId === job.request_id;
-              const acceptedWorkers = job.accepted_workers || [];
-              return (
-                <View
-                  key={job.request_id}
-                  style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
-                >
-                  {/* Job Card Header (Clickable to Expand / Collapse) */}
-                  <TouchableOpacity
-                    onPress={() => toggleExpandJob(job.request_id)}
-                    style={{ padding: 18, backgroundColor: isExpanded ? '#FAFBFB' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                    activeOpacity={0.8}
-                  >
-                    <View style={{ flex: 1, marginRight: 12 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
-                        <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
-                        </View>
-                      </View>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12 }}>Today</Text>
+            {todayJobs.length === 0 ? (
+              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
+                <Text style={{ color: '#6B7280', fontSize: 14 }}>No job scheduled for today</Text>
+              </View>
+            ) : (
+              todayJobs.map(renderJobCard)
+            )}
 
-                      <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
+            {upcomingJobs.length > 0 && (
+              <>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12, marginTop: 8 }}>Upcoming Jobs</Text>
+                {upcomingJobs.map(renderJobCard)}
+              </>
+            )}
 
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#10472B' }}>
-                          {acceptedWorkers.length} {acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#1A1A1A" />
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* EXPANDED SECTION: ASSIGNED WORKERS & STATUS FOR THIS JOB */}
-                  {isExpanded && (
-                    <View style={{ padding: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#FFFFFF' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
-                        Assigned Workers & Check-in Status
-                      </Text>
-
-                      {acceptedWorkers.length === 0 ? (
-                        <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No workers assigned yet for this job.</Text>
-                      ) : (
-                        acceptedWorkers.map((worker: any) => {
-                          const statusInfo = getWorkerStatusDisplay(worker, job);
-                          return (
-                            <View
-                              key={worker.id}
-                              style={{ backgroundColor: '#F7F8F9', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' }}
-                            >
-                              {/* Worker Header */}
-                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                  <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: '#E1EBE5', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: '#C3D3CA' }}>
-                                    {worker.avatarUrl ? (
-                                      <Image source={{ uri: worker.avatarUrl }} style={{ width: '100%', height: '100%' }} />
-                                    ) : (
-                                      <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 16 }}>{worker.name.charAt(0).toUpperCase()}</Text>
-                                    )}
-                                  </View>
-                                  <View>
-                                    <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
-                                    <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
-                                  </View>
-                                </View>
-
-                                {/* Worker Status Badge */}
-                                <View
-                                  style={{
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 4,
-                                    borderRadius: 999,
-                                    backgroundColor: statusInfo.bgColor,
-                                  }}
-                                >
-                                  <Text
-                                    style={{
-                                      fontSize: 11,
-                                      fontWeight: '700',
-                                      color: statusInfo.textColor,
-                                    }}
-                                  >
-                                    {statusInfo.label}
-                                  </Text>
-                                </View>
-                              </View>
-
-                              {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
-                              {worker.status === 'Review Pending' && (
-                                <TouchableOpacity
-                                  onPress={() => handleOpenRating(worker)}
-                                  style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
-                                  activeOpacity={0.85}
-                                >
-                                  <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
-                                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Worker & Approve Shift</Text>
-                                </TouchableOpacity>
-                              )}
-
-                              {/* RATED STATUS SUMMARY */}
-                              {worker.status === 'completed' && worker.rating && (
-                                <View style={{ backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#DCFCE7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <Text style={{ color: '#10472B', fontSize: 12, fontWeight: '700' }}>
-                                    {'★'.repeat(worker.rating.score)} {worker.rating.score}.0 Rated
-                                  </Text>
-                                  <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '600' }}>Approved ✓</Text>
-                                </View>
-                              )}
-                            </View>
-                          );
-                        })
-                      )}
-                    </View>
-                  )}
-                </View>
-              );
-            })}
+            {pastJobs.length > 0 && (
+              <>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12, marginTop: 8 }}>Past Jobs</Text>
+                {pastJobs.map(renderJobCard)}
+              </>
+            )}
           </View>
         )}
 
@@ -456,7 +601,7 @@ export default function StoreManagerDashboard() {
               </TouchableOpacity>
 
               <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Gig Worker Escalations</Text>
+                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Sahyogi Escalations</Text>
                 <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
               </TouchableOpacity>
 
@@ -522,7 +667,7 @@ export default function StoreManagerDashboard() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => {}} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => { }} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons
             name="bar-chart-outline"
             size={22}
@@ -533,6 +678,42 @@ export default function StoreManagerDashboard() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ==================== OTP VERIFICATION MODAL ==================== */}
+      <Modal visible={isOtpModalOpen} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, width: '100%', maxWidth: 400 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Verify Start OTP</Text>
+              <TouchableOpacity onPress={() => setIsOtpModalOpen(false)}>
+                <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: '#666666', fontSize: 14, marginBottom: 20 }}>
+              Ask the worker for their 4-digit start OTP to officially begin their shift.
+            </Text>
+            
+            <TextInput
+              style={{ backgroundColor: '#F3F4F6', borderRadius: 12, padding: 16, fontSize: 24, fontWeight: '700', textAlign: 'center', letterSpacing: 8, marginBottom: 24 }}
+              keyboardType="number-pad"
+              maxLength={4}
+              placeholder="0000"
+              value={otpInput}
+              onChangeText={setOtpInput}
+            />
+
+            <TouchableOpacity
+              onPress={handleVerifyOtp}
+              disabled={verifyingOtp || otpInput.length !== 4}
+              style={{ backgroundColor: (verifyingOtp || otpInput.length !== 4) ? '#9CA3AF' : '#10B981', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
+                {verifyingOtp ? 'Verifying...' : 'Verify & Start Job'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* ==================== WORKER RATING MODAL ==================== */}
       <Modal visible={isRatingModalOpen} transparent animationType="slide">
@@ -579,10 +760,10 @@ export default function StoreManagerDashboard() {
               {ratingScore === 5
                 ? '★ 5.0 - Outstanding Effort!'
                 : ratingScore === 4
-                ? '★ 4.0 - Very Good Work'
-                : ratingScore === 3
-                ? '★ 3.0 - Good Effort'
-                : '★ Needs Improvement'}
+                  ? '★ 4.0 - Very Good Work'
+                  : ratingScore === 3
+                    ? '★ 3.0 - Good Effort'
+                    : '★ Needs Improvement'}
             </Text>
 
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Strengths & Highlights</Text>
@@ -628,21 +809,71 @@ export default function StoreManagerDashboard() {
 
             <TouchableOpacity
               onPress={handleSubmitRating}
-              style={{ backgroundColor: '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+              disabled={submittingRating}
+              style={{ backgroundColor: submittingRating ? '#9CA3AF' : '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
               activeOpacity={0.85}
             >
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Submit Rating & Approve Shift</Text>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
+                {submittingRating ? 'Submitting...' : 'Submit Rating & Approve Shift'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      <RaiseRequestModal 
-        visible={isRaiseModalOpen} 
-        onClose={() => setIsRaiseModalOpen(false)} 
-        onSuccess={fetchRequests} 
-        managerStoreName={managerStoreName} 
+      <RaiseRequestModal
+        visible={isRaiseModalOpen}
+        onClose={() => setIsRaiseModalOpen(false)}
+        onSuccess={fetchRequests}
+        managerStoreName={managerStoreName}
       />
+
+      {/* ==================== SORTING MODAL ==================== */}
+      <Modal visible={isSortModalOpen} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Sort Jobs By</Text>
+              <TouchableOpacity onPress={() => setIsSortModalOpen(false)}>
+                <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              onPress={() => { setSortOption('date_desc'); setIsSortModalOpen(false); }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+            >
+              <Text style={{ fontSize: 16, color: sortOption === 'date_desc' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'date_desc' ? '700' : '500' }}>Date (Newest First)</Text>
+              {sortOption === 'date_desc' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => { setSortOption('date_asc'); setIsSortModalOpen(false); }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+            >
+              <Text style={{ fontSize: 16, color: sortOption === 'date_asc' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'date_asc' ? '700' : '500' }}>Date (Oldest First)</Text>
+              {sortOption === 'date_asc' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => { setSortOption('open_first'); setIsSortModalOpen(false); }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+            >
+              <Text style={{ fontSize: 16, color: sortOption === 'open_first' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'open_first' ? '700' : '500' }}>Status (Open First)</Text>
+              {sortOption === 'open_first' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => { setSortOption('closed_first'); setIsSortModalOpen(false); }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 }}
+            >
+              <Text style={{ fontSize: 16, color: sortOption === 'closed_first' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'closed_first' ? '700' : '500' }}>Status (Closed First)</Text>
+              {sortOption === 'closed_first' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+            </TouchableOpacity>
+
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

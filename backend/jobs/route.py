@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, Any
-from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse
+from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse, CompleteJobRequest
 from db.jobs_db import create_job_request, get_all_jobs
 from utils.jwt_auth import get_current_user
 from utils.supabase_client import supabase
@@ -224,7 +224,7 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
 async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
     try:
         response = supabase.table("worker_job_assignments").select(
-            "assignment_status, t90_status, t60_status, arrival_status, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city))"
+            "assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city))"
         ).eq("worker_id", user_id).execute()
         
         jobs = []
@@ -258,7 +258,10 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
                 city=store_info.get("city"),
                 t90_status=r.get("t90_status", "pending"),
                 t60_status=r.get("t60_status", "pending"),
-                arrival_status=r.get("arrival_status", "pending")
+                arrival_status=r.get("arrival_status", "pending"),
+                rating_score=r.get("rating_score"),
+                rating_tags=r.get("rating_tags"),
+                rating_feedback=r.get("rating_feedback")
             ))
             
         return MyAcceptedJobsResponse(status="success", jobs=jobs)
@@ -320,7 +323,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city), "
-            "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, users!fk_wja_worker(first_name, last_name))"
+            "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, users!fk_wja_worker(first_name, last_name))"
         ).eq("store_id", store_id).order("created_at", desc=True).execute()
         
         requests = []
@@ -348,7 +351,12 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                     "t90_status": w.get("t90_status", "pending") or "pending",
                     "t60_status": w.get("t60_status", "pending") or "pending",
                     "arrival_status": w.get("arrival_status", "pending") or "pending",
-                    "role": job_info.get("job_name", "")
+                    "role": job_info.get("job_name", ""),
+                    "rating": {
+                        "score": w.get("rating_score") or 0,
+                        "tags": w.get("rating_tags") or [],
+                        "feedback": w.get("rating_feedback") or ""
+                    } if w.get("rating_score") else None
                 })
             
             print(f"[Debug] Worker assignments for request {r.get('request_id')}: {accepted_workers}")
@@ -409,3 +417,170 @@ async def manager_cancel_and_replace(
     except Exception as e:
         print(f"Error in cancel_and_replace: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+import random
+import string
+
+class VerifyOtpRequest(BaseModel):
+    otp_code: str
+    worker_id: str
+
+@router.post("/accept/{request_id}/start-otp")
+async def generate_start_otp(request_id: str, user_id: str = Depends(get_current_user)):
+    try:
+        # Check if the job is accepted by this user
+        existing = supabase.table("worker_job_assignments").select("job_assignment_id, arrival_status, assignment_status").eq("request_id", request_id).eq("worker_id", user_id).execute()
+        if not existing.data:
+            raise HTTPException(status_code=400, detail="You have not accepted this job")
+            
+        assignment = existing.data[0]
+        if assignment.get("assignment_status") != "accepted":
+            raise HTTPException(status_code=400, detail="Job is not in a valid state to generate OTP")
+            
+        # Check if shift time has started
+        req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
+        if req_res.data:
+            rd = req_res.data[0]
+            shift_date = rd.get("shift_date")
+            start_time = rd.get("start_time")
+            if shift_date and start_time:
+                from datetime import datetime, timedelta
+                if len(start_time.split(':')) == 2:
+                    start_time += ":00"
+                try:
+                    shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
+                    if datetime.now() < shift_datetime - timedelta(minutes=10):
+                        raise HTTPException(status_code=400, detail="Cannot generate OTP more than 10 minutes before shift")
+                    if datetime.now() > shift_datetime:
+                        supabase.table("worker_job_assignments").update({
+                            "assignment_status": "no_show"
+                        }).eq("job_assignment_id", assignment.get("job_assignment_id")).execute()
+                        raise HTTPException(status_code=400, detail="Shift start time has already passed. Marked as No Show.")
+                except Exception as e:
+                    print(f"Error parsing date in start-otp: {e}")
+
+        otp_code = ''.join(random.choices(string.digits, k=4))
+        
+        # Check if OTP already exists
+        existing_otp = supabase.table("job_start_otps").select("id").eq("request_id", request_id).eq("worker_id", user_id).execute()
+        
+        if existing_otp.data:
+            supabase.table("job_start_otps").update({"otp_code": otp_code, "is_verified": False}).eq("id", existing_otp.data[0]["id"]).execute()
+        else:
+            supabase.table("job_start_otps").insert({
+                "request_id": request_id,
+                "worker_id": user_id,
+                "otp_code": otp_code,
+                "is_verified": False
+            }).execute()
+            
+        return {"status": "success", "otp_code": otp_code}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error generating OTP: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/manager/jobs/assignment/{assignment_id}/verify-otp")
+async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_id: str = Depends(get_current_user)):
+    try:
+        assignment_resp = supabase.table("worker_job_assignments").select("request_id, store_id").eq("job_assignment_id", assignment_id).execute()
+        if not assignment_resp.data:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+            
+        request_id = assignment_resp.data[0]["request_id"]
+        
+        # Validate time limit before verifying
+        req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
+        if req_res.data:
+            rd = req_res.data[0]
+            shift_date = rd.get("shift_date")
+            start_time = rd.get("start_time")
+            if shift_date and start_time:
+                from datetime import datetime
+                if len(start_time.split(':')) == 2:
+                    start_time += ":00"
+                try:
+                    shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
+                    if datetime.now() > shift_datetime:
+                        supabase.table("worker_job_assignments").update({
+                            "assignment_status": "no_show"
+                        }).eq("job_assignment_id", assignment_id).execute()
+                        raise HTTPException(status_code=400, detail="Job start time has passed. Worker marked as No Show.")
+                except Exception as e:
+                    print(f"Error parsing date in verify-otp: {e}")
+
+        otp_resp = supabase.table("job_start_otps").select("id, otp_code, is_verified").eq("request_id", request_id).eq("worker_id", payload.worker_id).execute()
+        
+        if not otp_resp.data:
+            raise HTTPException(status_code=400, detail="No OTP requested for this job")
+            
+        if otp_resp.data[0]["is_verified"]:
+            raise HTTPException(status_code=400, detail="OTP already verified")
+            
+        if otp_resp.data[0]["otp_code"] != payload.otp_code:
+            raise HTTPException(status_code=400, detail="Invalid OTP code")
+            
+        supabase.table("job_start_otps").update({"is_verified": True}).eq("id", otp_resp.data[0]["id"]).execute()
+        
+        supabase.table("worker_job_assignments").update({
+            "assignment_status": "started"
+        }).eq("job_assignment_id", assignment_id).execute()
+        
+        return {"status": "success", "message": "Job started successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error verifying OTP: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/manager/jobs/assignment/{assignment_id}/complete")
+async def manager_complete_job(
+    assignment_id: str,
+    payload: CompleteJobRequest,
+    user_id: str = Depends(get_current_user)
+):
+    try:
+        from datetime import datetime, timezone
+        
+        # Verify assignment exists
+        assignment_resp = supabase.table("worker_job_assignments").select("request_id, store_id, assignment_status, worker_id").eq("job_assignment_id", assignment_id).execute()
+        if not assignment_resp.data:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+            
+        if assignment_resp.data[0].get("assignment_status") != "started":
+            raise HTTPException(status_code=400, detail="Only started shifts can be completed and rated")
+            
+        now_iso = datetime.now(timezone.utc).isoformat()
+        
+        # Update assignment to completed and save rating
+        supabase.table("worker_job_assignments").update({
+            "assignment_status": "completed",
+            "rating_score": payload.rating_score,
+            "rating_tags": payload.rating_tags,
+            "rating_feedback": payload.rating_feedback,
+            "rated_by": user_id,
+            "rated_at": now_iso
+        }).eq("job_assignment_id", assignment_id).execute()
+        
+        worker_id = assignment_resp.data[0].get("worker_id")
+        
+        # Recalculate average rating and shifts completed
+        if worker_id:
+            ratings_resp = supabase.table("worker_job_assignments").select("rating_score").eq("worker_id", worker_id).not_.is_("rating_score", "null").execute()
+            if ratings_resp.data:
+                total_score = sum([r.get("rating_score", 0) for r in ratings_resp.data])
+                num_rated_shifts = len(ratings_resp.data)
+                avg_score = round(total_score / num_rated_shifts)
+                supabase.table("users").update({
+                    "ratings": avg_score,
+                    "shifts_completed": num_rated_shifts
+                }).eq("user_id", worker_id).execute()
+        
+        return {"status": "success", "message": "Shift completed and rating saved successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error completing job assignment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
