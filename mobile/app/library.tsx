@@ -65,8 +65,19 @@ export default function LibraryScreen() {
  const [acceptedJobs, setAcceptedJobs] = useState<any[]>([]);
  const [jobsLoading, setJobsLoading] = useState(false);
  const [acceptingJobId, setAcceptingJobId] = useState<string | null>(null);
+ 
+ const [expandedSections, setExpandedSections] = useState({
+   today: true,
+   upcoming: false,
+   past: false
+ });
 
-
+ const toggleSection = (section: 'today' | 'upcoming' | 'past') => {
+   setExpandedSections(prev => ({
+     ...prev,
+     [section]: !prev[section]
+   }));
+ };
 
  const handleAcceptJob = async (request_id: string) => {
  setAcceptingJobId(request_id);
@@ -802,7 +813,6 @@ export default function LibraryScreen() {
  ) : (
  acceptedJobs.length === 0 ? (
  <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
- {/* <Text className="text-6xl mb-6">📅</Text> */}
  <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Accepted Jobs</Text>
  <Text className="text-gray-500 text-center leading-relaxed">
  You haven't accepted any jobs yet. Check the Available tab for opportunities.
@@ -810,28 +820,83 @@ export default function LibraryScreen() {
  </View>
  ) : (
  <>
- <Text className="text-base font-bold text-gray-900 mb-3 ml-1 mt-2">Today</Text>
- {todayAcceptedJobs.length === 0 ? (
- <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center mb-5">
- <Text className="text-gray-500 text-sm">No job scheduled for today</Text>
- </View>
- ) : (
- todayAcceptedJobs.map(renderAcceptedJobCard)
- )}
+   {/* Today Accordion */}
+   <TouchableOpacity 
+     onPress={() => toggleSection('today')}
+     className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
+   >
+     <View className="flex-row items-center">
+       <Text className="text-base font-bold text-gray-900">Today Jobs</Text>
+       <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
+         <Text className="text-primary-700 text-xs font-bold">{todayAcceptedJobs.length}</Text>
+       </View>
+     </View>
+     <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#4B5563" />
+   </TouchableOpacity>
 
- {upcomingAcceptedJobs.length > 0 && (
- <>
- <Text className="text-base font-bold text-gray-900 mb-3 ml-1 mt-4">Upcoming Jobs</Text>
- {upcomingAcceptedJobs.map(renderAcceptedJobCard)}
- </>
- )}
+   {expandedSections.today && (
+     <View className="mb-4">
+       {todayAcceptedJobs.length === 0 ? (
+         <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
+           <Text className="text-gray-500 text-sm">No job scheduled for today</Text>
+         </View>
+       ) : (
+         todayAcceptedJobs.map(renderAcceptedJobCard)
+       )}
+     </View>
+   )}
 
- {pastAcceptedJobs.length > 0 && (
- <>
- <Text className="text-base font-bold text-gray-900 mb-3 ml-1 mt-4">Past Jobs</Text>
- {pastAcceptedJobs.map(renderAcceptedJobCard)}
- </>
- )}
+   {/* Upcoming Accordion */}
+   <TouchableOpacity 
+     onPress={() => toggleSection('upcoming')}
+     className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
+   >
+     <View className="flex-row items-center">
+       <Text className="text-base font-bold text-gray-900">Upcoming Jobs</Text>
+       <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
+         <Text className="text-primary-700 text-xs font-bold">{upcomingAcceptedJobs.length}</Text>
+       </View>
+     </View>
+     <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#4B5563" />
+   </TouchableOpacity>
+
+   {expandedSections.upcoming && (
+     <View className="mb-4">
+       {upcomingAcceptedJobs.length === 0 ? (
+         <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
+           <Text className="text-gray-500 text-sm">No upcoming jobs</Text>
+         </View>
+       ) : (
+         upcomingAcceptedJobs.map(renderAcceptedJobCard)
+       )}
+     </View>
+   )}
+
+   {/* Past Accordion */}
+   <TouchableOpacity 
+     onPress={() => toggleSection('past')}
+     className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
+   >
+     <View className="flex-row items-center">
+       <Text className="text-base font-bold text-gray-900">Past Jobs</Text>
+       <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
+         <Text className="text-primary-700 text-xs font-bold">{pastAcceptedJobs.length}</Text>
+       </View>
+     </View>
+     <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#4B5563" />
+   </TouchableOpacity>
+
+   {expandedSections.past && (
+     <View className="mb-4">
+       {pastAcceptedJobs.length === 0 ? (
+         <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
+           <Text className="text-gray-500 text-sm">No past jobs</Text>
+         </View>
+       ) : (
+         pastAcceptedJobs.map(renderAcceptedJobCard)
+       )}
+     </View>
+   )}
  </>
  )
  )}

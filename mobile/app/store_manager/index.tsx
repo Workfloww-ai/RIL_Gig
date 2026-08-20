@@ -128,6 +128,20 @@ export default function StoreManagerDashboard() {
 
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
+
+  // Accordion State
+  const [expandedSections, setExpandedSections] = useState({
+    today: true,
+    upcoming: false,
+    past: false
+  });
+
+  const toggleSection = (section: 'today' | 'upcoming' | 'past') => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
   
   // Sort State
   const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_desc');
@@ -498,27 +512,82 @@ export default function StoreManagerDashboard() {
               </View>
             </View>
 
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12 }}>Today</Text>
-            {todayJobs.length === 0 ? (
-              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
-                <Text style={{ color: '#6B7280', fontSize: 14 }}>No job scheduled for today</Text>
+            {/* Today Accordion */}
+            <TouchableOpacity 
+              onPress={() => toggleSection('today')}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Today Jobs</Text>
+                <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
+                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{todayJobs.length}</Text>
+                </View>
               </View>
-            ) : (
-              todayJobs.map(renderJobCard)
+              <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
+            </TouchableOpacity>
+
+            {expandedSections.today && (
+              <View style={{ marginBottom: 16 }}>
+                {todayJobs.length === 0 ? (
+                  <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
+                    <Text style={{ color: '#6B7280', fontSize: 14 }}>No job scheduled for today</Text>
+                  </View>
+                ) : (
+                  todayJobs.map(renderJobCard)
+                )}
+              </View>
             )}
 
-            {upcomingJobs.length > 0 && (
-              <>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12, marginTop: 8 }}>Upcoming Jobs</Text>
-                {upcomingJobs.map(renderJobCard)}
-              </>
+            {/* Upcoming Accordion */}
+            <TouchableOpacity 
+              onPress={() => toggleSection('upcoming')}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Upcoming Jobs</Text>
+                <View style={{ backgroundColor: '#DBEAFE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
+                  <Text style={{ color: '#1D4ED8', fontSize: 12, fontWeight: '700' }}>{upcomingJobs.length}</Text>
+                </View>
+              </View>
+              <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
+            </TouchableOpacity>
+
+            {expandedSections.upcoming && (
+              <View style={{ marginBottom: 16 }}>
+                {upcomingJobs.length === 0 ? (
+                  <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
+                    <Text style={{ color: '#6B7280', fontSize: 14 }}>No upcoming jobs</Text>
+                  </View>
+                ) : (
+                  upcomingJobs.map(renderJobCard)
+                )}
+              </View>
             )}
 
-            {pastJobs.length > 0 && (
-              <>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B', marginBottom: 12, marginTop: 8 }}>Past Jobs</Text>
-                {pastJobs.map(renderJobCard)}
-              </>
+            {/* Past Accordion */}
+            <TouchableOpacity 
+              onPress={() => toggleSection('past')}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Past Jobs</Text>
+                <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
+                  <Text style={{ color: '#4B5563', fontSize: 12, fontWeight: '700' }}>{pastJobs.length}</Text>
+                </View>
+              </View>
+              <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
+            </TouchableOpacity>
+
+            {expandedSections.past && (
+              <View style={{ marginBottom: 16 }}>
+                {pastJobs.length === 0 ? (
+                  <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
+                    <Text style={{ color: '#6B7280', fontSize: 14 }}>No past jobs</Text>
+                  </View>
+                ) : (
+                  pastJobs.map(renderJobCard)
+                )}
+              </View>
             )}
           </View>
         )}
