@@ -400,6 +400,17 @@ async def manager_cancel_and_replace(
             raise HTTPException(status_code=404, detail="Assignment not found")
             
         request_id = assignment_resp.data[0]["request_id"]
+        job_store_id = assignment_resp.data[0]["store_id"]
+        
+        # Verify store manager authorization
+        user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if user_resp.data and user_resp.data[0].get("role_id"):
+            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
+                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
+
         
         # 1. Cancel the assignment
         supabase.table("worker_job_assignments").update({
@@ -489,6 +500,16 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
             raise HTTPException(status_code=404, detail="Assignment not found")
             
         request_id = assignment_resp.data[0]["request_id"]
+        job_store_id = assignment_resp.data[0]["store_id"]
+        
+        # Verify store manager authorization
+        user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if user_resp.data and user_resp.data[0].get("role_id"):
+            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
+                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
         
         # Validate time limit before verifying
         req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
@@ -548,6 +569,17 @@ async def manager_complete_job(
         if not assignment_resp.data:
             raise HTTPException(status_code=404, detail="Assignment not found")
             
+        job_store_id = assignment_resp.data[0]["store_id"]
+        
+        # Verify store manager authorization
+        user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if user_resp.data and user_resp.data[0].get("role_id"):
+            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
+                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
+                    
         if assignment_resp.data[0].get("assignment_status") != "started":
             raise HTTPException(status_code=400, detail="Only started shifts can be completed and rated")
             

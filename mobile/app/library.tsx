@@ -536,7 +536,7 @@ export default function LibraryScreen() {
  </TouchableOpacity>
  <View>
  <Text className="text-white font-bold text-xl leading-tight">SAHYOGI</Text>
- <Text className="text-primary-100 text-xs">Training Content Library</Text>
+ {/* <Text className="text-primary-100 text-xs">Training Content Library</Text> */}
  </View>
  </View>
  </View>
