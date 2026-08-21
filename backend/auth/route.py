@@ -6,8 +6,15 @@ import random
 from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest
 from utils.sms import send_otp_sms
 from utils.supabase_client import supabase
-from utils.jwt_auth import create_access_token, get_current_user
+from utils.jwt_auth import create_access_token, get_current_user, SECRET_KEY
 from fastapi import Depends
+import hmac
+import hashlib
+
+def hash_otp(otp: str) -> str:
+    """Creates an HMAC-SHA256 hash of the OTP to prevent trivial brute force."""
+    key = SECRET_KEY.encode('utf-8') if SECRET_KEY else b'default_secret_key_123'
+    return hmac.new(key, str(otp).encode('utf-8'), hashlib.sha256).hexdigest()
 
 router = APIRouter()
 
@@ -188,8 +195,8 @@ async def upload_documents(
 # 3. POST /auth/send-otp
 @router.post("/send-otp")
 async def send_otp(payload: SendOTPRequest):
-    otp_code = "123456" # Default OTP for testing
-    # otp_code = str(random.randint(100000, 999999))   ye line uncomment krni hai
+    # otp_code = "123456" # Default OTP for testing  ye line comment
+    otp_code = str(random.randint(100000, 999999))   
     
     # Calculate expiration time (e.g., 5 minutes from now)
     from datetime import datetime, timedelta, timezone
@@ -200,15 +207,15 @@ async def send_otp(payload: SendOTPRequest):
     try:
         supabase.table("otp_codes").insert({
             "mobile_number": clean_mobile, 
-            "otp_hash": otp_code,
+            "otp_hash": hash_otp(otp_code),
             "expires_at": expires_at
         }).execute()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save OTP to database: {str(e)}")
     
     # 2. Send SMS (Bypassed for testing)
-    success = True
-    # success = await send_otp_sms(payload.mobile_number, otp_code)   ye line uncomment krni h baad me
+    # success = True   ye line uncomment krni h baad me
+    success = await send_otp_sms(payload.mobile_number, otp_code)   
     
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send SMS. Check terminal logs for Dovesoft API errors.")
@@ -229,7 +236,7 @@ async def verify_otp(payload: VerifyOTPRequest):
     otp_record = response.data[0]
     
     # 2. Check if OTP matches
-    if str(otp_record["otp_hash"]) != str(payload.otp):
+    if str(otp_record["otp_hash"]) != hash_otp(payload.otp):
         raise HTTPException(status_code=400, detail="Incorrect OTP.")
         
     # 3. Check expiration
@@ -279,7 +286,7 @@ async def verify_and_signup(
         
     otp_record = otp_resp.data[0]
     
-    if str(otp_record["otp_hash"]) != str(otp):
+    if str(otp_record["otp_hash"]) != hash_otp(otp):
         raise HTTPException(status_code=400, detail="Incorrect OTP.")
         
     from datetime import datetime, timezone
