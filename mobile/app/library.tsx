@@ -521,8 +521,8 @@ export default function LibraryScreen() {
  };
 
  return (
- <SafeAreaView className="flex-1 bg-gray-50">
- <ScrollView className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
+ <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-gray-50">
+ <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
 
  {/* Header Area */}
  <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 16, paddingHorizontal: 24 }}>
