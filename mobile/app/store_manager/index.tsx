@@ -62,7 +62,7 @@ export default function StoreManagerDashboard() {
 
   // Navigation tab state: 'home' | 'requests' | 'profile'
   const [activeTab, setActiveTab] = useState<'home' | 'requests' | 'profile'>('home');
-  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; role_name?: string } | null>(null);
   const [managerStoreName, setManagerStoreName] = useState<string>('Loading store...');
 
   useEffect(() => {
@@ -597,14 +597,16 @@ export default function StoreManagerDashboard() {
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>My Requests</Text>
-              <TouchableOpacity
-                onPress={() => setIsRaiseModalOpen(true)}
-                style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="add-outline" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>New Request</Text>
-              </TouchableOpacity>
+              {userProfile?.role_name !== 'supervisor' && (
+                <TouchableOpacity
+                  onPress={() => setIsRaiseModalOpen(true)}
+                  style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="add-outline" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>New Request</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {jobsList.map((job) => (
@@ -652,7 +654,7 @@ export default function StoreManagerDashboard() {
               </View>
 
               <Text style={{ fontSize: 22, fontWeight: '700', color: '#1A1A1A', marginBottom: 2, letterSpacing: -0.3 }}>{userProfile ? (userProfile.first_name + ' ' + userProfile.last_name).toUpperCase() : 'RAJESH KUMAR'}</Text>
-              <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 12 }}>Store Manager • {managerStoreName}</Text>
+              <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 12 }}>{userProfile?.role_name ? userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Store Manager'} • {managerStoreName}</Text>
 
               {/* Rating Badge */}
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#FDE68A' }}>

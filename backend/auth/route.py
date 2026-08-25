@@ -195,8 +195,8 @@ async def upload_documents(
 # 3. POST /auth/send-otp
 @router.post("/send-otp")
 async def send_otp(payload: SendOTPRequest):
-    # otp_code = "000000" # Default OTP for testing  ye line comment
-    otp_code = str(random.randint(100000, 999999))   
+    otp_code = "000000" 
+    # otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
     
     # Calculate expiration time (e.g., 5 minutes from now)
     from datetime import datetime, timedelta, timezone
@@ -214,8 +214,8 @@ async def send_otp(payload: SendOTPRequest):
         raise HTTPException(status_code=500, detail=f"Failed to save OTP to database: {str(e)}")
     
     # 2. Send SMS (Bypassed for testing)
-    # success = True   ye line uncomment krni h baad me 
-    success = await send_otp_sms(payload.mobile_number, otp_code)  
+    success = True   
+    # success = await send_otp_sms(payload.mobile_number, otp_code)  ye line uncomment krni h baad me 
     
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send SMS. Check terminal logs for Dovesoft API errors.")
