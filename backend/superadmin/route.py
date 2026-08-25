@@ -249,7 +249,7 @@ async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(g
         }).execute()
         
         # Fetch store details for email
-        store_res = supabase.table("stores").select("store_name, address").eq("store_id", request.store_id).execute()
+        store_res = supabase.table("stores").select("store_name, address, google_map_link").eq("store_id", request.store_id).execute()
         store_name = "Unknown Store"
         store_address = "Unknown Address"
         if store_res.data:
@@ -262,7 +262,8 @@ async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(g
             manager_name=f"{request.first_name} {request.last_name}",
             role=role_name_clean,
             store_name=store_name,
-            store_address=store_address
+            store_address=store_address,
+            google_map_link=store_res.data[0].get("google_map_link", "")
         )
         
         return ActionResponse(status="success", message=f"{role_name_clean.title()} created successfully")

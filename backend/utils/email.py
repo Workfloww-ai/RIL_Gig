@@ -1,19 +1,20 @@
 import os
 import requests
 
-def send_welcome_email(to_email: str, manager_name: str, role: str, store_name: str, store_address: str):
+def send_welcome_email(to_email: str, manager_name: str, role: str, store_name: str, store_address: str, google_map_link: str):
     """
     Sends a welcome email to the newly created manager/supervisor using Resend API.
     """
     subject = f"Welcome to SahYogi! You've been assigned as a {role.title()}"
     
     body = f"""<p>Hello {manager_name},</p>
-<p>You have been successfully added as a <strong>{role.title()}</strong> in our system.</p>
+<p>You have been successfully added as a <strong>{role.replace('_', ' ').title()}</strong> in our system.</p>
 <br>
 <p><strong>Your Assigned Store Details:</strong></p>
 <ul>
     <li><strong>Store Name:</strong> {store_name}</li>
     <li><strong>Store Address:</strong> {store_address}</li>
+    <li><strong>Google Map Link:</strong> <a href="{google_map_link}">{google_map_link}</a></li>
 </ul>
 <br>
 <p>Welcome to the team!</p>

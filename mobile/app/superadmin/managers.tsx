@@ -223,7 +223,7 @@ export default function SuperadminManagers() {
                 control={control}
                 name="mobile_number"
                 render={({ field: { onChange, value } }) => (
-                  <Input label="Phone Number" placeholder="+91 00000 00000" keyboardType="phone-pad" value={value} onChangeText={onChange} error={errors.mobile_number?.message} />
+                  <Input label="Phone Number" placeholder="0000000000" keyboardType="phone-pad" value={value} onChangeText={onChange} error={errors.mobile_number?.message} />
                 )}
               />
 
