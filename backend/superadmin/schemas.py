@@ -43,3 +43,29 @@ class StoresListResponse(BaseModel):
     status: str
     stores: List[StoreResponse]
 
+class ManagerCreateRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    mobile_number: str
+    address: str
+    city: str
+    state: str
+    pincode: str
+    role: str # "store manager" or "supervisor"
+    store_id: str
+
+class ManagerResponse(BaseModel):
+    user_id: str
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    mobile_number: str
+    role_name: str
+    store_name: Optional[str] = None
+
+class ManagersListResponse(BaseModel):
+    status: str
+    managers: List[ManagerResponse]
+
+

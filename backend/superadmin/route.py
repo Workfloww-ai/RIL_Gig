@@ -126,3 +126,119 @@ async def create_store(request: StoreCreateRequest, user_id: str = Depends(get_c
         print(f"Error creating store: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+from .schemas import ManagersListResponse, ManagerCreateRequest, ManagerResponse
+from utils.email import send_welcome_email
+
+@router.get("/managers", response_model=ManagersListResponse)
+async def get_all_managers(user_id: str = Depends(get_current_user)):
+    """
+    Fetch all users with role 'store_manager' or 'supervisor'.
+    """
+    try:
+        # Get role IDs
+        roles_res = supabase.table("roles").select("role_id, role_name").in_("role_name", ["store_manager", "supervisor"]).execute()
+        role_map = {r["role_id"]: r["role_name"] for r in roles_res.data}
+        role_ids = list(role_map.keys())
+        
+        if not role_ids:
+            return ManagersListResponse(status="success", managers=[])
+            
+        # Fetch users
+        users_res = supabase.table("users").select("*").in_("role_id", role_ids).order("created_at", desc=True).execute()
+        
+        # Fetch store assignments
+        user_ids = [u["user_id"] for u in users_res.data]
+        assignments_map = {}
+        if user_ids:
+            assign_res = supabase.table("user_store_assignment").select("user_id, stores(store_name)").in_("user_id", user_ids).execute()
+            for a in assign_res.data:
+                store_data = a.get("stores")
+                if store_data:
+                    # Could be list or dict based on relation setup
+                    if isinstance(store_data, list) and len(store_data) > 0:
+                        store_name = store_data[0].get("store_name")
+                    else:
+                        store_name = store_data.get("store_name")
+                    assignments_map[a["user_id"]] = store_name
+
+        managers = []
+        for u in users_res.data:
+            managers.append(ManagerResponse(
+                user_id=u["user_id"],
+                first_name=u["first_name"],
+                last_name=u["last_name"],
+                email=u.get("email"),
+                mobile_number=u.get("mobile_number", ""),
+                role_name=role_map.get(u["role_id"], "unknown").replace("_", " "),
+                store_name=assignments_map.get(u["user_id"])
+            ))
+            
+        return ManagersListResponse(status="success", managers=managers)
+    except Exception as e:
+        print(f"Error fetching managers: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/managers", response_model=ActionResponse)
+async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(get_current_user)):
+    """
+    Create a new store manager or supervisor.
+    """
+    try:
+        # Validate role
+        role_name_clean = request.role.lower().replace(" ", "_")
+        if role_name_clean not in ["store_manager", "supervisor"]:
+            raise HTTPException(status_code=400, detail="Invalid role. Must be 'store_manager' or 'supervisor'")
+            
+        role_res = supabase.table("roles").select("role_id").eq("role_name", role_name_clean).execute()
+        if not role_res.data:
+            raise HTTPException(status_code=500, detail=f"Role '{role_name_clean}' not found in database")
+        role_id = role_res.data[0]["role_id"]
+        
+        # Insert user
+        user_dict = {
+            "first_name": request.first_name,
+            "last_name": request.last_name,
+            "email": request.email,
+            "mobile_number": request.mobile_number,
+            "address": request.address,
+            "city": request.city,
+            "state": request.state,
+            "pincode": request.pincode,
+            "role_id": role_id
+        }
+        
+        user_res = supabase.table("users").insert(user_dict).execute()
+        if not user_res.data:
+            raise HTTPException(status_code=500, detail="Failed to create user")
+            
+        new_user_id = user_res.data[0]["user_id"]
+        
+        # Insert store assignment
+        assign_res = supabase.table("user_store_assignment").insert({
+            "user_id": new_user_id,
+            "store_id": request.store_id
+        }).execute()
+        
+        # Fetch store details for email
+        store_res = supabase.table("stores").select("store_name, address").eq("store_id", request.store_id).execute()
+        store_name = "Unknown Store"
+        store_address = "Unknown Address"
+        if store_res.data:
+            store_name = store_res.data[0].get("store_name", store_name)
+            store_address = store_res.data[0].get("address", store_address)
+            
+        # Send welcome email
+        send_welcome_email(
+            to_email=request.email,
+            manager_name=f"{request.first_name} {request.last_name}",
+            role=role_name_clean,
+            store_name=store_name,
+            store_address=store_address
+        )
+        
+        return ActionResponse(status="success", message=f"{role_name_clean.title()} created successfully")
+    except Exception as e:
+        print(f"Error creating manager: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
