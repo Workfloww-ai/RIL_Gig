@@ -24,16 +24,28 @@ export default function SuperadminLayout() {
     fetchProfile();
   }, []);
 
+  if (pathname === '/superadmin/profile') {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+        <Slot />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       {/* Top Header */}
       <View style={{ backgroundColor: '#10472B', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? Math.max(40, insets.top) : 40 + insets.top, paddingBottom: 24, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)', marginRight: 12 }}>
+          <TouchableOpacity 
+            onPress={() => router.push('/superadmin/profile')}
+            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)', marginRight: 12 }}
+            activeOpacity={0.7}
+          >
             <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>
               {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'A'}
             </Text>
-          </View>
+          </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>
               Hi, {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() + userProfile.first_name.slice(1) : 'Admin'}

@@ -129,6 +129,35 @@ async def create_store(request: StoreCreateRequest, user_id: str = Depends(get_c
 from .schemas import ManagersListResponse, ManagerCreateRequest, ManagerResponse
 from utils.email import send_welcome_email
 
+from pydantic import BaseModel
+class SuperadminStatsResponse(BaseModel):
+    total_stores: int
+    total_managers: int
+
+@router.get("/stats", response_model=SuperadminStatsResponse)
+async def get_superadmin_stats(user_id: str = Depends(get_current_user)):
+    """
+    Fetch high level statistics for the superadmin dashboard.
+    """
+    try:
+        # Get total stores
+        stores_res = supabase.table("stores").select("store_id", count="exact").execute()
+        total_stores = stores_res.count if hasattr(stores_res, 'count') and stores_res.count is not None else len(stores_res.data)
+
+        # Get total managers (store_manager or supervisor)
+        roles_res = supabase.table("roles").select("role_id").in_("role_name", ["store_manager", "supervisor"]).execute()
+        role_ids = [r["role_id"] for r in roles_res.data]
+        
+        total_managers = 0
+        if role_ids:
+            managers_res = supabase.table("users").select("user_id", count="exact").in_("role_id", role_ids).execute()
+            total_managers = managers_res.count if hasattr(managers_res, 'count') and managers_res.count is not None else len(managers_res.data)
+
+        return SuperadminStatsResponse(total_stores=total_stores, total_managers=total_managers)
+    except Exception as e:
+        print(f"Error fetching superadmin stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/managers", response_model=ManagersListResponse)
 async def get_all_managers(user_id: str = Depends(get_current_user)):
     """
