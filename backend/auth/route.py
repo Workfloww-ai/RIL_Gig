@@ -215,8 +215,8 @@ async def send_otp(payload: SendOTPRequest):
     
     # 2. Send SMS (Bypassed for testing)
     # ye line uncomment krni h baad me
-    # success = True   
-    success = await send_otp_sms(payload.mobile_number, otp_code)  
+    success = True   
+    # success = await send_otp_sms(payload.mobile_number, otp_code)  
     
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send SMS. Check terminal logs for Dovesoft API errors.")
