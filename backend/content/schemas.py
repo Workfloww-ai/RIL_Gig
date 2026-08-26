@@ -15,6 +15,7 @@ class ContentModuleResponse(BaseModel):
     is_locked_default: bool
     status: Optional[str] = "locked"
     highest_quiz_score: Optional[int] = 0
+    completed_at: Optional[str] = None
 
 class QuizSubmissionRequest(BaseModel):
     module_id: str
