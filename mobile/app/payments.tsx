@@ -51,10 +51,10 @@ export default function PaymentsScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         
         {/* Earnings Summary Card */}
-        <View className="bg-moss mx-5 mt-6 rounded-3xl p-6 shadow-sm items-center">
-          <Text className="text-sand text-xs font-bold tracking-widest uppercase mb-2">Lifetime Earnings</Text>
+        <View className="bg-primary-600 mx-5 mt-6 rounded-3xl p-6 shadow-sm items-center">
+          <Text className="text-primary-100 text-xs font-bold tracking-widest uppercase mb-2">Lifetime Earnings</Text>
           <Text className="text-white text-4xl font-bold mb-4">₹ {totalEarnings.toLocaleString()}</Text>
-          <View className="bg-moss/90 px-4 py-2 rounded-full border border-moss/50">
+          <View className="bg-primary-700 px-4 py-2 rounded-full border border-moss/100">
             <Text className="text-white text-xs font-medium">Earnings from all completed shifts</Text>
           </View>
         </View>
