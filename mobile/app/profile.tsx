@@ -8,7 +8,7 @@ import { useAuthStore } from '../src/store/authStore';
 export default function ProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore(state => state.logout);
-  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string, ratings?: number, shifts_completed?: number} | null>(null);
+  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string, ratings?: number, shifts_completed?: number, recent_activity?: any[]} | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -107,21 +107,32 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <View className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-            <View className="flex-row items-center">
-              <View className="w-12 h-12 rounded-full bg-green-100 items-center justify-center mr-4">
-                <Text className="text-green-600 text-xl">✓</Text>
-              </View>
-              <View className="flex-1">
-                <Text className="font-bold text-gray-900 text-base mb-1">Payment Processed</Text>
-                <Text className="text-gray-500 text-xs">August 2026 Earnings</Text>
-              </View>
-              <View className="items-end">
-                <Text className="font-bold text-green-600 text-lg">+₹4,500</Text>
-                <Text className="text-gray-400 text-[10px]">Aug 31</Text>
-              </View>
+          {userProfile?.recent_activity && userProfile.recent_activity.length > 0 ? (
+            userProfile.recent_activity.map((activity, index) => {
+              const date = activity.shift_date ? new Date(activity.shift_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+              return (
+                <View key={activity.id || index} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-3">
+                  <View className="flex-row items-center">
+                    <View className="w-12 h-12 rounded-full bg-green-100 items-center justify-center mr-4">
+                      <Text className="text-green-600 text-xl">✓</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="font-bold text-gray-900 text-base mb-1">{activity.job_name}</Text>
+                      <Text className="text-gray-500 text-xs">Payment Processed - {activity.hours} hrs</Text>
+                    </View>
+                    <View className="items-end">
+                      <Text className="font-bold text-green-600 text-lg">+₹{activity.amount}</Text>
+                      <Text className="text-gray-400 text-[10px]">{date}</Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <View className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+              <Text className="text-gray-500 py-2">No recent activity</Text>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Logout Button */}
