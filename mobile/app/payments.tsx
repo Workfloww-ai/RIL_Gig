@@ -51,10 +51,10 @@ export default function PaymentsScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         
         {/* Earnings Summary Card */}
-        <View className="bg-primary-600 mx-5 mt-6 rounded-3xl p-6 shadow-sm items-center">
+        <View className="bg-moss mx-5 mt-6 rounded-3xl p-6 shadow-sm items-center">
           <Text className="text-primary-100 text-xs font-bold tracking-widest uppercase mb-2">Lifetime Earnings</Text>
           <Text className="text-white text-4xl font-bold mb-4">₹ {totalEarnings.toLocaleString()}</Text>
-          <View className="bg-primary-700 px-4 py-2 rounded-full border border-moss/100">
+          <View className="bg-moss/80 px-4 py-2 rounded-full border border-moss/100">
             <Text className="text-white text-xs font-medium">Earnings from all completed shifts</Text>
           </View>
         </View>
@@ -68,9 +68,9 @@ export default function PaymentsScreen() {
             return (
               <View key={activity.id || index} className="bg-cream rounded-3xl p-5 shadow-sm border border-sage/10 mb-3">
                 <View className="flex-row items-center">
-                  <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'processed' ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                  <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'processed' ? 'bg-moss/10' : 'bg-sage/10'}`}>
                     {activity.payment_status === 'processed' ? (
-                      <Text className="text-green-600 text-xl">✓</Text>
+                      <Text className="text-moss text-xl">✓</Text>
                     ) : (
                       <Feather name="clock" size={24} color="#CA8A04" />
                     )}
@@ -82,7 +82,7 @@ export default function PaymentsScreen() {
                     </Text>
                   </View>
                   <View className="items-end">
-                    <Text className="font-bold text-green-600 text-lg">+₹{activity.amount}</Text>
+                    <Text className="font-bold text-moss text-lg">+₹{activity.amount}</Text>
                     <Text className="text-sage text-[10px]">{date}</Text>
                   </View>
                 </View>

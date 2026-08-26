@@ -65,11 +65,11 @@ export default function ProfileScreen() {
           {/* Dynamic Rating */}
           {userProfile?.shifts_completed ? (
             <>
-              <View className="flex-row items-center bg-yellow-50 px-4 py-2 rounded-full border border-yellow-100">
-                <Text className="text-yellow-500 mr-2 text-lg">
+              <View className="flex-row items-center bg-sand px-4 py-2 rounded-full border border-sage/10">
+                <Text className="text-sage mr-2 text-lg">
                   {'⭐'.repeat(userProfile?.ratings || 0)}
                 </Text>
-                <Text className="text-yellow-700 font-bold">{userProfile?.ratings ? `${userProfile.ratings}.0` : '0.0'}</Text>
+                <Text className="text-slate font-bold">{userProfile?.ratings ? `${userProfile.ratings}.0` : '0.0'}</Text>
               </View>
               <Text className="text-sage text-xs mt-2">Rated by Store Managers</Text>
             </>
@@ -83,16 +83,16 @@ export default function ProfileScreen() {
         {/* Stats Grid */}
         <View className="mx-5 mt-6 flex-row justify-between">
           <View className="bg-cream flex-1 mr-2 rounded-3xl p-5 shadow-sm border border-sage/10 items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mb-3">
-              <Text className="text-green-500 text-xl">💰</Text>
+            <View className="w-10 h-10 rounded-full bg-moss/5 items-center justify-center mb-3">
+              <Text className="text-moss/80 text-xl">💰</Text>
             </View>
             <Text className="text-sage text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Earnings</Text>
             <Text className="text-2xl font-bold text-slate text-center">₹ {totalEarnings.toLocaleString()}</Text>
           </View>
           
           <View className="bg-cream flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-sage/10 items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
-              <Text className="text-blue-500 text-xl">📋</Text>
+            <View className="w-10 h-10 rounded-full bg-moss/10 items-center justify-center mb-3">
+              <Text className="text-moss/80 text-xl">📋</Text>
             </View>
             <Text className="text-sage text-xs font-bold tracking-widest uppercase mb-1 text-center">Shifts Completed</Text>
             <Text className="text-2xl font-bold text-slate text-center">{userProfile?.shifts_completed || 0}</Text>
@@ -114,9 +114,9 @@ export default function ProfileScreen() {
               return (
                 <View key={activity.id || index} className="bg-cream rounded-3xl p-5 shadow-sm border border-sage/10 mb-3">
                   <View className="flex-row items-center">
-                    <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'processed' ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                    <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'processed' ? 'bg-moss/10' : 'bg-sage/10'}`}>
                     {activity.payment_status === 'processed' ? (
-                      <Text className="text-green-600 text-xl">✓</Text>
+                      <Text className="text-moss text-xl">✓</Text>
                     ) : (
                       <Feather name="clock" size={24} color="#CA8A04" />
                     )}
@@ -128,7 +128,7 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
                     <View className="items-end">
-                      <Text className="font-bold text-green-600 text-lg">+₹{activity.amount}</Text>
+                      <Text className="font-bold text-moss text-lg">+₹{activity.amount}</Text>
                       <Text className="text-sage text-[10px]">{date}</Text>
                     </View>
                   </View>

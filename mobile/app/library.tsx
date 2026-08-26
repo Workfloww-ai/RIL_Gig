@@ -282,7 +282,7 @@ export default function LibraryScreen() {
  <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
  <View className="flex-row justify-between items-start mb-4">
  <View className="flex-1 pr-4">
- <View className="bg-blue-50 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-blue-100">
+ <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-moss/20">
  <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
  <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
  </View>
@@ -321,7 +321,7 @@ export default function LibraryScreen() {
  {(() => {
    let statusText = job.assignment_status.toUpperCase();
    let iconName = "check-circle";
-   let textColor = "text-green-600";
+   let textColor = "text-moss";
    let iconColor = "#10B981";
 
    if (job.assignment_status === 'accepted' && !isBeforeStart(job.shift_date, job.start_time)) {
@@ -361,7 +361,7 @@ export default function LibraryScreen() {
 
  {/* T-90 */}
  <View className="items-center w-[30%]">
- <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t90State === 'confirmed' ? 'bg-green-100' : t90State === 'missed' ? 'bg-clay/20' : 'bg-sage/10'}`}>
+ <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t90State === 'confirmed' ? 'bg-moss/10' : t90State === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
  <Feather name={t90State === 'confirmed' ? 'check' : t90State === 'missed' ? 'x' : 'clock'} size={14} color={t90State === 'confirmed' ? '#10B981' : t90State === 'missed' ? '#EF4444' : '#9CA3AF'} />
  </View>
  <Text className="text-[9px] font-bold text-slate text-center">{t90State === 'missed' ? 'Missed' : '90m Before'}</Text>
@@ -380,11 +380,11 @@ export default function LibraryScreen() {
  )}
  </View>
 
- <View className={`h-[2px] flex-1 mt-3 mx-1 ${t90State === 'confirmed' ? 'bg-green-300' : 'bg-sage/20'}`} />
+ <View className={`h-[2px] flex-1 mt-3 mx-1 ${t90State === 'confirmed' ? 'bg-moss/50' : 'bg-sage/20'}`} />
 
  {/* T-60 */}
  <View className="items-center w-[30%]">
- <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t60State === 'confirmed' ? 'bg-green-100' : t60State === 'missed' ? 'bg-clay/20' : 'bg-sage/10'}`}>
+ <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t60State === 'confirmed' ? 'bg-moss/10' : t60State === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
  <Feather name={t60State === 'confirmed' ? 'check' : t60State === 'missed' ? 'x' : 'navigation'} size={14} color={t60State === 'confirmed' ? '#10B981' : t60State === 'missed' ? '#EF4444' : '#9CA3AF'} />
  </View>
  <Text className="text-[9px] font-bold text-slate text-center">{t60State === 'missed' ? 'Missed' : '60m Before'}</Text>
@@ -403,11 +403,11 @@ export default function LibraryScreen() {
  )}
  </View>
 
- <View className={`h-[2px] flex-1 mt-3 mx-1 ${t60State === 'confirmed' ? 'bg-green-300' : 'bg-sage/20'}`} />
+ <View className={`h-[2px] flex-1 mt-3 mx-1 ${t60State === 'confirmed' ? 'bg-moss/50' : 'bg-sage/20'}`} />
 
  {/* Arrival */}
  <View className="items-center w-[30%]">
- <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${arrivalState === 'confirmed' ? 'bg-green-100' : arrivalState === 'missed' ? 'bg-clay/20' : 'bg-sage/10'}`}>
+ <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${arrivalState === 'confirmed' ? 'bg-moss/10' : arrivalState === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
  <Feather name={arrivalState === 'confirmed' ? 'check' : arrivalState === 'missed' ? 'x' : 'map-pin'} size={14} color={arrivalState === 'confirmed' ? '#10B981' : arrivalState === 'missed' ? '#EF4444' : '#9CA3AF'} />
  </View>
  <Text className="text-[9px] font-bold text-slate text-center">{arrivalState === 'missed' ? 'Missed' : 'On Arrival'}</Text>
@@ -432,18 +432,18 @@ export default function LibraryScreen() {
  })()}
 
         {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && isBeforeStart(job.shift_date, job.start_time) && (
-          <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
+          <View className="mt-3 bg-moss/5 border border-moss/20 p-3 rounded-xl items-center">
             {startOtps[job.request_id] ? (
               <View className="items-center">
                 <Text className="text-sage text-xs mb-1">Your Start OTP</Text>
-                <Text className="text-2xl font-black text-green-700 tracking-widest">{startOtps[job.request_id]}</Text>
+                <Text className="text-2xl font-black text-moss tracking-widest">{startOtps[job.request_id]}</Text>
                 <Text className="text-sage text-[10px] mt-1 text-center">Show this code to the store manager to start your shift.</Text>
               </View>
             ) : (
               <TouchableOpacity
                 onPress={() => handleStartOtp(job.request_id)}
                 disabled={generatingOtpId === job.request_id}
-                className="bg-green-600 w-full py-3 rounded-lg items-center flex-row justify-center"
+                className="bg-moss w-full py-3 rounded-lg items-center flex-row justify-center"
               >
                 {generatingOtpId === job.request_id ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
@@ -459,17 +459,17 @@ export default function LibraryScreen() {
         )}
 
         {job.arrival_status === 'arrived' && job.assignment_status === 'started' && (
-          <View className="mt-3 bg-green-50 border border-green-200 p-4 rounded-xl items-center shadow-sm">
-            <View className="bg-green-100 p-2 rounded-full mb-2">
+          <View className="mt-3 bg-moss/5 border border-moss/20 p-4 rounded-xl items-center shadow-sm">
+            <View className="bg-moss/10 p-2 rounded-full mb-2">
               <Feather name="check-circle" size={28} color="#15803D" />
             </View>
-            <Text className="text-xl font-black text-green-700">Verified</Text>
-            {/* <Text className="text-green-600 text-[11px] mt-1 text-center font-medium">Your shift has officially begun. Great job!</Text> */}
+            <Text className="text-xl font-black text-moss">Verified</Text>
+            {/* <Text className="text-moss text-[11px] mt-1 text-center font-medium">Your shift has officially begun. Great job!</Text> */}
           </View>
         )}
 
         {job.assignment_status === 'completed' && job.rating_score && (
-          <View className="mt-3 bg-green-50 border border-green-200 p-4 rounded-xl items-center shadow-sm">
+          <View className="mt-3 bg-moss/5 border border-moss/20 p-4 rounded-xl items-center shadow-sm">
             <Text className="text-sage text-[10px] uppercase font-bold tracking-wider mb-2">Manager Rating</Text>
             <View className="flex-row mb-2">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -483,13 +483,13 @@ export default function LibraryScreen() {
                 />
               ))}
             </View>
-            <Text className="text-xl font-black text-green-700 mb-2">{job.rating_score}.0 / 5.0</Text>
+            <Text className="text-xl font-black text-moss mb-2">{job.rating_score}.0 / 5.0</Text>
             
             {job.rating_tags && job.rating_tags.length > 0 && (
               <View className="flex-row flex-wrap justify-center mt-1">
                 {job.rating_tags.map((tag: string, idx: number) => (
-                  <View key={idx} className="bg-cream border border-green-200 px-2 py-1 rounded-md m-1">
-                    <Text className="text-green-700 text-[10px] font-bold">{tag}</Text>
+                  <View key={idx} className="bg-cream border border-moss/20 px-2 py-1 rounded-md m-1">
+                    <Text className="text-moss text-[10px] font-bold">{tag}</Text>
                   </View>
                 ))}
               </View>
@@ -593,7 +593,7 @@ export default function LibraryScreen() {
  {/* Placeholder for video thumbnail */}
  <View className="absolute inset-0 bg-sage/30 opacity-50" />
  <View className="absolute inset-0 items-center justify-center">
- <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-green-500' : 'bg-moss/80'}`}>
+ <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-moss/50' : 'bg-moss/80'}`}>
  <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
  </View>
  </View>
@@ -605,7 +605,7 @@ export default function LibraryScreen() {
  {/* Details */}
  <View className="flex-1 justify-between py-1">
  <View>
- <View className="bg-blue-50 self-start px-2 py-1 rounded-full mb-2">
+ <View className="bg-moss/10 self-start px-2 py-1 rounded-full mb-2">
  <Text className="text-moss text-[10px] font-bold tracking-wider">{module.category_name}</Text>
  </View>
  <Text className="font-bold text-slate text-base leading-tight mb-1" numberOfLines={2}>
@@ -633,10 +633,10 @@ export default function LibraryScreen() {
  ) : module.status === 'quiz_passed' ? (
  <TouchableOpacity
  onPress={() => handleStartLesson(module.id)}
- className="bg-green-50 px-5 py-2.5 rounded-full flex-row items-center border border-green-200"
+ className="bg-moss/5 px-5 py-2.5 rounded-full flex-row items-center border border-moss/20"
  >
- <Text className="text-green-600 font-bold mr-2">✓ Passed</Text>
- <Text className="text-green-500 text-xs font-medium bg-green-100 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
+ <Text className="text-moss font-bold mr-2">✓ Passed</Text>
+ <Text className="text-moss/80 text-xs font-medium bg-moss/10 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
  </TouchableOpacity>
  ) : (
  <TouchableOpacity
@@ -672,7 +672,7 @@ export default function LibraryScreen() {
  <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
  {/* Certificate Template */}
  <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
- <View className="w-full aspect-[1.4] bg-[#FFFFFF] border-8 border-[#10472B] rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden">
+ <View className="w-full aspect-[1.4] bg-cream border-8 border-moss rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden">
  {/* Branding Logo - Top Left */}
  <View className="absolute top-3 left-3 z-20">
  <Image
@@ -683,22 +683,22 @@ export default function LibraryScreen() {
 
  {/* Main Content Centered */}
  <View className="items-center z-10 w-full mt-2">
- <Text className="text-2xl font-serif font-bold text-[#10472B] mb-0.5">CERTIFICATE</Text>
- <Text className="text-[9px] text-[#10472B] tracking-widest uppercase font-bold mb-3">of completion</Text>
- <Text className="text-[#666666] italic text-[10px] mb-1">This is proudly presented to</Text>
- <View className="px-4 w-full border-b border-[#E5E7EB] pb-1 mb-2">
- <Text className="text-xl font-bold text-[#1A1A1A] w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
+ <Text className="text-2xl font-serif font-bold text-moss mb-0.5">CERTIFICATE</Text>
+ <Text className="text-[9px] text-moss tracking-widest uppercase font-bold mb-3">of completion</Text>
+ <Text className="text-sage italic text-[10px] mb-1">This is proudly presented to</Text>
+ <View className="px-4 w-full border-b border-sage/20 pb-1 mb-2">
+ <Text className="text-xl font-bold text-slate w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
  {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'STUDENT NAME'}
  </Text>
  </View>
- <Text className="text-[#666666] italic text-center text-[9px] px-6 leading-tight">
+ <Text className="text-sage italic text-center text-[9px] px-6 leading-tight">
  For successfully completing all required training modules in the Sahyogi program.
  </Text>
  </View>
 
  {/* Date - Bottom Left */}
  <View className="absolute bottom-3 left-4 items-center w-20 z-10">
- <Text className="text-[#1A1A1A] font-bold border-b border-sage/30 pb-0.5 w-full text-center text-[10px]">
+ <Text className="text-slate font-bold border-b border-sage/30 pb-0.5 w-full text-center text-[10px]">
  {(() => {
  const formatDate = (date: Date) => {
  const d = String(date.getDate()).padStart(2, '0');
@@ -714,18 +714,18 @@ export default function LibraryScreen() {
  return formatDate(new Date());
  })()}
  </Text>
- <Text className="text-[#666666] text-[7px] uppercase font-bold tracking-wider mt-0.5">Date</Text>
+ <Text className="text-sage text-[7px] uppercase font-bold tracking-wider mt-0.5">Date</Text>
  </View>
 
  {/* Seal - Bottom Right */}
- <View className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-[#E31B23] items-center justify-center transform rotate-12 shadow-sm border-2 border-[#FFFFFF] z-10">
+ <View className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-clay items-center justify-center transform rotate-12 shadow-sm border-2 border-[#FFFFFF] z-10">
  <Text className="text-white text-[7px] font-bold text-center leading-tight">Sahyogi{'\n'}Certified</Text>
  </View>
  </View>
  </ViewShot>
 
  <View className="mt-8 items-center justify-center w-full">
- <TouchableOpacity onPress={shareCertificate} className="bg-[#E31B23] px-8 py-3.5 rounded-full flex-row items-center shadow-md">
+ <TouchableOpacity onPress={shareCertificate} className="bg-clay px-8 py-3.5 rounded-full flex-row items-center shadow-md">
  <Feather name="share" size={18} color="white" style={{ marginRight: 8 }} />
  <Text className="font-bold text-white tracking-wide text-sm">Share Certificate</Text>
  </TouchableOpacity>
@@ -776,7 +776,7 @@ export default function LibraryScreen() {
  <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
  <View className="flex-row justify-between items-start mb-4">
  <View className="flex-1 pr-4">
- <View className="bg-blue-50 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-blue-100">
+ <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-moss/20">
  <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
  <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
  </View>
@@ -786,9 +786,9 @@ export default function LibraryScreen() {
  <Text className="text-sage text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
  </View>
  </View>
- <View className="bg-green-50 px-3 py-2.5 rounded-2xl items-center border border-green-100 min-w-[75px] shadow-sm">
- <Text className="text-green-700 font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
- <Text className="text-green-600 text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
+ <View className="bg-moss/5 px-3 py-2.5 rounded-2xl items-center border border-moss/10 min-w-[75px] shadow-sm">
+ <Text className="text-moss font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
+ <Text className="text-moss text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
  </View>
  </View>
 
