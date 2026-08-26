@@ -195,8 +195,8 @@ async def upload_documents(
 # 3. POST /auth/send-otp
 @router.post("/send-otp")
 async def send_otp(payload: SendOTPRequest):
-    otp_code = "123456" # Default OTP for testing  ye line comment
-    # otp_code = str(random.randint(100000, 999999))   
+    otp_code = "000000" 
+    # otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
     
     # Calculate expiration time (e.g., 5 minutes from now)
     from datetime import datetime, timedelta, timezone

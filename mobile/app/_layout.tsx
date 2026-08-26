@@ -8,6 +8,7 @@ export default function RootLayout() {
       <Stack.Screen name="otp" />
       <Stack.Screen name="signup" />
       <Stack.Screen name="store_manager" />
+      <Stack.Screen name="superadmin" />
       <Stack.Screen name="library" />
     </Stack>
   );

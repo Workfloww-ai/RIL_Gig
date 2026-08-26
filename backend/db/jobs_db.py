@@ -30,7 +30,8 @@ def create_job_request(user_id: str, request_data: Dict[str, Any]):
         # Ensure date and time are stringified (Pydantic model_dump handles this at router level usually)
         "shift_date": request_data["shift_date"],
         "start_time": request_data["start_time"],
-        "hours_duration": request_data["hours_duration"]
+        "hours_duration": request_data["hours_duration"],
+        "approval_status": "pending"
     }
     
     # 3. Insert into manpower_requests table

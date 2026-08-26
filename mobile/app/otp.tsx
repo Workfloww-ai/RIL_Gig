@@ -79,7 +79,9 @@ export default function OTPScreen() {
       if (status === 'login_success') {
         setToken(token);
         
-        if (role === 'store_manager') {
+        if (role === 'superadmin') {
+          router.replace('/superadmin');
+        } else if (role === 'store_manager' || role === 'supervisor') {
           router.replace('/store_manager');
         } else {
           router.replace('/library');

@@ -7,6 +7,7 @@ from auth.route import router as auth_router
 from content.route import router as content_router
 from jobs.route import router as jobs_router
 from stores.route import router as stores_router
+from superadmin.route import router as superadmin_router
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from jobs.cron_tasks import check_t90_voice_calls
@@ -52,6 +53,9 @@ app.include_router(jobs_router, prefix="/api/jobs", tags=["Jobs"])
 
 # Include the stores router
 app.include_router(stores_router, prefix="/api/stores", tags=["Stores"])
+
+# Include the superadmin router
+app.include_router(superadmin_router, prefix="/api/superadmin", tags=["Superadmin"])
 
 @app.get("/health")
 async def health():
