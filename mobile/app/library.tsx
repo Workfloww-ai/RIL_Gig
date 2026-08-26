@@ -20,6 +20,7 @@ interface Module {
  order_index: number;
  status: string;
  highest_quiz_score: number;
+ completed_at?: string;
 }
 
 export default function LibraryScreen() {
@@ -698,7 +699,20 @@ export default function LibraryScreen() {
  {/* Date - Bottom Left */}
  <View className="absolute bottom-3 left-4 items-center w-20 z-10">
  <Text className="text-[#1A1A1A] font-bold border-b border-gray-300 pb-0.5 w-full text-center text-[10px]">
- {new Date().toLocaleDateString()}
+ {(() => {
+ const formatDate = (date: Date) => {
+ const d = String(date.getDate()).padStart(2, '0');
+ const m = String(date.getMonth() + 1).padStart(2, '0');
+ const y = date.getFullYear();
+ return `${d}/${m}/${y}`;
+ };
+ const completedModules = modules.filter(m => m.status === 'quiz_passed' && m.completed_at);
+ if (completedModules.length > 0) {
+ const maxDate = new Date(Math.max(...completedModules.map(m => new Date(m.completed_at as string).getTime())));
+ return formatDate(maxDate);
+ }
+ return formatDate(new Date());
+ })()}
  </Text>
  <Text className="text-[#666666] text-[7px] uppercase font-bold tracking-wider mt-0.5">Date</Text>
  </View>

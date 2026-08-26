@@ -285,7 +285,7 @@ export default function StudioScreen() {
                 </TouchableOpacity>
               ) : (
                 <View className="bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-100 items-center">
-                  <Text className="text-gray-400 text-xs font-medium">Complete 100% to Unlock Quix</Text>
+                  <Text className="text-gray-400 text-xs font-medium">Complete 100% to Unlock Quiz</Text>
                   
                 </View>
               )}
