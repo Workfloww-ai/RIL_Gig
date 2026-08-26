@@ -16,42 +16,9 @@ export default function PaymentsScreen() {
       try {
         const res = await apiClient.get('/auth/me');
         if (res.data && res.data.recent_activity) {
-          const activities = res.data.recent_activity;
+          setPayments(res.data.recent_activity);
           
-          let total = 0;
-          const grouped: Record<string, any> = {};
-
-          activities.forEach((act: any) => {
-            total += act.amount || 0;
-            if (!act.shift_date) return;
-            const d = new Date(act.shift_date);
-            const monthStr = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-            
-            if (!grouped[monthStr]) {
-              grouped[monthStr] = {
-                id: monthStr,
-                month: monthStr,
-                amount: 0,
-                date: act.shift_date,
-                status: 'Processed'
-              };
-            }
-            grouped[monthStr].amount += (act.amount || 0);
-            if (new Date(act.shift_date) > new Date(grouped[monthStr].date)) {
-               grouped[monthStr].date = act.shift_date;
-            }
-          });
-          
-          const sortedPayments = Object.values(grouped).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          
-          // Format date strings
-          sortedPayments.forEach((p: any) => {
-             p.date = new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-          });
-
-          setPayments(sortedPayments);
-          // Set total from profile if available, otherwise fallback to calculated total
-          // Note: Mock UI showed ₹ 12,500 total but month-wise adds up to ₹ 12,500. We use calculated or profile data.
+          const total = res.data.recent_activity.reduce((sum: number, act: any) => sum + (act.amount || 0), 0);
           setTotalEarnings(total);
         }
       } catch (error) {
@@ -88,34 +55,36 @@ export default function PaymentsScreen() {
           <Text className="text-primary-100 text-xs font-bold tracking-widest uppercase mb-2">Lifetime Earnings</Text>
           <Text className="text-white text-4xl font-bold mb-4">₹ {totalEarnings.toLocaleString()}</Text>
           <View className="bg-primary-700 px-4 py-2 rounded-full border border-primary-500">
-            <Text className="text-white text-xs font-medium">All payments processed successfully</Text>
+            <Text className="text-white text-xs font-medium">Earnings from all completed shifts</Text>
           </View>
         </View>
 
-        {/* Month-wise List */}
+        {/* All Shifts List */}
         <View className="px-5 pt-8 pb-10">
-          <Text className="text-lg font-bold text-gray-900 mb-4">Month-wise Payments</Text>
+          <Text className="text-lg font-bold text-gray-900 mb-4">All Activity</Text>
           
-          {payments.length > 0 ? payments.map((payment) => (
-            <View key={payment.id} className="bg-white rounded-3xl p-5 mb-4 shadow-sm border border-gray-100">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="font-bold text-gray-900 text-lg">{payment.month}</Text>
-                <Text className="font-bold text-green-600 text-xl">+₹{payment.amount.toLocaleString()}</Text>
-              </View>
-              
-              <View className="flex-row items-center justify-between border-t border-gray-50 pt-3">
+          {payments.length > 0 ? payments.map((activity, index) => {
+            const date = activity.shift_date ? new Date(activity.shift_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            return (
+              <View key={activity.id || index} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-3">
                 <View className="flex-row items-center">
-                  <View className="w-6 h-6 rounded-full bg-green-100 items-center justify-center mr-2">
-                    <Text className="text-green-600 text-[10px]">✓</Text>
+                  <View className="w-12 h-12 rounded-full bg-green-100 items-center justify-center mr-4">
+                    <Text className="text-green-600 text-xl">✓</Text>
                   </View>
-                  <Text className="text-gray-500 text-xs font-medium">{payment.status}</Text>
+                  <View className="flex-1">
+                    <Text className="font-bold text-gray-900 text-base mb-1">{activity.job_name}</Text>
+                    <Text className="text-gray-500 text-xs">Amount needs to be processed - {activity.hours} hrs</Text>
+                  </View>
+                  <View className="items-end">
+                    <Text className="font-bold text-green-600 text-lg">+₹{activity.amount}</Text>
+                    <Text className="text-gray-400 text-[10px]">{date}</Text>
+                  </View>
                 </View>
-                <Text className="text-gray-400 text-xs">{payment.date}</Text>
               </View>
-            </View>
-          )) : (
+            );
+          }) : (
             <View className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
-              <Text className="text-gray-500 py-2">No payment history available</Text>
+              <Text className="text-gray-500 py-2">No activity available</Text>
             </View>
           )}
         </View>

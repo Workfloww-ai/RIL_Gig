@@ -59,7 +59,7 @@ def get_recent_activity(user_id: str):
     """
     response = supabase.table("worker_job_assignments").select(
         "job_assignment_id, assignment_status, updated_at, manpower_requests(request_id, shift_date, hours_duration, jobs(job_name, base_compensation))"
-    ).eq("worker_id", user_id).eq("assignment_status", "completed").order("updated_at", desc=True).limit(5).execute()
+    ).eq("worker_id", user_id).eq("assignment_status", "completed").order("updated_at", desc=True).execute()
     
     activities = []
     for row in response.data:

@@ -118,7 +118,7 @@ export default function ProfileScreen() {
                     </View>
                     <View className="flex-1">
                       <Text className="font-bold text-gray-900 text-base mb-1">{activity.job_name}</Text>
-                      <Text className="text-gray-500 text-xs">Payment Processed - {activity.hours} hrs</Text>
+                      <Text className="text-gray-500 text-xs">Amount needs to be processed - {activity.hours} hrs</Text>
                     </View>
                     <View className="items-end">
                       <Text className="font-bold text-green-600 text-lg">+₹{activity.amount}</Text>
