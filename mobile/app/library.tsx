@@ -826,7 +826,7 @@ export default function LibraryScreen() {
      className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
    >
      <View className="flex-row items-center">
-       <Text className="text-base font-bold text-gray-900">Today Jobs</Text>
+       <Text className="text-base font-bold text-gray-900">Jobs Today</Text>
        <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
          <Text className="text-primary-700 text-xs font-bold">{todayAcceptedJobs.length}</Text>
        </View>
