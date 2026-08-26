@@ -676,7 +676,7 @@ export default function LibraryScreen() {
  {/* Branding Logo - Top Left */}
  <View className="absolute top-3 left-3 z-20">
  <Image
- source={require('../assets/images/logo-sahyogi.png')}
+ source={require('../assets/images/icon_sahyogi.png')}
  style={{ width: 55, height: 25, resizeMode: 'contain' }}
  />
  </View>

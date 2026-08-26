@@ -4,7 +4,7 @@
     "slug": "sahyogi",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo-sahyogi.png",
+    "icon": "./assets/images/icon_sahyogi.png",
     "scheme": "sahyogi",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -13,7 +13,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/logo-sahyogi.png",
+        "foregroundImage": "./assets/images/icon_sahyogi.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
