@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: '${{secrets.GCP_PROJECT_ID}}’ 
+  PROJECT_ID: '${{secrets.GCP_PROJECT_ID}}' 
   SERVICE: 'sahyogi-backend'
   REGION: 'asia-south2'
 
