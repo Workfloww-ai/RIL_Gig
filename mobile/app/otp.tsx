@@ -115,13 +115,13 @@ export default function OTPScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white pt-8">
+    <SafeAreaView className="flex-1 bg-cream pt-8">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center px-8">
         <View className="mb-12">
-          <Text className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">Verify OTP</Text>
-          <Text className="text-gray-500 text-lg font-medium leading-relaxed">
+          <Text className="text-4xl font-bold text-slate mb-3 tracking-tight">Verify OTP</Text>
+          <Text className="text-sage text-lg font-medium leading-relaxed">
             We've sent a verification code to {"\n"}
-            <Text className="font-bold text-primary-500">{mobile}</Text>
+            <Text className="font-bold text-moss/80">{mobile}</Text>
           </Text>
         </View>
 
@@ -146,7 +146,7 @@ export default function OTPScreen() {
           variant="ghost"
           onPress={() => apiClient.post('/auth/send-otp', { mobile_number: mobile })}
           disabled={loading}
-          style={{ color: '#2563EB' }}
+          style={{ color: '#0B5B31' }}
           
         />
         </View>

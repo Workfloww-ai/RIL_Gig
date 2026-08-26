@@ -91,7 +91,7 @@ export default function SignupDetailsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 pt-8">
+    <SafeAreaView className="flex-1 bg-sand pt-8">
       <KeyboardAwareScrollView 
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 60 }}
@@ -99,16 +99,16 @@ export default function SignupDetailsScreen() {
         enableOnAndroid={true}
         extraScrollHeight={20}
       >
-        <Text className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Create Profile</Text>
-        <Text className="text-gray-500 mb-8 text-base font-medium">Tell us a bit about yourself to get started.</Text>
+        <Text className="text-4xl font-bold text-slate mb-2 tracking-tight">Create Profile</Text>
+        <Text className="text-sage mb-8 text-base font-medium">Tell us a bit about yourself to get started.</Text>
 
         {Object.keys(errors).length > 0 && (
-          <View className="bg-red-50 border border-red-200 p-4 rounded-xl mb-6">
-            <Text className="text-red-600 font-medium">Please fill all mandatory fields correctly before proceeding.</Text>
+          <View className="bg-clay/10 border border-red-200 p-4 rounded-xl mb-6">
+            <Text className="text-clay font-medium">Please fill all mandatory fields correctly before proceeding.</Text>
           </View>
         )}
 
-        <View className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
+        <View className="bg-cream p-5 rounded-3xl shadow-sm border border-sage/10 mb-6">
           <Controller
             control={control}
             name="first_name"
@@ -137,17 +137,17 @@ export default function SignupDetailsScreen() {
             name="gender"
             render={({ field: { value } }) => (
               <View className="mb-4">
-                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">Gender <Text className="text-red-500">*</Text></Text>
+                <Text className="text-slate font-medium text-sm mb-2 ml-1">Gender <Text className="text-clay/80">*</Text></Text>
                 <TouchableOpacity 
                   onPress={() => setShowGenderModal(true)}
-                  className={`w-full bg-gray-50 border ${errors.gender ? 'border-red-500' : 'border-gray-200'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
+                  className={`w-full bg-sand border ${errors.gender ? 'border-clay/50' : 'border-sage/20'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
                 >
-                  <Text className={value ? "text-gray-900" : "text-gray-400"}>
+                  <Text className={value ? "text-slate" : "text-sage"}>
                     {value || "Select Gender"}
                   </Text>
-                  <Text className="text-gray-400">▼</Text>
+                  <Text className="text-sage">▼</Text>
                 </TouchableOpacity>
-                {errors.gender && <Text className="text-red-500 text-xs mt-1 ml-1">{errors.gender.message}</Text>}
+                {errors.gender && <Text className="text-clay/80 text-xs mt-1 ml-1">{errors.gender.message}</Text>}
               </View>
             )}
           />
@@ -158,24 +158,24 @@ export default function SignupDetailsScreen() {
             name="dob"
             render={({ field: { value } }) => (
               <View className="mb-4">
-                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">Date of Birth <Text className="text-red-500">*</Text></Text>
+                <Text className="text-slate font-medium text-sm mb-2 ml-1">Date of Birth <Text className="text-clay/80">*</Text></Text>
                 <TouchableOpacity 
                   onPress={() => setShowDatePicker(true)}
-                  className={`w-full bg-gray-50 border ${errors.dob ? 'border-red-500' : 'border-gray-200'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
+                  className={`w-full bg-sand border ${errors.dob ? 'border-clay/50' : 'border-sage/20'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
                 >
-                  <Text className={value ? "text-gray-900" : "text-gray-400"}>
+                  <Text className={value ? "text-slate" : "text-sage"}>
                     {value || "YYYY-MM-DD"}
                   </Text>
-                  <Text className="text-gray-400">📅</Text>
+                  <Text className="text-sage">📅</Text>
                 </TouchableOpacity>
-                {errors.dob && <Text className="text-red-500 text-xs mt-1 ml-1">{errors.dob.message}</Text>}
+                {errors.dob && <Text className="text-clay/80 text-xs mt-1 ml-1">{errors.dob.message}</Text>}
               </View>
             )}
           />
         </View>
 
-        <Text className="text-lg font-bold text-gray-900 mb-4 ml-1">Contact & Address</Text>
-        <View className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
+        <Text className="text-lg font-bold text-slate mb-4 ml-1">Contact & Address</Text>
+        <View className="bg-cream p-5 rounded-3xl shadow-sm border border-sage/10 mb-6">
           <Controller
             control={control}
             name="alternate_number"
@@ -198,17 +198,17 @@ export default function SignupDetailsScreen() {
             name="state"
             render={({ field: { value } }) => (
               <View className="mb-4">
-                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">State <Text className="text-red-500">*</Text></Text>
+                <Text className="text-slate font-medium text-sm mb-2 ml-1">State <Text className="text-clay/80">*</Text></Text>
                 <TouchableOpacity 
                   onPress={() => setShowStateModal(true)}
-                  className={`w-full bg-gray-50 border ${errors.state ? 'border-red-500' : 'border-gray-200'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
+                  className={`w-full bg-sand border ${errors.state ? 'border-clay/50' : 'border-sage/20'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
                 >
-                  <Text className={value ? "text-gray-900" : "text-gray-400"}>
+                  <Text className={value ? "text-slate" : "text-sage"}>
                     {value || "Select State"}
                   </Text>
-                  <Text className="text-gray-400">▼</Text>
+                  <Text className="text-sage">▼</Text>
                 </TouchableOpacity>
-                {errors.state && <Text className="text-red-500 text-xs mt-1 ml-1">{errors.state.message}</Text>}
+                {errors.state && <Text className="text-clay/80 text-xs mt-1 ml-1">{errors.state.message}</Text>}
               </View>
             )}
           />
@@ -219,19 +219,19 @@ export default function SignupDetailsScreen() {
             name="city"
             render={({ field: { value } }) => (
               <View className="mb-4">
-                <Text className="text-gray-700 font-medium text-sm mb-2 ml-1">City <Text className="text-red-500">*</Text></Text>
+                <Text className="text-slate font-medium text-sm mb-2 ml-1">City <Text className="text-clay/80">*</Text></Text>
                 <TouchableOpacity 
                   onPress={() => {
                     if (selectedStateCode) setShowCityModal(true);
                   }}
-                  className={`w-full ${!selectedStateCode ? 'bg-gray-100 opacity-70' : 'bg-gray-50'} border ${errors.city ? 'border-red-500' : 'border-gray-200'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
+                  className={`w-full ${!selectedStateCode ? 'bg-sage/10 opacity-70' : 'bg-sand'} border ${errors.city ? 'border-clay/50' : 'border-sage/20'} rounded-2xl px-5 py-4 flex-row justify-between items-center`}
                 >
-                  <Text className={value ? "text-gray-900" : "text-gray-400"}>
+                  <Text className={value ? "text-slate" : "text-sage"}>
                     {!selectedStateCode ? "Select State First" : (value || "Select City")}
                   </Text>
-                  <Text className="text-gray-400">▼</Text>
+                  <Text className="text-sage">▼</Text>
                 </TouchableOpacity>
-                {errors.city && <Text className="text-red-500 text-xs mt-1 ml-1">{errors.city.message}</Text>}
+                {errors.city && <Text className="text-clay/80 text-xs mt-1 ml-1">{errors.city.message}</Text>}
               </View>
             )}
           />
@@ -245,8 +245,8 @@ export default function SignupDetailsScreen() {
           />
         </View>
 
-        <Text className="text-lg font-bold text-gray-900 mb-4 ml-1">Payment Details</Text>
-        <View className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-8">
+        <Text className="text-lg font-bold text-slate mb-4 ml-1">Payment Details</Text>
+        <View className="bg-cream p-5 rounded-3xl shadow-sm border border-sage/10 mb-8">
           <Controller
             control={control}
             name="upi_id"
@@ -254,7 +254,7 @@ export default function SignupDetailsScreen() {
               <Input label="UPI ID *" placeholder="name@bank" value={value} onChangeText={onChange} error={errors.upi_id?.message} />
             )}
           />
-          <Text className="text-gray-400 text-xs ml-1 -mt-2 mb-2">Used for quick payouts.</Text>
+          <Text className="text-sage text-xs ml-1 -mt-2 mb-2">Used for quick payouts.</Text>
         </View>
 
         <View className="mb-12">
@@ -280,9 +280,9 @@ export default function SignupDetailsScreen() {
           activeOpacity={1}
           onPress={() => setShowGenderModal(false)}
         >
-          <View className="bg-white w-full rounded-3xl overflow-hidden shadow-xl" onStartShouldSetResponder={() => true}>
-            <View className="bg-gray-50 px-6 py-4 border-b border-gray-100">
-              <Text className="text-lg font-bold text-gray-900">Select Gender</Text>
+          <View className="bg-cream w-full rounded-3xl overflow-hidden shadow-xl" onStartShouldSetResponder={() => true}>
+            <View className="bg-sand px-6 py-4 border-b border-sage/10">
+              <Text className="text-lg font-bold text-slate">Select Gender</Text>
             </View>
             {GENDER_OPTIONS.map((g, idx) => (
               <TouchableOpacity 
@@ -290,7 +290,7 @@ export default function SignupDetailsScreen() {
                 onPress={() => handleGenderSelect(g)}
                 className={`px-6 py-5 ${idx !== GENDER_OPTIONS.length - 1 ? 'border-b border-gray-50' : ''}`}
               >
-                <Text className="text-gray-800 font-medium text-base">{g}</Text>
+                <Text className="text-slate font-medium text-base">{g}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -304,11 +304,11 @@ export default function SignupDetailsScreen() {
           activeOpacity={1}
           onPress={() => setShowStateModal(false)}
         >
-          <View className="bg-white w-full rounded-t-3xl overflow-hidden shadow-xl h-2/3" onStartShouldSetResponder={() => true}>
-            <View className="bg-gray-50 px-6 py-5 border-b border-gray-100 flex-row justify-between items-center">
-              <Text className="text-lg font-bold text-gray-900">Select State</Text>
+          <View className="bg-cream w-full rounded-t-3xl overflow-hidden shadow-xl h-2/3" onStartShouldSetResponder={() => true}>
+            <View className="bg-sand px-6 py-5 border-b border-sage/10 flex-row justify-between items-center">
+              <Text className="text-lg font-bold text-slate">Select State</Text>
               <TouchableOpacity onPress={() => setShowStateModal(false)}>
-                <Text className="text-gray-400 font-bold">Close</Text>
+                <Text className="text-sage font-bold">Close</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -319,8 +319,8 @@ export default function SignupDetailsScreen() {
                   onPress={() => handleStateSelect(item)}
                   className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center"
                 >
-                  <Text className="text-gray-800 font-medium text-base mb-1">{item.name}</Text>
-                  <Text className="text-primary-600 font-bold">→</Text>
+                  <Text className="text-slate font-medium text-base mb-1">{item.name}</Text>
+                  <Text className="text-moss font-bold">→</Text>
                 </TouchableOpacity>
               )}
             />
@@ -335,11 +335,11 @@ export default function SignupDetailsScreen() {
           activeOpacity={1}
           onPress={() => setShowCityModal(false)}
         >
-          <View className="bg-white w-full rounded-t-3xl overflow-hidden shadow-xl h-2/3" onStartShouldSetResponder={() => true}>
-            <View className="bg-gray-50 px-6 py-5 border-b border-gray-100 flex-row justify-between items-center">
-              <Text className="text-lg font-bold text-gray-900">Select City</Text>
+          <View className="bg-cream w-full rounded-t-3xl overflow-hidden shadow-xl h-2/3" onStartShouldSetResponder={() => true}>
+            <View className="bg-sand px-6 py-5 border-b border-sage/10 flex-row justify-between items-center">
+              <Text className="text-lg font-bold text-slate">Select City</Text>
               <TouchableOpacity onPress={() => setShowCityModal(false)}>
-                <Text className="text-gray-400 font-bold">Close</Text>
+                <Text className="text-sage font-bold">Close</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -351,9 +351,9 @@ export default function SignupDetailsScreen() {
                   className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center"
                 >
                   <View>
-                    <Text className="text-gray-800 font-medium text-base mb-1">{item.name}</Text>
+                    <Text className="text-slate font-medium text-base mb-1">{item.name}</Text>
                   </View>
-                  <Text className="text-primary-600 font-bold">→</Text>
+                  <Text className="text-moss font-bold">→</Text>
                 </TouchableOpacity>
               )}
             />

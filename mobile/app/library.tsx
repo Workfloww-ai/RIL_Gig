@@ -279,44 +279,44 @@ export default function LibraryScreen() {
 
  const renderAcceptedJobCard = (job: any) => {
  return (
- <View key={job.request_id} className="bg-white rounded-3xl p-5 mb-5 shadow-sm border border-gray-100">
+ <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
  <View className="flex-row justify-between items-start mb-4">
  <View className="flex-1 pr-4">
  <View className="bg-blue-50 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-blue-100">
- <Feather name="briefcase" size={12} color="#2563EB" style={{ marginRight: 6 }} />
- <Text className="text-primary-700 text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
+ <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
+ <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
  </View>
- <Text className="font-bold text-gray-900 text-lg leading-tight mb-1.5">{job.store_name}</Text>
+ <Text className="font-bold text-slate text-lg leading-tight mb-1.5">{job.store_name}</Text>
  <View className="flex-row items-start">
  <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
- <Text className="text-gray-500 text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
+ <Text className="text-sage text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
  </View>
  </View>
- <View className="bg-primary-50 px-3 py-2.5 rounded-2xl items-center border border-primary-100 min-w-[75px] shadow-sm">
- <Text className="text-primary-700 font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
- <Text className="text-primary-600 text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
+ <View className="bg-moss/5 px-3 py-2.5 rounded-2xl items-center border border-moss/20 min-w-[75px] shadow-sm">
+ <Text className="text-moss font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
+ <Text className="text-moss text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
  </View>
  </View>
 
- <View className="flex-row bg-gray-50 rounded-2xl p-3.5 mb-2 border border-gray-100 justify-around shadow-sm">
+ <View className="flex-row bg-sand rounded-2xl p-3.5 mb-2 border border-sage/10 justify-around shadow-sm">
  <View className="items-center">
- <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
+ <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
  <View className="flex-row items-center">
- <Feather name="calendar" size={12} color="#4B5563" style={{ marginRight: 5 }} />
- <Text className="text-gray-700 font-semibold text-xs">{job.shift_date}</Text>
+ <Feather name="calendar" size={12} color="#666666" style={{ marginRight: 5 }} />
+ <Text className="text-slate font-semibold text-xs">{job.shift_date}</Text>
  </View>
  </View>
- <View className="w-[1px] bg-gray-200 h-full" />
+ <View className="w-[1px] bg-sage/20 h-full" />
  <View className="items-center">
- <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
+ <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
  <View className="flex-row items-center">
- <Feather name="clock" size={12} color="#4B5563" style={{ marginRight: 5 }} />
- <Text className="text-gray-700 font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
+ <Feather name="clock" size={12} color="#666666" style={{ marginRight: 5 }} />
+ <Text className="text-slate font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
  </View>
  </View>
- <View className="w-[1px] bg-gray-200 h-full" />
+ <View className="w-[1px] bg-sage/20 h-full" />
  <View className="items-center">
- <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Status</Text>
+ <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Status</Text>
  <View className="flex-row items-center">
  {(() => {
    let statusText = job.assignment_status.toUpperCase();
@@ -327,15 +327,15 @@ export default function LibraryScreen() {
    if (job.assignment_status === 'accepted' && !isBeforeStart(job.shift_date, job.start_time)) {
      statusText = "NO SHOW";
      iconName = "x-circle";
-     textColor = "text-red-600";
+     textColor = "text-clay";
      iconColor = "#EF4444";
    } else if (job.assignment_status === 'started') {
      iconName = "play-circle";
      textColor = "text-blue-600";
-     iconColor = "#2563EB";
+     iconColor = "#0B5B31";
    } else if (job.assignment_status === 'cancelled') {
      iconName = "x-circle";
-     textColor = "text-gray-500";
+     textColor = "text-sage";
      iconColor = "#6B7280";
    }
 
@@ -355,21 +355,21 @@ export default function LibraryScreen() {
  const t60State = getStepState(job.t60_status, job.shift_date, job.start_time, 't60');
  const arrivalState = getStepState(job.arrival_status, job.shift_date, job.start_time, 'arrival');
  return (
- <View className="mb-3 border border-gray-100 rounded-2xl bg-white p-3">
- <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2">Check-in Process</Text>
+ <View className="mb-3 border border-sage/10 rounded-2xl bg-cream p-3">
+ <Text className="text-sage text-[10px] font-bold uppercase tracking-wider mb-2">Check-in Process</Text>
  <View className="flex-row justify-between items-start">
 
  {/* T-90 */}
  <View className="items-center w-[30%]">
- <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t90State === 'confirmed' ? 'bg-green-100' : t90State === 'missed' ? 'bg-red-100' : 'bg-gray-100'}`}>
+ <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t90State === 'confirmed' ? 'bg-green-100' : t90State === 'missed' ? 'bg-clay/20' : 'bg-sage/10'}`}>
  <Feather name={t90State === 'confirmed' ? 'check' : t90State === 'missed' ? 'x' : 'clock'} size={14} color={t90State === 'confirmed' ? '#10B981' : t90State === 'missed' ? '#EF4444' : '#9CA3AF'} />
  </View>
- <Text className="text-[9px] font-bold text-gray-700 text-center">{t90State === 'missed' ? 'Missed' : '90m Before'}</Text>
+ <Text className="text-[9px] font-bold text-slate text-center">{t90State === 'missed' ? 'Missed' : '90m Before'}</Text>
  {t90State === 'active' && (
  <TouchableOpacity
  onPress={() => handleCheckIn(job.request_id, 't90')}
  disabled={checkingInId !== null}
- className="bg-primary-600 px-2 py-1.5 rounded mt-1.5 w-full items-center"
+ className="bg-moss px-2 py-1.5 rounded mt-1.5 w-full items-center"
  >
  {checkingInId === `${job.request_id}-t90` ? (
  <ActivityIndicator size="small" color="#FFFFFF" />
@@ -380,19 +380,19 @@ export default function LibraryScreen() {
  )}
  </View>
 
- <View className={`h-[2px] flex-1 mt-3 mx-1 ${t90State === 'confirmed' ? 'bg-green-300' : 'bg-gray-200'}`} />
+ <View className={`h-[2px] flex-1 mt-3 mx-1 ${t90State === 'confirmed' ? 'bg-green-300' : 'bg-sage/20'}`} />
 
  {/* T-60 */}
  <View className="items-center w-[30%]">
- <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t60State === 'confirmed' ? 'bg-green-100' : t60State === 'missed' ? 'bg-red-100' : 'bg-gray-100'}`}>
+ <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t60State === 'confirmed' ? 'bg-green-100' : t60State === 'missed' ? 'bg-clay/20' : 'bg-sage/10'}`}>
  <Feather name={t60State === 'confirmed' ? 'check' : t60State === 'missed' ? 'x' : 'navigation'} size={14} color={t60State === 'confirmed' ? '#10B981' : t60State === 'missed' ? '#EF4444' : '#9CA3AF'} />
  </View>
- <Text className="text-[9px] font-bold text-gray-700 text-center">{t60State === 'missed' ? 'Missed' : '60m Before'}</Text>
+ <Text className="text-[9px] font-bold text-slate text-center">{t60State === 'missed' ? 'Missed' : '60m Before'}</Text>
  {t90State !== 'locked' && t60State === 'active' && (
  <TouchableOpacity
  onPress={() => handleCheckIn(job.request_id, 't60')}
  disabled={checkingInId !== null}
- className="bg-primary-600 px-2 py-1.5 rounded mt-1.5 w-full items-center"
+ className="bg-moss px-2 py-1.5 rounded mt-1.5 w-full items-center"
  >
  {checkingInId === `${job.request_id}-t60` ? (
  <ActivityIndicator size="small" color="#FFFFFF" />
@@ -403,19 +403,19 @@ export default function LibraryScreen() {
  )}
  </View>
 
- <View className={`h-[2px] flex-1 mt-3 mx-1 ${t60State === 'confirmed' ? 'bg-green-300' : 'bg-gray-200'}`} />
+ <View className={`h-[2px] flex-1 mt-3 mx-1 ${t60State === 'confirmed' ? 'bg-green-300' : 'bg-sage/20'}`} />
 
  {/* Arrival */}
  <View className="items-center w-[30%]">
- <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${arrivalState === 'confirmed' ? 'bg-green-100' : arrivalState === 'missed' ? 'bg-red-100' : 'bg-gray-100'}`}>
+ <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${arrivalState === 'confirmed' ? 'bg-green-100' : arrivalState === 'missed' ? 'bg-clay/20' : 'bg-sage/10'}`}>
  <Feather name={arrivalState === 'confirmed' ? 'check' : arrivalState === 'missed' ? 'x' : 'map-pin'} size={14} color={arrivalState === 'confirmed' ? '#10B981' : arrivalState === 'missed' ? '#EF4444' : '#9CA3AF'} />
  </View>
- <Text className="text-[9px] font-bold text-gray-700 text-center">{arrivalState === 'missed' ? 'Missed' : 'On Arrival'}</Text>
+ <Text className="text-[9px] font-bold text-slate text-center">{arrivalState === 'missed' ? 'Missed' : 'On Arrival'}</Text>
  {t60State !== 'locked' && arrivalState === 'active' && (
  <TouchableOpacity
  onPress={() => handleCheckIn(job.request_id, 'arrival')}
  disabled={checkingInId !== null}
- className="bg-primary-600 px-2 py-1.5 rounded mt-1.5 w-full items-center"
+ className="bg-moss px-2 py-1.5 rounded mt-1.5 w-full items-center"
  >
  {checkingInId === `${job.request_id}-arrival` ? (
  <ActivityIndicator size="small" color="#FFFFFF" />
@@ -435,9 +435,9 @@ export default function LibraryScreen() {
           <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
             {startOtps[job.request_id] ? (
               <View className="items-center">
-                <Text className="text-gray-600 text-xs mb-1">Your Start OTP</Text>
+                <Text className="text-sage text-xs mb-1">Your Start OTP</Text>
                 <Text className="text-2xl font-black text-green-700 tracking-widest">{startOtps[job.request_id]}</Text>
-                <Text className="text-gray-500 text-[10px] mt-1 text-center">Show this code to the store manager to start your shift.</Text>
+                <Text className="text-sage text-[10px] mt-1 text-center">Show this code to the store manager to start your shift.</Text>
               </View>
             ) : (
               <TouchableOpacity
@@ -470,7 +470,7 @@ export default function LibraryScreen() {
 
         {job.assignment_status === 'completed' && job.rating_score && (
           <View className="mt-3 bg-green-50 border border-green-200 p-4 rounded-xl items-center shadow-sm">
-            <Text className="text-gray-600 text-[10px] uppercase font-bold tracking-wider mb-2">Manager Rating</Text>
+            <Text className="text-sage text-[10px] uppercase font-bold tracking-wider mb-2">Manager Rating</Text>
             <View className="flex-row mb-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Feather 
@@ -488,7 +488,7 @@ export default function LibraryScreen() {
             {job.rating_tags && job.rating_tags.length > 0 && (
               <View className="flex-row flex-wrap justify-center mt-1">
                 {job.rating_tags.map((tag: string, idx: number) => (
-                  <View key={idx} className="bg-white border border-green-200 px-2 py-1 rounded-md m-1">
+                  <View key={idx} className="bg-cream border border-green-200 px-2 py-1 rounded-md m-1">
                     <Text className="text-green-700 text-[10px] font-bold">{tag}</Text>
                   </View>
                 ))}
@@ -496,7 +496,7 @@ export default function LibraryScreen() {
             )}
             
             {job.rating_feedback ? (
-              <Text className="text-gray-600 text-xs text-center mt-3 italic">"{job.rating_feedback}"</Text>
+              <Text className="text-sage text-xs text-center mt-3 italic">"{job.rating_feedback}"</Text>
             ) : null}
           </View>
         )}
@@ -505,14 +505,14 @@ export default function LibraryScreen() {
  <TouchableOpacity
  onPress={() => handleCancelJob(job.request_id)}
  disabled={cancellingJobId !== null && cancellingJobId !== job.request_id}
- className="mt-2 bg-red-50 border border-red-200 py-3 rounded-xl items-center flex-row justify-center"
+ className="mt-2 bg-clay/10 border border-red-200 py-3 rounded-xl items-center flex-row justify-center"
  >
  {cancellingJobId === job.request_id ? (
  <ActivityIndicator size="small" color="#EF4444" />
  ) : (
  <>
  <Feather name="x-circle" size={16} color="#EF4444" style={{ marginRight: 6 }} />
- <Text className="text-red-600 font-bold">Cancel Job</Text>
+ <Text className="text-clay font-bold">Cancel Job</Text>
  </>
  )}
  </TouchableOpacity>
@@ -522,7 +522,7 @@ export default function LibraryScreen() {
  };
 
  return (
- <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-gray-50">
+ <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-sand">
  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
 
  {/* Header Area */}
@@ -531,13 +531,13 @@ export default function LibraryScreen() {
  <View className="flex-row items-center">
  <TouchableOpacity
  onPress={() => router.push('/profile')}
- className="bg-white h-10 w-10 rounded-full items-center justify-center mr-3 shadow-sm"
+ className="bg-cream h-10 w-10 rounded-full items-center justify-center mr-3 shadow-sm"
  >
- <Text className="text-primary-600 font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
+ <Text className="text-moss font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
  </TouchableOpacity>
  <View>
  <Text className="text-white font-bold text-xl leading-tight">SAHYOGI</Text>
- {/* <Text className="text-primary-100 text-xs">Training Content Library</Text> */}
+ {/* <Text className="text-sand text-xs">Training Content Library</Text> */}
  </View>
  </View>
  </View>
@@ -549,10 +549,10 @@ export default function LibraryScreen() {
  {activeTab === 'modules' && (
  <View>
  {/* Dashboard Progress Card */}
- <View className="bg-primary-600 rounded-3xl p-6 mb-8 shadow-sm">
+ <View className="bg-moss rounded-3xl p-6 mb-8 shadow-sm">
  <View className="flex-row justify-between items-center mb-6">
  <View className="flex-row items-center">
- <View className="h-12 w-12 rounded-full bg-primary-500 items-center justify-center border border-primary-400 mr-3">
+ <View className="h-12 w-12 rounded-full bg-moss/80 items-center justify-center border border-primary-400 mr-3">
  <Text className="text-white text-lg font-bold">{userProfile?.first_name?.charAt(0).toUpperCase() || 'U'}</Text>
  </View>
  <View>
@@ -570,30 +570,30 @@ export default function LibraryScreen() {
  <View className="h-2 bg-primary-800 rounded-full mb-4 overflow-hidden flex-row">
  <View className="h-full bg-blue-400 rounded-full" style={{ width: `${completionPercent}%` }} />
  </View>
- <Text className="text-primary-100 text-sm">
+ <Text className="text-sand text-sm">
  Complete all video modules and pass each short quiz to get certified.
  </Text>
  </View>
 
  <View className="mb-6">
- <Text className="text-2xl font-bold text-gray-900">Training Content Library</Text>
- <Text className="text-gray-500 mt-1">Empower your growth with our curated training library. </Text>
+ <Text className="text-2xl font-bold text-slate">Training Content Library</Text>
+ <Text className="text-sage mt-1">Empower your growth with our curated training library. </Text>
  </View>
 
  {loading ? (
- <ActivityIndicator size="large" color="#2563EB" className="mt-10" />
+ <ActivityIndicator size="large" color="#0B5B31" className="mt-10" />
  ) : error ? (
- <Text className="text-red-500 text-center mt-10">{error}</Text>
+ <Text className="text-clay/80 text-center mt-10">{error}</Text>
  ) : (
  modules.map((module) => (
- <View key={module.id} className="bg-white rounded-3xl p-5 mb-5 shadow-sm border border-gray-100">
+ <View key={module.id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
  <View className="flex-row mb-4">
  {/* Thumbnail / Icon */}
- <View className="w-24 h-24 bg-gray-100 rounded-2xl mr-4 overflow-hidden relative">
+ <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
  {/* Placeholder for video thumbnail */}
- <View className="absolute inset-0 bg-gray-300 opacity-50" />
+ <View className="absolute inset-0 bg-sage/30 opacity-50" />
  <View className="absolute inset-0 items-center justify-center">
- <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-green-500' : 'bg-primary-500'}`}>
+ <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-green-500' : 'bg-moss/80'}`}>
  <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
  </View>
  </View>
@@ -606,12 +606,12 @@ export default function LibraryScreen() {
  <View className="flex-1 justify-between py-1">
  <View>
  <View className="bg-blue-50 self-start px-2 py-1 rounded-full mb-2">
- <Text className="text-primary-600 text-[10px] font-bold tracking-wider">{module.category_name}</Text>
+ <Text className="text-moss text-[10px] font-bold tracking-wider">{module.category_name}</Text>
  </View>
- <Text className="font-bold text-gray-900 text-base leading-tight mb-1" numberOfLines={2}>
+ <Text className="font-bold text-slate text-base leading-tight mb-1" numberOfLines={2}>
  {module.title}
  </Text>
- <Text className="text-gray-500 text-xs" numberOfLines={2}>
+ <Text className="text-sage text-xs" numberOfLines={2}>
  {module.overview_text}
  </Text>
  </View>
@@ -621,14 +621,14 @@ export default function LibraryScreen() {
  {/* Actions */}
  <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
  <View className="flex-row items-center">
- <Text className="text-gray-400 mr-2">⏱</Text>
- <Text className="text-gray-500 text-xs font-medium">{module.duration_text}</Text>
+ <Text className="text-sage mr-2">⏱</Text>
+ <Text className="text-sage text-xs font-medium">{module.duration_text}</Text>
  </View>
 
  {module.status === 'locked' ? (
- <View className="bg-gray-100 px-5 py-2.5 rounded-full flex-row items-center">
- <Text className="text-gray-400 mr-2">🔒</Text>
- <Text className="text-gray-400 font-bold">Locked</Text>
+ <View className="bg-sage/10 px-5 py-2.5 rounded-full flex-row items-center">
+ <Text className="text-sage mr-2">🔒</Text>
+ <Text className="text-sage font-bold">Locked</Text>
  </View>
  ) : module.status === 'quiz_passed' ? (
  <TouchableOpacity
@@ -641,7 +641,7 @@ export default function LibraryScreen() {
  ) : (
  <TouchableOpacity
  onPress={() => handleStartLesson(module.id)}
- className="bg-primary-600 px-5 py-2.5 rounded-full flex-row items-center shadow-sm shadow-primary-500/50"
+ className="bg-moss px-5 py-2.5 rounded-full flex-row items-center shadow-sm shadow-primary-500/50"
  >
  <Text className="text-white mr-2">▶</Text>
  <Text className="text-white font-bold">Start Lesson</Text>
@@ -652,11 +652,11 @@ export default function LibraryScreen() {
  {/* Topics Pills */}
  {module.key_module_topics && module.key_module_topics.length > 0 && (
  <View className="flex-row items-center mt-5">
- <Text className="text-gray-400 text-xs font-medium mr-3">Topics:</Text>
+ <Text className="text-sage text-xs font-medium mr-3">Topics:</Text>
  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
  {module.key_module_topics.map((topic, idx) => (
- <View key={idx} className="border border-gray-200 rounded-full px-3 py-1 mr-2 bg-white shadow-sm">
- <Text className="text-gray-600 text-xs">{topic}</Text>
+ <View key={idx} className="border border-sage/20 rounded-full px-3 py-1 mr-2 bg-cream shadow-sm">
+ <Text className="text-sage text-xs">{topic}</Text>
  </View>
  ))}
  </ScrollView>
@@ -669,7 +669,7 @@ export default function LibraryScreen() {
  )}
 
  {activeTab === 'certificate' && (
- <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center min-h-[400px]">
+ <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
  {/* Certificate Template */}
  <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
  <View className="w-full aspect-[1.4] bg-[#FFFFFF] border-8 border-[#10472B] rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden">
@@ -698,7 +698,7 @@ export default function LibraryScreen() {
 
  {/* Date - Bottom Left */}
  <View className="absolute bottom-3 left-4 items-center w-20 z-10">
- <Text className="text-[#1A1A1A] font-bold border-b border-gray-300 pb-0.5 w-full text-center text-[10px]">
+ <Text className="text-[#1A1A1A] font-bold border-b border-sage/30 pb-0.5 w-full text-center text-[10px]">
  {(() => {
  const formatDate = (date: Date) => {
  const d = String(date.getDate()).padStart(2, '0');
@@ -737,53 +737,53 @@ export default function LibraryScreen() {
  <View className="mt-4">
  <View className="mb-6 flex-row justify-between items-center">
  <View>
- <Text className="text-2xl font-bold text-gray-900">Your Shifts</Text>
- <Text className="text-gray-500 mt-1">Accept and manage your jobs.</Text>
+ <Text className="text-2xl font-bold text-slate">Your Shifts</Text>
+ <Text className="text-sage mt-1">Accept and manage your jobs.</Text>
  </View>
- <TouchableOpacity onPress={fetchJobs} className="bg-gray-100 p-2.5 rounded-full shadow-sm">
- <Feather name="refresh-cw" size={16} color="#4B5563" />
+ <TouchableOpacity onPress={fetchJobs} className="bg-sage/10 p-2.5 rounded-full shadow-sm">
+ <Feather name="refresh-cw" size={16} color="#666666" />
  </TouchableOpacity>
  </View>
 
- <View className="flex-row bg-gray-200 rounded-full p-1 mb-6">
+ <View className="flex-row bg-sage/20 rounded-full p-1 mb-6">
  <Pressable
  style={{ flex: 1, paddingVertical: 10, borderRadius: 9999, alignItems: 'center', backgroundColor: jobsTab === 'available' ? '#ffffff' : 'transparent', shadowOpacity: jobsTab === 'available' ? 0.05 : 0 }}
  onPress={() => setJobsTab('available')}
  >
- <Text style={{ fontWeight: 'bold', color: jobsTab === 'available' ? '#2563EB' : '#6B7280' }}>Available</Text>
+ <Text style={{ fontWeight: 'bold', color: jobsTab === 'available' ? '#0B5B31' : '#6B7280' }}>Available</Text>
  </Pressable>
  <Pressable
  style={{ flex: 1, paddingVertical: 10, borderRadius: 9999, alignItems: 'center', backgroundColor: jobsTab === 'accepted' ? '#ffffff' : 'transparent', shadowOpacity: jobsTab === 'accepted' ? 0.05 : 0 }}
  onPress={() => setJobsTab('accepted')}
  >
- <Text style={{ fontWeight: 'bold', color: jobsTab === 'accepted' ? '#2563EB' : '#6B7280' }}>Accepted</Text>
+ <Text style={{ fontWeight: 'bold', color: jobsTab === 'accepted' ? '#0B5B31' : '#6B7280' }}>Accepted</Text>
  </Pressable>
  </View>
 
  {jobsLoading ? (
- <ActivityIndicator size="large" color="#2563EB" className="mt-10" />
+ <ActivityIndicator size="large" color="#0B5B31" className="mt-10" />
  ) : jobsTab === 'available' ? (
  availableJobs.length === 0 ? (
- <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
+ <View className="bg-cream rounded-3xl p-8 shadow-sm border border-sage/10 items-center justify-center py-20 mt-4">
  {/* <Text className="text-6xl mb-6">🔍</Text> */}
- <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Jobs Available</Text>
- <Text className="text-gray-500 text-center leading-relaxed">
+ <Text className="text-xl font-bold text-slate mb-3 text-center">No Jobs Available</Text>
+ <Text className="text-sage text-center leading-relaxed">
  Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
  </Text>
  </View>
  ) : (
  availableJobs.map((job) => (
- <View key={job.request_id} className="bg-white rounded-3xl p-5 mb-5 shadow-sm border border-gray-100">
+ <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
  <View className="flex-row justify-between items-start mb-4">
  <View className="flex-1 pr-4">
  <View className="bg-blue-50 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-blue-100">
- <Feather name="briefcase" size={12} color="#2563EB" style={{ marginRight: 6 }} />
- <Text className="text-primary-700 text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
+ <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
+ <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
  </View>
- <Text className="font-bold text-gray-900 text-lg leading-tight mb-1.5">{job.store_name}</Text>
+ <Text className="font-bold text-slate text-lg leading-tight mb-1.5">{job.store_name}</Text>
  <View className="flex-row items-start">
  <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
- <Text className="text-gray-500 text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
+ <Text className="text-sage text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
  </View>
  </View>
  <View className="bg-green-50 px-3 py-2.5 rounded-2xl items-center border border-green-100 min-w-[75px] shadow-sm">
@@ -792,26 +792,26 @@ export default function LibraryScreen() {
  </View>
  </View>
 
- <View className="flex-row bg-gray-50 rounded-2xl p-3.5 mb-5 border border-gray-100 justify-around shadow-sm">
+ <View className="flex-row bg-sand rounded-2xl p-3.5 mb-5 border border-sage/10 justify-around shadow-sm">
  <View className="items-center">
- <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
+ <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
  <View className="flex-row items-center">
- <Feather name="calendar" size={12} color="#4B5563" style={{ marginRight: 5 }} />
- <Text className="text-gray-700 font-semibold text-xs">{job.shift_date}</Text>
+ <Feather name="calendar" size={12} color="#666666" style={{ marginRight: 5 }} />
+ <Text className="text-slate font-semibold text-xs">{job.shift_date}</Text>
  </View>
  </View>
- <View className="w-[1px] bg-gray-200 h-full" />
+ <View className="w-[1px] bg-sage/20 h-full" />
  <View className="items-center">
- <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
+ <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
  <View className="flex-row items-center">
- <Feather name="clock" size={12} color="#4B5563" style={{ marginRight: 5 }} />
- <Text className="text-gray-700 font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
+ <Feather name="clock" size={12} color="#666666" style={{ marginRight: 5 }} />
+ <Text className="text-slate font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
  </View>
  </View>
- <View className="w-[1px] bg-gray-200 h-full" />
+ <View className="w-[1px] bg-sage/20 h-full" />
  <View className="items-center">
- <Text className="text-gray-400 text-[9px] uppercase font-bold tracking-widest mb-1.5">Duration</Text>
- <Text className="text-gray-700 font-semibold text-xs">{job.hours_duration} hrs</Text>
+ <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Duration</Text>
+ <Text className="text-slate font-semibold text-xs">{job.hours_duration} hrs</Text>
  </View>
  </View>
 
@@ -826,9 +826,9 @@ export default function LibraryScreen() {
  )
  ) : (
  acceptedJobs.length === 0 ? (
- <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
- <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Accepted Jobs</Text>
- <Text className="text-gray-500 text-center leading-relaxed">
+ <View className="bg-cream rounded-3xl p-8 shadow-sm border border-sage/10 items-center justify-center py-20 mt-4">
+ <Text className="text-xl font-bold text-slate mb-3 text-center">No Accepted Jobs</Text>
+ <Text className="text-sage text-center leading-relaxed">
  You haven't accepted any jobs yet. Check the Available tab for opportunities.
  </Text>
  </View>
@@ -837,22 +837,22 @@ export default function LibraryScreen() {
    {/* Today Accordion */}
    <TouchableOpacity 
      onPress={() => toggleSection('today')}
-     className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
+     className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
    >
      <View className="flex-row items-center">
-       <Text className="text-base font-bold text-gray-900">Jobs Today</Text>
-       <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-         <Text className="text-primary-700 text-xs font-bold">{todayAcceptedJobs.length}</Text>
+       <Text className="text-base font-bold text-slate">Jobs Today</Text>
+       <View className="bg-moss/10 px-2 py-0.5 rounded-full ml-3">
+         <Text className="text-moss text-xs font-bold">{todayAcceptedJobs.length}</Text>
        </View>
      </View>
-     <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#4B5563" />
+     <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
    </TouchableOpacity>
 
    {expandedSections.today && (
      <View className="mb-4">
        {todayAcceptedJobs.length === 0 ? (
-         <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-           <Text className="text-gray-500 text-sm">No job scheduled for today</Text>
+         <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center">
+           <Text className="text-sage text-sm">No job scheduled for today</Text>
          </View>
        ) : (
          todayAcceptedJobs.map(renderAcceptedJobCard)
@@ -863,22 +863,22 @@ export default function LibraryScreen() {
    {/* Upcoming Accordion */}
    <TouchableOpacity 
      onPress={() => toggleSection('upcoming')}
-     className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
+     className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
    >
      <View className="flex-row items-center">
-       <Text className="text-base font-bold text-gray-900">Upcoming Jobs</Text>
-       <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-         <Text className="text-primary-700 text-xs font-bold">{upcomingAcceptedJobs.length}</Text>
+       <Text className="text-base font-bold text-slate">Upcoming Jobs</Text>
+       <View className="bg-moss/10 px-2 py-0.5 rounded-full ml-3">
+         <Text className="text-moss text-xs font-bold">{upcomingAcceptedJobs.length}</Text>
        </View>
      </View>
-     <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#4B5563" />
+     <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
    </TouchableOpacity>
 
    {expandedSections.upcoming && (
      <View className="mb-4">
        {upcomingAcceptedJobs.length === 0 ? (
-         <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-           <Text className="text-gray-500 text-sm">No upcoming jobs</Text>
+         <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center">
+           <Text className="text-sage text-sm">No upcoming jobs</Text>
          </View>
        ) : (
          upcomingAcceptedJobs.map(renderAcceptedJobCard)
@@ -889,22 +889,22 @@ export default function LibraryScreen() {
    {/* Past Accordion */}
    <TouchableOpacity 
      onPress={() => toggleSection('past')}
-     className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
+     className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
    >
      <View className="flex-row items-center">
-       <Text className="text-base font-bold text-gray-900">Past Jobs</Text>
-       <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-         <Text className="text-primary-700 text-xs font-bold">{pastAcceptedJobs.length}</Text>
+       <Text className="text-base font-bold text-slate">Past Jobs</Text>
+       <View className="bg-moss/10 px-2 py-0.5 rounded-full ml-3">
+         <Text className="text-moss text-xs font-bold">{pastAcceptedJobs.length}</Text>
        </View>
      </View>
-     <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#4B5563" />
+     <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
    </TouchableOpacity>
 
    {expandedSections.past && (
      <View className="mb-4">
        {pastAcceptedJobs.length === 0 ? (
-         <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-           <Text className="text-gray-500 text-sm">No past jobs</Text>
+         <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center">
+           <Text className="text-sage text-sm">No past jobs</Text>
          </View>
        ) : (
          pastAcceptedJobs.map(renderAcceptedJobCard)
@@ -928,7 +928,7 @@ export default function LibraryScreen() {
 
  {/* Bottom Navigation */}
  <View
- className="flex-row justify-around items-center bg-white border-t border-gray-100 pt-3 px-2"
+ className="flex-row justify-around items-center bg-cream border-t border-sage/10 pt-3 px-2"
  style={{ paddingBottom: Math.max(insets.bottom, 16) }}
  >
  <TouchableOpacity
@@ -936,7 +936,7 @@ export default function LibraryScreen() {
  className="items-center flex-1"
  >
  <Feather name="book-open" size={22} color={activeTab === 'modules' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4 }} />
- <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'modules' ? 'text-gray-900' : 'text-gray-400'}`}>Modules</Text>
+ <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'modules' ? 'text-slate' : 'text-sage'}`}>Modules</Text>
  </TouchableOpacity>
 
  <TouchableOpacity
@@ -945,7 +945,7 @@ export default function LibraryScreen() {
  >
  <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
  <View className="flex-row items-center">
- <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-gray-900' : 'text-gray-400'}`}>Certificate</Text>
+ <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-slate' : 'text-sage'}`}>Certificate</Text>
  {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
  </View>
  </TouchableOpacity>
@@ -956,7 +956,7 @@ export default function LibraryScreen() {
  >
  <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
  <View className="flex-row items-center">
- <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-gray-900' : 'text-gray-400'}`}>Jobs</Text>
+ <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-slate' : 'text-sage'}`}>Jobs</Text>
  {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
  </View>
  </TouchableOpacity>
@@ -965,10 +965,10 @@ export default function LibraryScreen() {
  {/* Congrats Popup */}
  <Modal visible={showCongrats} animationType="slide" transparent={true}>
  <View className="flex-1 bg-black/60 justify-center items-center p-6">
- <View className="bg-white w-full rounded-3xl p-8 items-center shadow-xl">
+ <View className="bg-cream w-full rounded-3xl p-8 items-center shadow-xl">
  <Text className="text-6xl mb-6">🎓</Text>
- <Text className="text-2xl font-bold text-gray-900 mb-2 text-center">Congratulations!</Text>
- <Text className="text-gray-600 text-center mb-8">
+ <Text className="text-2xl font-bold text-slate mb-2 text-center">Congratulations!</Text>
+ <Text className="text-sage text-center mb-8">
  You have successfully completed all the training modules. You are now certified and eligible for jobs!
  </Text>
  <TouchableOpacity
@@ -976,7 +976,7 @@ export default function LibraryScreen() {
  setShowCongrats(false);
  setActiveTab('certificate');
  }}
- className="bg-primary-600 w-full py-4 rounded-xl items-center shadow-md shadow-primary-600/30"
+ className="bg-moss w-full py-4 rounded-xl items-center shadow-md shadow-primary-600/30"
  >
  <Text className="text-white font-bold text-lg">View Certificate</Text>
  </TouchableOpacity>
