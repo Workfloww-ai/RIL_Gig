@@ -5,6 +5,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        sand: '#F9F9F9',
+        sage: '#666666',
+        moss: '#0B5B31',
+        clay: '#ED1C24',
+        slate: '#3C3C3B',
+        cream: '#FFFFFF',
         primary: {
           50: '#F2F6F4',
           100: '#E1EBE5',
