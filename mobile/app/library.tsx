@@ -292,9 +292,9 @@ export default function LibraryScreen() {
  <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
  </View>
  </View>
- <View className="bg-moss/5 px-3 py-2.5 rounded-2xl items-center border border-moss/20 min-w-[75px] shadow-sm">
- <Text className="text-moss font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
- <Text className="text-moss text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
+ <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
+ <Text className="text-white font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
+ <Text className="text-white text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
  </View>
  </View>
 
@@ -786,9 +786,9 @@ export default function LibraryScreen() {
  <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
  </View>
  </View>
- <View className="bg-moss/5 px-3 py-2.5 rounded-2xl items-center border border-moss/10 min-w-[75px] shadow-sm">
- <Text className="text-moss font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
- <Text className="text-moss text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
+ <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
+ <Text className="text-white font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
+ <Text className="text-white text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
  </View>
  </View>
 

@@ -33,7 +33,7 @@ export default function PaymentsScreen() {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-sand pt-8 items-center justify-center">
-        <ActivityIndicator size="large" color="#0B5B31" />
+        <ActivityIndicator size="large" color="#10472B" />
       </SafeAreaView>
     );
   }
@@ -45,30 +45,30 @@ export default function PaymentsScreen() {
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-sage/10 rounded-full mr-3">
           <Feather name="arrow-left" size={20} color="#666666" />
         </TouchableOpacity>
-        <Text className="font-bold text-charcoal text-lg flex-1 text-center pr-13">Payment History</Text>
+        <Text className="font-bold text-slate text-lg flex-1 text-center pr-13">Payment History</Text>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         
         {/* Earnings Summary Card */}
         <View className="bg-moss mx-5 mt-6 rounded-3xl p-6 shadow-sm items-center">
-          <Text className="text-primary-100 text-xs font-bold tracking-widest uppercase mb-2">Lifetime Earnings</Text>
+          <Text className="text-sand/80 text-xs font-bold tracking-widest uppercase mb-2">Lifetime Earnings</Text>
           <Text className="text-white text-4xl font-bold mb-4">₹ {totalEarnings.toLocaleString()}</Text>
-          <View className="bg-moss/80 px-4 py-2 rounded-full border border-moss/100">
+          <View className="bg-moss/80 px-4 py-2 rounded-full border border-moss">
             <Text className="text-white text-xs font-medium">Earnings from all completed shifts</Text>
           </View>
         </View>
 
         {/* All Shifts List */}
         <View className="px-5 pt-8 pb-10">
-          <Text className="text-lg font-bold text-charcoal mb-4">Month-wise Payments</Text>
+          <Text className="text-lg font-bold text-slate mb-4">Shift Payments</Text>
           
           {payments && payments.length > 0 ? payments.map((activity, index) => {
             const date = new Date(activity.shift_date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             return (
               <View key={index} className="bg-cream rounded-3xl p-5 mb-4 shadow-sm border border-sage/10">
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="font-bold text-charcoal text-lg">{date}</Text>
+                  <Text className="font-bold text-slate text-lg">{date}</Text>
                   <Text className="font-bold text-moss text-xl">+₹{activity.amount?.toLocaleString() || 0}</Text>
                 </View>
                 

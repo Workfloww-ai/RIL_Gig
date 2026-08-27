@@ -5,11 +5,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        sand: '#F9F9F9',
+        sand: '#F7F8F9',
         sage: '#666666',
-        moss: '#0B5B31',
-        clay: '#ED1C24',
-        slate: '#3C3C3B',
+        moss: '#10472B',
+        clay: '#E31B23',
+        slate: '#1A1A1A',
         cream: '#FFFFFF',
         primary: {
           50: '#F2F6F4',
