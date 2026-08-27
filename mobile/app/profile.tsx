@@ -121,9 +121,9 @@ export default function ProfileScreen() {
                 <Text className="font-bold text-green-600 text-lg">+₹4,500</Text>
                 <Text className="text-gray-400 text-[10px]">Aug 31</Text>
               </View>
+              </View>
             </View>
-          )}
-        </View>
+          </View>
 
         {/* Logout Button */}
         <View className="mx-5 mb-10 mt-2">

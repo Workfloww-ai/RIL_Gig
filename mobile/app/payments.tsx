@@ -63,33 +63,31 @@ export default function PaymentsScreen() {
         <View className="px-5 pt-8 pb-10">
           <Text className="text-lg font-bold text-charcoal mb-4">Month-wise Payments</Text>
           
-          {paymentHistory.map((payment) => (
-            <View key={payment.id} className="bg-white rounded-3xl p-5 mb-4 shadow-sm border border-gray-100">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="font-bold text-charcoal text-lg">{payment.month}</Text>
-                <Text className="font-bold text-green-600 text-xl">+₹{payment.amount.toLocaleString()}</Text>
-              </View>
-              
-              <View className="flex-row items-center justify-between border-t border-gray-50 pt-3">
-                <View className="flex-row items-center">
-                  <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'processed' ? 'bg-moss/10' : 'bg-sage/10'}`}>
-                    {activity.payment_status === 'processed' ? (
-                      <Text className="text-moss text-xl">✓</Text>
-                    ) : (
-                      <Feather name="clock" size={24} color="#CA8A04" />
-                    )}
+          {payments && payments.length > 0 ? payments.map((activity, index) => {
+            const date = new Date(activity.shift_date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return (
+              <View key={index} className="bg-cream rounded-3xl p-5 mb-4 shadow-sm border border-sage/10">
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="font-bold text-charcoal text-lg">{date}</Text>
+                  <Text className="font-bold text-moss text-xl">+₹{activity.amount?.toLocaleString() || 0}</Text>
+                </View>
+                
+                <View className="flex-row items-center justify-between border-t border-sage/10 pt-3">
+                  <View className="flex-row items-center w-full">
+                    <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'processed' ? 'bg-moss/10' : 'bg-sage/10'}`}>
+                      {activity.payment_status === 'processed' ? (
+                        <Text className="text-moss text-xl">✓</Text>
+                      ) : (
+                        <Feather name="clock" size={24} color="#CA8A04" />
+                      )}
+                    </View>
+                    <View className="flex-1">
+                      <Text className="font-bold text-slate text-base mb-1">{activity.job_name || 'Shift Payment'}</Text>
+                      <Text className="text-sage text-xs">
+                        {activity.payment_status === 'processed' ? 'Payment Processed' : 'Processing'} - {activity.hours || 0} hrs
+                      </Text>
+                    </View>
                   </View>
-                  <View className="flex-1">
-                    <Text className="font-bold text-slate text-base mb-1">{activity.job_name}</Text>
-                    <Text className="text-sage text-xs">
-                      {activity.payment_status === 'processed' ? 'Payment Processed' : 'Amount needs to be processed'} - {activity.hours} hrs
-                    </Text>
-                  </View>
-                  <View className="items-end">
-                    <Text className="font-bold text-moss text-lg">+₹{activity.amount}</Text>
-                    <Text className="text-sage text-[10px]">{date}</Text>
-                  </View>
-                  <Text className="text-muted text-xs font-medium">{payment.status}</Text>
                 </View>
               </View>
             );
