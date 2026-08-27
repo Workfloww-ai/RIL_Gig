@@ -116,7 +116,7 @@ export default function QuizScreen() {
       {/* Header */}
       <View className="bg-white px-6 py-5 border-b border-gray-100 shadow-sm flex-row items-center justify-between">
         <Text className="text-gray-400 font-bold" onPress={() => router.back()}>Cancel</Text>
-        <Text className="text-lg font-bold text-gray-900">Module Quiz</Text>
+        <Text className="text-lg font-bold text-charcoal">Module Quiz</Text>
         <View className="w-10" />
       </View>
 
@@ -133,7 +133,7 @@ export default function QuizScreen() {
 
       {/* Question Card */}
       <View className="bg-white mx-6 p-6 rounded-3xl shadow-sm border border-gray-100 mb-6">
-        <Text className="text-xl font-bold text-gray-900 mb-8 leading-tight">
+        <Text className="text-xl font-bold text-charcoal mb-8 leading-tight">
           {question.q}
         </Text>
 

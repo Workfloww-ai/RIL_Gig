@@ -48,7 +48,7 @@ export default function ProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-gray-100 rounded-full mr-3">
           <Feather name="arrow-left" size={20} color="#4B5563" />
         </TouchableOpacity>
-        <Text className="font-bold text-gray-900 text-lg flex-1 text-center pr-13">My Profile</Text>
+        <Text className="font-bold text-charcoal text-lg flex-1 text-center pr-13">My Profile</Text>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -58,8 +58,8 @@ export default function ProfileScreen() {
             <Text className="text-primary-600 text-4xl font-bold">{initial}</Text>
           </View>
           
-          <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName.toUpperCase()}</Text>
-          <Text className="text-gray-500 text-sm font-medium mb-3">Sahyogi</Text>
+          <Text className="text-2xl font-bold text-charcoal mb-1">{fullName.toUpperCase()}</Text>
+          <Text className="text-muted text-sm font-medium mb-3">Sahyogi</Text>
           
           {/* Dynamic Rating */}
           {userProfile?.shifts_completed ? (
@@ -74,7 +74,7 @@ export default function ProfileScreen() {
             </>
           ) : (
             <View className="bg-gray-50 px-4 py-2 rounded-full border border-gray-200 mt-1">
-              <Text className="text-gray-500 font-medium text-sm">Complete a shift to get ratings</Text>
+              <Text className="text-muted font-medium text-sm">Complete a shift to get ratings</Text>
             </View>
           )}
         </View>
@@ -86,7 +86,7 @@ export default function ProfileScreen() {
               <Text className="text-green-500 text-xl">💰</Text>
             </View>
             <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Earnings</Text>
-            <Text className="text-2xl font-bold text-gray-900 text-center">₹ 12,500</Text>
+            <Text className="text-2xl font-bold text-charcoal text-center">₹ 12,500</Text>
           </View>
           
           <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
@@ -94,14 +94,14 @@ export default function ProfileScreen() {
               <Text className="text-blue-500 text-xl">📋</Text>
             </View>
             <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Shifts Completed</Text>
-            <Text className="text-2xl font-bold text-gray-900 text-center">{userProfile?.shifts_completed || 0}</Text>
+            <Text className="text-2xl font-bold text-charcoal text-center">{userProfile?.shifts_completed || 0}</Text>
           </View>
         </View>
 
         {/* Recent Activity */}
         <View className="mx-5 mt-8 mb-10">
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-lg font-bold text-gray-900">Recent Activity</Text>
+            <Text className="text-lg font-bold text-charcoal">Recent Activity</Text>
             <TouchableOpacity onPress={() => router.push('/payments')}>
               <Text className="text-primary-600 font-bold">View all</Text>
             </TouchableOpacity>
@@ -113,8 +113,8 @@ export default function ProfileScreen() {
                 <Text className="text-green-600 text-xl">✓</Text>
               </View>
               <View className="flex-1">
-                <Text className="font-bold text-gray-900 text-base mb-1">Payment Processed</Text>
-                <Text className="text-gray-500 text-xs">August 2026 Earnings</Text>
+                <Text className="font-bold text-charcoal text-base mb-1">Payment Processed</Text>
+                <Text className="text-muted text-xs">August 2026 Earnings</Text>
               </View>
               <View className="items-end">
                 <Text className="font-bold text-green-600 text-lg">+₹4,500</Text>

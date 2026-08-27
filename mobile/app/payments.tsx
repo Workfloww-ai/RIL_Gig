@@ -22,7 +22,7 @@ export default function PaymentsScreen() {
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-gray-100 rounded-full mr-3">
           <Feather name="arrow-left" size={20} color="#4B5563" />
         </TouchableOpacity>
-        <Text className="font-bold text-gray-900 text-lg flex-1 text-center pr-13">Payment History</Text>
+        <Text className="font-bold text-charcoal text-lg flex-1 text-center pr-13">Payment History</Text>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -38,12 +38,12 @@ export default function PaymentsScreen() {
 
         {/* Month-wise List */}
         <View className="px-5 pt-8 pb-10">
-          <Text className="text-lg font-bold text-gray-900 mb-4">Month-wise Payments</Text>
+          <Text className="text-lg font-bold text-charcoal mb-4">Month-wise Payments</Text>
           
           {paymentHistory.map((payment) => (
             <View key={payment.id} className="bg-white rounded-3xl p-5 mb-4 shadow-sm border border-gray-100">
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="font-bold text-gray-900 text-lg">{payment.month}</Text>
+                <Text className="font-bold text-charcoal text-lg">{payment.month}</Text>
                 <Text className="font-bold text-green-600 text-xl">+₹{payment.amount.toLocaleString()}</Text>
               </View>
               
@@ -52,7 +52,7 @@ export default function PaymentsScreen() {
                   <View className="w-6 h-6 rounded-full bg-green-100 items-center justify-center mr-2">
                     <Text className="text-green-600 text-[10px]">✓</Text>
                   </View>
-                  <Text className="text-gray-500 text-xs font-medium">{payment.status}</Text>
+                  <Text className="text-muted text-xs font-medium">{payment.status}</Text>
                 </View>
                 <Text className="text-gray-400 text-xs">{payment.date}</Text>
               </View>

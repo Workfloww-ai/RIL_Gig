@@ -153,7 +153,7 @@ export default function StudioScreen() {
           <Text className="text-primary-600 text-[10px] font-bold tracking-widest uppercase text-center mb-0.5">
             MODULE • {module.category_name}
           </Text>
-          <Text className="font-bold text-gray-900 text-center" numberOfLines={1}>
+          <Text className="font-bold text-charcoal text-center" numberOfLines={1}>
             {module.title}
           </Text>
         </View>
@@ -166,7 +166,7 @@ export default function StudioScreen() {
             className={`flex-1 py-2.5 rounded-full items-center ${activeTab === 'video' ? 'bg-white' : ''}`}
             onPress={() => handleTabChange('video')}
           >
-            <Text className={`font-semibold ${activeTab === 'video' ? 'text-primary-600' : 'text-gray-500'}`}>
+            <Text className={`font-semibold ${activeTab === 'video' ? 'text-primary-600' : 'text-muted'}`}>
               📹 Video Lesson
             </Text>
           </TouchableOpacity>
@@ -174,7 +174,7 @@ export default function StudioScreen() {
             className={`flex-1 py-2.5 rounded-full items-center ${activeTab === 'audio' ? 'bg-white' : ''}`}
             onPress={() => handleTabChange('audio')}
           >
-            <Text className={`font-semibold ${activeTab === 'audio' ? 'text-primary-600' : 'text-gray-500'}`}>
+            <Text className={`font-semibold ${activeTab === 'audio' ? 'text-primary-600' : 'text-muted'}`}>
               🎙 Podcast (Audio)
             </Text>
           </TouchableOpacity>
@@ -268,7 +268,7 @@ export default function StudioScreen() {
             </View>
             
             <View className="flex-row justify-between items-center mb-5">
-              <Text className="text-gray-500 text-xs font-medium tracking-widest">
+              <Text className="text-muted text-xs font-medium tracking-widest">
                 {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
               </Text>
             </View>
@@ -294,8 +294,8 @@ export default function StudioScreen() {
         </View>
 
         <View className="bg-white mx-4 rounded-3xl p-6 shadow-sm border border-gray-100 mb-10">
-          <Text className="text-lg font-bold text-gray-900 mb-2">✨ Module Summary</Text>
-          <Text className="text-gray-600 leading-relaxed mb-6">
+          <Text className="text-lg font-bold text-charcoal mb-2">✨ Module Summary</Text>
+          <Text className="text-muted leading-relaxed mb-6">
             {module.overview_text}
           </Text>
 
@@ -304,7 +304,7 @@ export default function StudioScreen() {
             <View className="flex-row flex-wrap gap-2">
               {module.key_module_topics?.map((topic: string, i: number) => (
                 <View key={i} className="bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm">
-                  <Text className="text-gray-600 text-xs font-medium">• {topic}</Text>
+                  <Text className="text-muted text-xs font-medium">• {topic}</Text>
                 </View>
               ))}
             </View>

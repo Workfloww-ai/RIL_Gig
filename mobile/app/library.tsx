@@ -286,10 +286,10 @@ export default function LibraryScreen() {
  <Feather name="briefcase" size={12} color="#2563EB" style={{ marginRight: 6 }} />
  <Text className="text-primary-700 text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
  </View>
- <Text className="font-bold text-gray-900 text-lg leading-tight mb-1.5">{job.store_name}</Text>
+ <Text className="font-bold text-charcoal text-lg leading-tight mb-1.5">{job.store_name}</Text>
  <View className="flex-row items-start">
  <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
- <Text className="text-gray-500 text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
+ <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
  </View>
  </View>
  <View className="bg-primary-50 px-3 py-2.5 rounded-2xl items-center border border-primary-100 min-w-[75px] shadow-sm">
@@ -335,7 +335,7 @@ export default function LibraryScreen() {
      iconColor = "#2563EB";
    } else if (job.assignment_status === 'cancelled') {
      iconName = "x-circle";
-     textColor = "text-gray-500";
+     textColor = "text-muted";
      iconColor = "#6B7280";
    }
 
@@ -435,9 +435,9 @@ export default function LibraryScreen() {
           <View className="mt-3 bg-green-50 border border-green-200 p-3 rounded-xl items-center">
             {startOtps[job.request_id] ? (
               <View className="items-center">
-                <Text className="text-gray-600 text-xs mb-1">Your Start OTP</Text>
+                <Text className="text-muted text-xs mb-1">Your Start OTP</Text>
                 <Text className="text-2xl font-black text-green-700 tracking-widest">{startOtps[job.request_id]}</Text>
-                <Text className="text-gray-500 text-[10px] mt-1 text-center">Show this code to the store manager to start your shift.</Text>
+                <Text className="text-muted text-[10px] mt-1 text-center">Show this code to the store manager to start your shift.</Text>
               </View>
             ) : (
               <TouchableOpacity
@@ -470,7 +470,7 @@ export default function LibraryScreen() {
 
         {job.assignment_status === 'completed' && job.rating_score && (
           <View className="mt-3 bg-green-50 border border-green-200 p-4 rounded-xl items-center shadow-sm">
-            <Text className="text-gray-600 text-[10px] uppercase font-bold tracking-wider mb-2">Manager Rating</Text>
+            <Text className="text-muted text-[10px] uppercase font-bold tracking-wider mb-2">Manager Rating</Text>
             <View className="flex-row mb-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Feather 
@@ -496,7 +496,7 @@ export default function LibraryScreen() {
             )}
             
             {job.rating_feedback ? (
-              <Text className="text-gray-600 text-xs text-center mt-3 italic">"{job.rating_feedback}"</Text>
+              <Text className="text-muted text-xs text-center mt-3 italic">"{job.rating_feedback}"</Text>
             ) : null}
           </View>
         )}
@@ -576,8 +576,8 @@ export default function LibraryScreen() {
  </View>
 
  <View className="mb-6">
- <Text className="text-2xl font-bold text-gray-900">Training Content Library</Text>
- <Text className="text-gray-500 mt-1">Empower your growth with our curated training library. </Text>
+ <Text className="text-2xl font-bold text-charcoal">Training Content Library</Text>
+ <Text className="text-muted mt-1">Empower your growth with our curated training library. </Text>
  </View>
 
  {loading ? (
@@ -608,10 +608,10 @@ export default function LibraryScreen() {
  <View className="bg-blue-50 self-start px-2 py-1 rounded-full mb-2">
  <Text className="text-primary-600 text-[10px] font-bold tracking-wider">{module.category_name}</Text>
  </View>
- <Text className="font-bold text-gray-900 text-base leading-tight mb-1" numberOfLines={2}>
+ <Text className="font-bold text-charcoal text-base leading-tight mb-1" numberOfLines={2}>
  {module.title}
  </Text>
- <Text className="text-gray-500 text-xs" numberOfLines={2}>
+ <Text className="text-muted text-xs" numberOfLines={2}>
  {module.overview_text}
  </Text>
  </View>
@@ -622,7 +622,7 @@ export default function LibraryScreen() {
  <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
  <View className="flex-row items-center">
  <Text className="text-gray-400 mr-2">⏱</Text>
- <Text className="text-gray-500 text-xs font-medium">{module.duration_text}</Text>
+ <Text className="text-muted text-xs font-medium">{module.duration_text}</Text>
  </View>
 
  {module.status === 'locked' ? (
@@ -656,7 +656,7 @@ export default function LibraryScreen() {
  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
  {module.key_module_topics.map((topic, idx) => (
  <View key={idx} className="border border-gray-200 rounded-full px-3 py-1 mr-2 bg-white shadow-sm">
- <Text className="text-gray-600 text-xs">{topic}</Text>
+ <Text className="text-muted text-xs">{topic}</Text>
  </View>
  ))}
  </ScrollView>
@@ -737,8 +737,8 @@ export default function LibraryScreen() {
  <View className="mt-4">
  <View className="mb-6 flex-row justify-between items-center">
  <View>
- <Text className="text-2xl font-bold text-gray-900">Your Shifts</Text>
- <Text className="text-gray-500 mt-1">Accept and manage your jobs.</Text>
+ <Text className="text-2xl font-bold text-charcoal">Your Shifts</Text>
+ <Text className="text-muted mt-1">Accept and manage your jobs.</Text>
  </View>
  <TouchableOpacity onPress={fetchJobs} className="bg-gray-100 p-2.5 rounded-full shadow-sm">
  <Feather name="refresh-cw" size={16} color="#4B5563" />
@@ -766,8 +766,8 @@ export default function LibraryScreen() {
  availableJobs.length === 0 ? (
  <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
  {/* <Text className="text-6xl mb-6">🔍</Text> */}
- <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Jobs Available</Text>
- <Text className="text-gray-500 text-center leading-relaxed">
+ <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Jobs Available</Text>
+ <Text className="text-muted text-center leading-relaxed">
  Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
  </Text>
  </View>
@@ -780,10 +780,10 @@ export default function LibraryScreen() {
  <Feather name="briefcase" size={12} color="#2563EB" style={{ marginRight: 6 }} />
  <Text className="text-primary-700 text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
  </View>
- <Text className="font-bold text-gray-900 text-lg leading-tight mb-1.5">{job.store_name}</Text>
+ <Text className="font-bold text-charcoal text-lg leading-tight mb-1.5">{job.store_name}</Text>
  <View className="flex-row items-start">
  <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
- <Text className="text-gray-500 text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
+ <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
  </View>
  </View>
  <View className="bg-green-50 px-3 py-2.5 rounded-2xl items-center border border-green-100 min-w-[75px] shadow-sm">
@@ -827,8 +827,8 @@ export default function LibraryScreen() {
  ) : (
  acceptedJobs.length === 0 ? (
  <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
- <Text className="text-xl font-bold text-gray-900 mb-3 text-center">No Accepted Jobs</Text>
- <Text className="text-gray-500 text-center leading-relaxed">
+ <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Accepted Jobs</Text>
+ <Text className="text-muted text-center leading-relaxed">
  You haven't accepted any jobs yet. Check the Available tab for opportunities.
  </Text>
  </View>
@@ -840,7 +840,7 @@ export default function LibraryScreen() {
      className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
    >
      <View className="flex-row items-center">
-       <Text className="text-base font-bold text-gray-900">Jobs Today</Text>
+       <Text className="text-base font-bold text-charcoal">Jobs Today</Text>
        <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
          <Text className="text-primary-700 text-xs font-bold">{todayAcceptedJobs.length}</Text>
        </View>
@@ -852,7 +852,7 @@ export default function LibraryScreen() {
      <View className="mb-4">
        {todayAcceptedJobs.length === 0 ? (
          <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-           <Text className="text-gray-500 text-sm">No job scheduled for today</Text>
+           <Text className="text-muted text-sm">No job scheduled for today</Text>
          </View>
        ) : (
          todayAcceptedJobs.map(renderAcceptedJobCard)
@@ -866,7 +866,7 @@ export default function LibraryScreen() {
      className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
    >
      <View className="flex-row items-center">
-       <Text className="text-base font-bold text-gray-900">Upcoming Jobs</Text>
+       <Text className="text-base font-bold text-charcoal">Upcoming Jobs</Text>
        <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
          <Text className="text-primary-700 text-xs font-bold">{upcomingAcceptedJobs.length}</Text>
        </View>
@@ -878,7 +878,7 @@ export default function LibraryScreen() {
      <View className="mb-4">
        {upcomingAcceptedJobs.length === 0 ? (
          <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-           <Text className="text-gray-500 text-sm">No upcoming jobs</Text>
+           <Text className="text-muted text-sm">No upcoming jobs</Text>
          </View>
        ) : (
          upcomingAcceptedJobs.map(renderAcceptedJobCard)
@@ -892,7 +892,7 @@ export default function LibraryScreen() {
      className="flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3"
    >
      <View className="flex-row items-center">
-       <Text className="text-base font-bold text-gray-900">Past Jobs</Text>
+       <Text className="text-base font-bold text-charcoal">Past Jobs</Text>
        <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
          <Text className="text-primary-700 text-xs font-bold">{pastAcceptedJobs.length}</Text>
        </View>
@@ -904,7 +904,7 @@ export default function LibraryScreen() {
      <View className="mb-4">
        {pastAcceptedJobs.length === 0 ? (
          <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-           <Text className="text-gray-500 text-sm">No past jobs</Text>
+           <Text className="text-muted text-sm">No past jobs</Text>
          </View>
        ) : (
          pastAcceptedJobs.map(renderAcceptedJobCard)
@@ -936,7 +936,7 @@ export default function LibraryScreen() {
  className="items-center flex-1"
  >
  <Feather name="book-open" size={22} color={activeTab === 'modules' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4 }} />
- <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'modules' ? 'text-gray-900' : 'text-gray-400'}`}>Modules</Text>
+ <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'modules' ? 'text-charcoal' : 'text-gray-400'}`}>Modules</Text>
  </TouchableOpacity>
 
  <TouchableOpacity
@@ -945,7 +945,7 @@ export default function LibraryScreen() {
  >
  <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
  <View className="flex-row items-center">
- <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-gray-900' : 'text-gray-400'}`}>Certificate</Text>
+ <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-charcoal' : 'text-gray-400'}`}>Certificate</Text>
  {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
  </View>
  </TouchableOpacity>
@@ -956,7 +956,7 @@ export default function LibraryScreen() {
  >
  <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
  <View className="flex-row items-center">
- <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-gray-900' : 'text-gray-400'}`}>Jobs</Text>
+ <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-charcoal' : 'text-gray-400'}`}>Jobs</Text>
  {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
  </View>
  </TouchableOpacity>
@@ -967,8 +967,8 @@ export default function LibraryScreen() {
  <View className="flex-1 bg-black/60 justify-center items-center p-6">
  <View className="bg-white w-full rounded-3xl p-8 items-center shadow-xl">
  <Text className="text-6xl mb-6">🎓</Text>
- <Text className="text-2xl font-bold text-gray-900 mb-2 text-center">Congratulations!</Text>
- <Text className="text-gray-600 text-center mb-8">
+ <Text className="text-2xl font-bold text-charcoal mb-2 text-center">Congratulations!</Text>
+ <Text className="text-muted text-center mb-8">
  You have successfully completed all the training modules. You are now certified and eligible for jobs!
  </Text>
  <TouchableOpacity
