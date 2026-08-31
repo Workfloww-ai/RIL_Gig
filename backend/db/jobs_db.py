@@ -53,6 +53,31 @@ def get_all_jobs():
     response = supabase.table("jobs").select("job_id, job_name, base_compensation").execute()
     return response.data
 
+def get_pending_t90_call_assignments():
+    """
+    Fetches all worker_job_assignments with assignment_status='accepted'
+    and t90_status='pending', joined with manpower_requests, stores, and worker profile.
+    Explicitly mentions column names per enterprise guidelines.
+    """
+    response = supabase.table("worker_job_assignments").select(
+        "job_assignment_id, request_id, store_id, worker_id, assignment_status, t90_status, "
+        "manpower_requests(shift_date, start_time, jobs(job_name, base_compensation)), "
+        "stores(store_name), "
+        "users!fk_wja_worker(first_name, mobile_number)"
+    ).eq("assignment_status", "accepted").eq("t90_status", "pending").execute()
+    
+    return response.data if response.data else []
+
+
+def update_t90_call_status(job_assignment_id: str, new_status: str = "call_initiated"):
+    """
+    Updates the t90_status or call status of a worker job assignment after a Hunar voice call dispatch.
+    """
+    response = supabase.table("worker_job_assignments").update({
+        "t90_status": new_status
+    }).eq("job_assignment_id", job_assignment_id).execute()
+    return response.data
+
 def get_recent_activity(user_id: str):
     """
     Fetches the recent completed jobs (activity) for a worker.
