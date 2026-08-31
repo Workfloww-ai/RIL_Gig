@@ -536,8 +536,8 @@ export default function LibraryScreen() {
  <Text className="text-moss font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
  </TouchableOpacity>
  <View>
- <Text className="text-white font-bold text-xl leading-tight">SAHYOGI</Text>
- {/* <Text className="text-sand text-xs">Training Content Library</Text> */}
+ <Text className="text-white font-bold text-xl leading-tight">Hi, {userProfile?.first_name?.charAt(0).toUpperCase() + userProfile?.first_name?.slice(1).toLowerCase() || 'User'}</Text>
+ <Text className="text-sand text-xs">Sahyogi</Text>
  </View>
  </View>
  </View>

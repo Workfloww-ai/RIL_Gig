@@ -62,11 +62,11 @@ async def get_my_stats(user_id: str = Depends(get_current_user)):
             "store_id, stores(store_name)"
         ).eq("user_id", user_id).execute()
         
-        store_name = "Reliance Smart" # Default fallback
+        store_name = "DMart" # Default fallback
         if assignment_response.data and len(assignment_response.data) > 0:
             store_data = assignment_response.data[0].get("stores")
             if store_data:
-                store_name = store_data.get("store_name", "Reliance Smart")
+                store_name = store_data.get("store_name", "DMart")
 
         # Get total requests raised by this manager's store (or by this manager specifically if we had created_by, but we only have store_assignment_id)
         # Actually, let's just count manpower_requests where store_id matches their assigned store_id
