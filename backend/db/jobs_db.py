@@ -78,3 +78,38 @@ def update_t90_call_status(job_assignment_id: str, new_status: str = "call_initi
     }).eq("job_assignment_id", job_assignment_id).execute()
     return response.data
 
+def get_recent_activity(user_id: str):
+    """
+    Fetches the recent completed jobs (activity) for a worker.
+    """
+    response = supabase.table("worker_job_assignments").select(
+        "job_assignment_id, assignment_status, updated_at, manpower_requests(request_id, shift_date, hours_duration, jobs(job_name, base_compensation))"
+    ).eq("worker_id", user_id).eq("assignment_status", "completed").order("updated_at", desc=True).execute()
+    
+    activities = []
+    for row in response.data:
+        req = row.get("manpower_requests")
+        if isinstance(req, list) and len(req) > 0:
+            req = req[0]
+        if not req:
+            continue
+            
+        job = req.get("jobs")
+        if isinstance(job, list) and len(job) > 0:
+            job = job[0]
+        if not job:
+            continue
+            
+        hours = float(req.get("hours_duration", 0))
+        rate = float(job.get("base_compensation", 0))
+        amount = hours * rate
+        
+        activities.append({
+            "id": row.get("job_assignment_id"),
+            "job_name": job.get("job_name", "Unknown Job"),
+            "shift_date": req.get("shift_date"),
+            "hours": hours,
+            "amount": amount,
+            "updated_at": row.get("updated_at")
+        })
+    return activities

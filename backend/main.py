@@ -8,6 +8,7 @@ from content.route import router as content_router
 from jobs.route import router as jobs_router
 from stores.route import router as stores_router
 from superadmin.route import router as superadmin_router
+from finance.route import router as finance_router
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from jobs.cron_tasks import check_t90_voice_calls
@@ -57,6 +58,9 @@ app.include_router(stores_router, prefix="/api/stores", tags=["Stores"])
 # Include the superadmin router
 app.include_router(superadmin_router, prefix="/api/superadmin", tags=["Superadmin"])
 
+# Include the finance router
+app.include_router(finance_router, prefix="/api/finance", tags=["Finance"])
+
 @app.get("/health")
 async def health():
     return {
@@ -69,4 +73,6 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

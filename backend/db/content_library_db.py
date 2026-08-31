@@ -51,6 +51,7 @@ def get_modules_with_progress(user_id: str):
         # Override is_locked_default with actual user progress
         mod['status'] = mod_prog['status'] if mod_prog else 'locked'
         mod['highest_quiz_score'] = mod_prog['highest_quiz_score'] if mod_prog else 0
+        mod['completed_at'] = mod_prog.get('completed_at') if mod_prog else None
         merged.append(mod)
         
     return merged

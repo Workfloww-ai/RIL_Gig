@@ -35,7 +35,7 @@ export default function SuperadminLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       {/* Top Header */}
-      <View style={{ backgroundColor: '#10472B', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? Math.max(40, insets.top) : 40 + insets.top, paddingBottom: 24, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+      <View style={{ backgroundColor: '#10472B', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? Math.max(16, insets.top) : 16 + insets.top, paddingBottom: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity 
             onPress={() => router.push('/superadmin/profile')}

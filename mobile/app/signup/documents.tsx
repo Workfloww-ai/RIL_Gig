@@ -149,14 +149,14 @@ export default function DocumentsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white pt-8">
+    <SafeAreaView className="flex-1 bg-cream pt-8">
       <ScrollView className="flex-1 px-8 pt-8">
-        <Text className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">Documents</Text>
-        <Text className="text-gray-500 mb-8 text-lg font-medium">Upload your KYC documents.</Text>
+        <Text className="text-4xl font-bold text-slate mb-3 tracking-tight">Documents</Text>
+        <Text className="text-sage mb-8 text-lg font-medium">Upload your KYC documents.</Text>
 
         {topError ? (
-          <View className="bg-red-50 border border-red-200 p-4 rounded-xl mb-6">
-            <Text className="text-red-600 font-medium">{topError}</Text>
+          <View className="bg-clay/10 border border-red-200 p-4 rounded-xl mb-6">
+            <Text className="text-clay font-medium">{topError}</Text>
           </View>
         ) : null}
 
@@ -166,9 +166,9 @@ export default function DocumentsScreen() {
           const numError = errors[`${reqDoc.name}_number`];
           
           return (
-            <View key={index} className={`bg-gray-50 p-5 rounded-2xl border ${docError ? 'border-red-500' : 'border-gray-100'} mb-6`}>
-              <Text className="font-bold text-gray-800 text-lg mb-2">
-                {reqDoc.name} <Text className="text-red-500">*</Text>
+            <View key={index} className={`bg-sand p-5 rounded-2xl border ${docError ? 'border-clay/50' : 'border-sage/10'} mb-6`}>
+              <Text className="font-bold text-slate text-lg mb-2">
+                {reqDoc.name} <Text className="text-clay/80">*</Text>
               </Text>
               
               {reqDoc.name !== 'Live Photo' && (
@@ -195,7 +195,7 @@ export default function DocumentsScreen() {
                   </View>
                 )}
               </View>
-              {docError && <Text className="text-red-500 text-sm mt-2">{docError}</Text>}
+              {docError && <Text className="text-clay/80 text-sm mt-2">{docError}</Text>}
             </View>
           );
         })}

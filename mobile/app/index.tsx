@@ -46,11 +46,11 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white pt-8">
+    <SafeAreaView className="flex-1 bg-cream pt-8">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center px-8">
         <View className="mb-12">
-          <Text className="text-5xl font-bold text-gray-900 mb-3 tracking-tight">SAH<Text className="text-primary-500">YOGI</Text></Text>
-          <Text className="text-gray-500 text-lg font-medium">Enter your mobile number to get started.</Text>
+          <Text className="text-5xl font-bold text-slate mb-3 tracking-tight">SAH<Text className="text-moss/80">YOGI</Text></Text>
+          <Text className="text-sage text-lg font-medium">Enter your mobile number to get started.</Text>
           
         </View>
         
@@ -69,7 +69,7 @@ export default function LoginScreen() {
         </View>
         
         <View className="absolute bottom-8 left-0 right-0 items-center">
-          <Text className="text-gray-400 text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
+          <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

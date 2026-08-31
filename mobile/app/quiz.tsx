@@ -101,8 +101,8 @@ export default function QuizScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center pt-8">
-        <ActivityIndicator size="large" color="#2563EB" />
+      <SafeAreaView className="flex-1 bg-cream items-center justify-center pt-8">
+        <ActivityIndicator size="large" color="#0B5B31" />
       </SafeAreaView>
     );
   }
@@ -112,20 +112,20 @@ export default function QuizScreen() {
   const question = questions[currentQIndex];
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 pt-8">
+    <SafeAreaView className="flex-1 bg-sand pt-8">
       {/* Header */}
       <View className="bg-white px-6 py-5 border-b border-gray-100 shadow-sm flex-row items-center justify-between">
         <Text className="text-gray-400 font-bold" onPress={() => router.back()}>Cancel</Text>
-        <Text className="text-lg font-bold text-gray-900">Module Quiz</Text>
+        <Text className="text-lg font-bold text-charcoal">Module Quiz</Text>
         <View className="w-10" />
       </View>
 
       {/* Progress */}
       <View className="px-6 py-6">
-        <Text className="text-primary-600 font-bold mb-2">Question {currentQIndex + 1} of {questions.length}</Text>
-        <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <Text className="text-moss font-bold mb-2">Question {currentQIndex + 1} of {questions.length}</Text>
+        <View className="h-2 bg-sage/20 rounded-full overflow-hidden">
           <View 
-            className="h-full bg-primary-500" 
+            className="h-full bg-moss/80" 
             style={{ width: `${((currentQIndex + 1) / questions.length) * 100}%` }} 
           />
         </View>
@@ -133,7 +133,7 @@ export default function QuizScreen() {
 
       {/* Question Card */}
       <View className="bg-white mx-6 p-6 rounded-3xl shadow-sm border border-gray-100 mb-6">
-        <Text className="text-xl font-bold text-gray-900 mb-8 leading-tight">
+        <Text className="text-xl font-bold text-charcoal mb-8 leading-tight">
           {question.q}
         </Text>
 
@@ -143,9 +143,9 @@ export default function QuizScreen() {
             <TouchableOpacity
               key={idx}
               onPress={() => handleOptionSelect(option)}
-              className={`p-4 rounded-xl mb-4 border ${isSelected ? 'border-primary-500 bg-blue-50' : 'border-gray-200 bg-white'}`}
+              className={`p-4 rounded-xl mb-4 border ${isSelected ? 'border-moss/50 bg-blue-50' : 'border-sage/20 bg-cream'}`}
             >
-              <Text className={`font-medium ${isSelected ? 'text-primary-700 font-bold' : 'text-gray-700'}`}>
+              <Text className={`font-medium ${isSelected ? 'text-moss font-bold' : 'text-slate'}`}>
                 {option}
               </Text>
             </TouchableOpacity>
@@ -159,16 +159,16 @@ export default function QuizScreen() {
           <TouchableOpacity 
             disabled={currentQIndex === 0}
             onPress={() => setCurrentQIndex(prev => prev - 1)}
-            className={`px-6 py-4 rounded-xl ${currentQIndex === 0 ? 'bg-gray-100' : 'bg-gray-200'}`}
+            className={`px-6 py-4 rounded-xl ${currentQIndex === 0 ? 'bg-sage/10' : 'bg-sage/20'}`}
           >
-            <Text className={`font-bold ${currentQIndex === 0 ? 'text-gray-400' : 'text-gray-700'}`}>Previous</Text>
+            <Text className={`font-bold ${currentQIndex === 0 ? 'text-sage' : 'text-slate'}`}>Previous</Text>
           </TouchableOpacity>
 
           {currentQIndex < questions.length - 1 ? (
             <TouchableOpacity 
               disabled={!selectedAnswers[currentQIndex]}
               onPress={() => setCurrentQIndex(prev => prev + 1)}
-              className={`px-8 py-4 rounded-xl ${!selectedAnswers[currentQIndex] ? 'bg-primary-300' : 'bg-primary-600'}`}
+              className={`px-8 py-4 rounded-xl ${!selectedAnswers[currentQIndex] ? 'bg-primary-300' : 'bg-moss'}`}
             >
               <Text className="text-white font-bold">Next</Text>
             </TouchableOpacity>

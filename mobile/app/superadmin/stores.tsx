@@ -33,6 +33,11 @@ export default function SuperadminStores() {
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedStoreId, setExpandedStoreId] = useState<string | null>(null);
+
+  const toggleExpand = (storeId: string) => {
+    setExpandedStoreId(prev => prev === storeId ? null : storeId);
+  };
   
   // State/City modal state
   const [showStateModal, setShowStateModal] = useState(false);
@@ -121,16 +126,34 @@ export default function SuperadminStores() {
             </View>
           ) : (
             stores.map((store) => (
-              <View key={store.store_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 }}>{store.store_name}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="location-outline" size={14} color="#6B7280" style={{ marginRight: 4 }} />
-                    <Text style={{ fontSize: 13, color: '#6B7280' }} numberOfLines={1}>
-                      {store.address}, {store.city}
-                    </Text>
+              <View key={store.store_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}>
+                <TouchableOpacity onPress={() => toggleExpand(store.store_id)} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 }}>{store.store_name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="location-outline" size={14} color="#6B7280" style={{ marginRight: 4 }} />
+                      <Text style={{ fontSize: 13, color: '#6B7280' }} numberOfLines={1}>
+                        {store.address}, {store.city}
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                  <Ionicons name={expandedStoreId === store.store_id ? "chevron-up" : "chevron-down"} size={20} color="#6B7280" />
+                </TouchableOpacity>
+
+                {expandedStoreId === store.store_id && (
+                  <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 }}>Full Address</Text>
+                      <Text style={{ fontSize: 14, color: '#1F2937' }}>{store.address}, {store.city}, {store.state} - {store.pincode}</Text>
+                    </View>
+                    {store.google_map_link ? (
+                      <View style={{ marginBottom: 4 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 }}>Google Map Link</Text>
+                        <Text style={{ fontSize: 14, color: '#3B82F6' }}>{store.google_map_link}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
               </View>
             ))
           )}
