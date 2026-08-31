@@ -10,8 +10,8 @@ TEMP_ID = os.environ.get("DOVESOFT_TEMP_ID", "")
 
 async def send_otp_sms(mobile_number: str, otp_code: str) -> bool:
     # sms_content = f"Your verification OTP is {otp_code}. Please do not share this with anyone."
-    # sms_content = f"The verification code for your LUCID account login is {otp_code}. The code is valid for 5 minutes. Please do not share it with anyone. - Equinox Corp"
     sms_content = f"The verification code for your Sahyogi account is {otp_code}. The code is valid for 5 minutes. Please do not share it with anyone. - Sahyogi Infracare"
+    
     payload = {
         "listsms": [
             {

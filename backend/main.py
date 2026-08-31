@@ -7,6 +7,8 @@ from auth.route import router as auth_router
 from content.route import router as content_router
 from jobs.route import router as jobs_router
 from stores.route import router as stores_router
+from superadmin.route import router as superadmin_router
+from finance.route import router as finance_router
 
 # from apscheduler.schedulers.background import BackgroundScheduler
 # from jobs.cron_tasks import check_t60_status
@@ -50,6 +52,12 @@ app.include_router(jobs_router, prefix="/api/jobs", tags=["Jobs"])
 
 # Include the stores router
 app.include_router(stores_router, prefix="/api/stores", tags=["Stores"])
+
+# Include the superadmin router
+app.include_router(superadmin_router, prefix="/api/superadmin", tags=["Superadmin"])
+
+# Include the finance router
+app.include_router(finance_router, prefix="/api/finance", tags=["Finance"])
 
 @app.get("/health")
 async def health():

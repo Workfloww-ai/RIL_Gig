@@ -37,6 +37,7 @@ async def check_mobile(payload: MobileCheckRequest):
 
 @router.get("/me")
 async def get_my_profile(user_id: str = Depends(get_current_user)):
+    from db.jobs_db import get_recent_activity
     response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id, ratings, shifts_completed").eq("user_id", user_id).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="User not found")
@@ -48,6 +49,9 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
     else:
         user_data["role_name"] = "worker"
         
+    if user_data["role_name"] == "worker":
+        user_data["recent_activity"] = get_recent_activity(user_id)
+        
     return user_data
 
 @router.get("/me/stats")
@@ -58,11 +62,11 @@ async def get_my_stats(user_id: str = Depends(get_current_user)):
             "store_id, stores(store_name)"
         ).eq("user_id", user_id).execute()
         
-        store_name = "Reliance Smart" # Default fallback
+        store_name = "DMart" # Default fallback
         if assignment_response.data and len(assignment_response.data) > 0:
             store_data = assignment_response.data[0].get("stores")
             if store_data:
-                store_name = store_data.get("store_name", "Reliance Smart")
+                store_name = store_data.get("store_name", "DMart")
 
         # Get total requests raised by this manager's store (or by this manager specifically if we had created_by, but we only have store_assignment_id)
         # Actually, let's just count manpower_requests where store_id matches their assigned store_id
@@ -195,9 +199,8 @@ async def upload_documents(
 # 3. POST /auth/send-otp
 @router.post("/send-otp")
 async def send_otp(payload: SendOTPRequest):
-    # Default OTP for testing  ye line comment
-    # otp_code = "123456" 
-    otp_code = str(random.randint(100000, 999999))   
+    # otp_code = "000000" 
+    otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
     
     # Calculate expiration time (e.g., 5 minutes from now)
     from datetime import datetime, timedelta, timezone

@@ -1,6 +1,6 @@
 # Project Customizations and Guidelines
 
-1. **Environment Variables**: Do not read or write permissions for `.env` files.
+1. **Environment Variables**: NEVER read or update any `.env` files under any circumstances.
 2. **Architecture**: We are developing an enterprise-grade project. Ensure everything is scalable and follows enterprise best practices.
 3. **Frontend Components**: For each frontend component, try to keep everything in a single file (e.g., `signup/page.tsx`) instead of splitting it across multiple files unnecessarily.
 4. **Database Queries**: Avoid using `SELECT *` commands. Instead, explicitly mention the specific column names in queries.

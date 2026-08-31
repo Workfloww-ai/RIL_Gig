@@ -8,7 +8,7 @@ import { useAuthStore } from '../../src/store/authStore';
 export default function StoreManagerProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
-  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; role_name?: string } | null>(null);
   const [stats, setStats] = useState<{ store_name: string; total_requests: number; workers_hired: number; rating: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +45,8 @@ export default function StoreManagerProfileScreen() {
     );
   }
 
-  const fullName = userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : 'Store Manager';
+  const roleDisplay = userProfile?.role_name ? userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Store Manager';
+  const fullName = userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : roleDisplay;
   const initial = userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'S';
 
   return (
@@ -66,7 +67,7 @@ export default function StoreManagerProfileScreen() {
           </View>
 
           <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName.toUpperCase()}</Text>
-          <Text className="text-gray-500 text-sm font-medium mb-3">Store Manager • {stats?.store_name || 'Loading...'}</Text>
+          <Text className="text-gray-500 text-sm font-medium mb-3">{roleDisplay} • {stats?.store_name || 'Loading...'}</Text>
 
           {/* Rating Badge */}
           <View className="flex-row items-center bg-yellow-50 px-4 py-2 rounded-full border border-yellow-100">

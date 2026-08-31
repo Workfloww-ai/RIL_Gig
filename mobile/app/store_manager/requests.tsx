@@ -11,6 +11,7 @@ export default function StoreManagerRequestsScreen() {
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   
   const [managerStoreName, setManagerStoreName] = useState<string>('Loading store...');
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   // Request state
   const [requestsList, setRequestsList] = useState<any[]>([]);
@@ -43,6 +44,9 @@ export default function StoreManagerRequestsScreen() {
   // Fetch available jobs and manager requests on mount
   const fetchRequests = async () => {
     try {
+      const profileRes = await apiClient.get('/auth/me').catch(() => null);
+      if (profileRes?.data) setUserProfile(profileRes.data);
+
       const res = await apiClient.get('/jobs/manager/requests');
       if (res.data) {
         if (res.data.requests) {
@@ -79,13 +83,15 @@ export default function StoreManagerRequestsScreen() {
           <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 18, marginLeft: 8 }}>My Requests</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => setIsRaiseModalOpen(true)}
-          style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
-        >
-          <Ionicons name="add-outline" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>New Request</Text>
-        </TouchableOpacity>
+        {userProfile?.role_name !== 'supervisor' && (
+          <TouchableOpacity
+            onPress={() => setIsRaiseModalOpen(true)}
+            style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+          >
+            <Ionicons name="add-outline" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>New Request</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false}>

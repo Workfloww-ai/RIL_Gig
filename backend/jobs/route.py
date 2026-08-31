@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, Any
 from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse, CompleteJobRequest
 from db.jobs_db import create_job_request, get_all_jobs
+from db.finance_db import create_payment_record
 from utils.jwt_auth import get_current_user
 from utils.supabase_client import supabase
 
@@ -596,6 +597,7 @@ async def manager_complete_job(
         }).eq("job_assignment_id", assignment_id).execute()
         
         worker_id = assignment_resp.data[0].get("worker_id")
+        request_id = assignment_resp.data[0].get("request_id")
         
         # Recalculate average rating and shifts completed
         if worker_id:
@@ -608,6 +610,27 @@ async def manager_complete_job(
                     "ratings": avg_score,
                     "shifts_completed": num_rated_shifts
                 }).eq("user_id", worker_id).execute()
+                
+            # Create payment record
+            req_resp = supabase.table("manpower_requests").select("hours_duration, job_id").eq("request_id", request_id).execute()
+            if req_resp.data:
+                hours = req_resp.data[0].get("hours_duration", 0)
+                job_id = req_resp.data[0].get("job_id")
+                
+                job_resp = supabase.table("jobs").select("base_compensation").eq("job_id", job_id).execute()
+                base_comp = job_resp.data[0].get("base_compensation", 0) if job_resp.data else 0
+                
+                amount = hours * base_comp
+                
+                user_res = supabase.table("users").select("upi_id").eq("user_id", worker_id).execute()
+                upi_id = user_res.data[0].get("upi_id") if user_res.data else None
+                
+                create_payment_record(
+                    job_assignment_id=assignment_id,
+                    worker_id=worker_id,
+                    amount=amount,
+                    upi_id=upi_id
+                )
         
         return {"status": "success", "message": "Shift completed and rating saved successfully"}
     except HTTPException:

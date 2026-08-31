@@ -30,7 +30,8 @@ def create_job_request(user_id: str, request_data: Dict[str, Any]):
         # Ensure date and time are stringified (Pydantic model_dump handles this at router level usually)
         "shift_date": request_data["shift_date"],
         "start_time": request_data["start_time"],
-        "hours_duration": request_data["hours_duration"]
+        "hours_duration": request_data["hours_duration"],
+        "approval_status": "pending"
     }
     
     # 3. Insert into manpower_requests table
@@ -51,3 +52,39 @@ def get_all_jobs():
     """
     response = supabase.table("jobs").select("job_id, job_name, base_compensation").execute()
     return response.data
+
+def get_recent_activity(user_id: str):
+    """
+    Fetches the recent completed jobs (activity) for a worker.
+    """
+    response = supabase.table("worker_job_assignments").select(
+        "job_assignment_id, assignment_status, updated_at, manpower_requests(request_id, shift_date, hours_duration, jobs(job_name, base_compensation))"
+    ).eq("worker_id", user_id).eq("assignment_status", "completed").order("updated_at", desc=True).execute()
+    
+    activities = []
+    for row in response.data:
+        req = row.get("manpower_requests")
+        if isinstance(req, list) and len(req) > 0:
+            req = req[0]
+        if not req:
+            continue
+            
+        job = req.get("jobs")
+        if isinstance(job, list) and len(job) > 0:
+            job = job[0]
+        if not job:
+            continue
+            
+        hours = float(req.get("hours_duration", 0))
+        rate = float(job.get("base_compensation", 0))
+        amount = hours * rate
+        
+        activities.append({
+            "id": row.get("job_assignment_id"),
+            "job_name": job.get("job_name", "Unknown Job"),
+            "shift_date": req.get("shift_date"),
+            "hours": hours,
+            "amount": amount,
+            "updated_at": row.get("updated_at")
+        })
+    return activities
