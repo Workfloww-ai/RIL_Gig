@@ -73,9 +73,9 @@ async def process_t90_voice_calls():
                 if 89.0 <= minutes_until_shift <= 100.0:
 
                     mobile_number = worker_info.get("mobile_number")
-                    first_name = worker_info.get("first_name", "")
-                    last_name = worker_info.get("last_name", "")
-                    worker_name = f"{first_name} {last_name}".strip() or "Sahyogi Worker"
+                    worker_name = worker_info.get("first_name", "")
+                    # last_name = worker_info.get("")
+                    # worker_name = f"{worker_name}".strip() or "Sahyogi Worker"
                     store_name = store_info.get("store_name", "Reliance Store")
                     
                     job_data = req_info.get("jobs") or {}
@@ -109,7 +109,7 @@ async def process_t90_voice_calls():
                     )
 
                     
-                    logger.info(f"[T90VoiceWorker] Call dispatch result for {assignment_id}: {result}")
+                    # logger.info(f"[T90VoiceWorker] Call dispatch result for {assignment_id}: {result}")
                     
             except Exception as ex:
                 logger.error(f"[T90VoiceWorker] Error processing assignment {assignment_id}: {ex}")

@@ -63,7 +63,7 @@ def get_pending_t90_call_assignments():
         "job_assignment_id, request_id, store_id, worker_id, assignment_status, t90_status, "
         "manpower_requests(shift_date, start_time, jobs(job_name, base_compensation)), "
         "stores(store_name), "
-        "users!fk_wja_worker(first_name, last_name, mobile_number)"
+        "users!fk_wja_worker(first_name, mobile_number)"
     ).eq("assignment_status", "accepted").eq("t90_status", "pending").execute()
     
     return response.data if response.data else []
