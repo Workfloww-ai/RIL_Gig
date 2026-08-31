@@ -25,7 +25,8 @@ async def process_t90_voice_calls():
     Evaluates all active worker assignments and triggers Hunar.ai voice calls
     for workers whose shift starts in approximately 90 minutes (between 60 and 95 mins).
     """
-    now = datetime.datetime.now()
+    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    now = datetime.datetime.now(IST)
     logger.info(f"[T90VoiceWorker] Checking DB at local system time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
     
     try:
@@ -59,7 +60,7 @@ async def process_t90_voice_calls():
             shift_dt_str = f"{shift_date_str} {start_time_str}"
             
             try:
-                shift_dt = datetime.datetime.strptime(shift_dt_str, "%Y-%m-%d %H:%M:%S")
+                shift_dt = datetime.datetime.strptime(shift_dt_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=IST)
                 time_diff = shift_dt - now
                 minutes_until_shift = time_diff.total_seconds() / 60.0
                 
@@ -87,9 +88,11 @@ async def process_t90_voice_calls():
                         logger.warning(f"[T90VoiceWorker] No mobile number found for assignment {assignment_id}")
                         continue
                         
+                    masked_number = f"+91 ****{mobile_number[-4:]}" if mobile_number and len(mobile_number) >= 4 else "****"
+                    masked_name = " ".join([p[0] + "***" for p in worker_name.split()])
                     logger.info(
                         f"[T90VoiceWorker] Triggering T-90 call for assignment {assignment_id} "
-                        f"to {worker_name} ({mobile_number}). Shift in {minutes_until_shift:.1f} mins."
+                        f"to {masked_name} ({masked_number}). Shift in {minutes_until_shift:.1f} mins."
                     )
                     
                     # Mark status as call_initiated first to avoid race conditions
