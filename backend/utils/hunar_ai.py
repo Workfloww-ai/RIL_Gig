@@ -54,7 +54,10 @@ async def trigger_voice_agent_call(
         "Content-Type": "application/json"
     }
 
-    logging.info(f"[HunarAI] Dispatching voice call (Agent: {agent_id}) to {callee_name} ({clean_phone})...")
+    masked_phone = f"+91 ****{clean_phone[-4:]}" if clean_phone and len(clean_phone) >= 4 else "****"
+    masked_name = " ".join([p[0] + "***" for p in callee_name.split()]) if callee_name else "Sahyogi Worker"
+
+    logging.info(f"[HunarAI] Dispatching voice call (Agent: {agent_id}) to {masked_name} ({masked_phone})...")
 
     if not HUNAR_API_KEY or HUNAR_API_KEY.startswith("dummy"):
         logging.warning("[HunarAI] HUNAR_API_KEY not configured or dummy; simulating call success response.")
@@ -62,7 +65,7 @@ async def trigger_voice_agent_call(
             "status": "success",
             "simulated": True,
             "call_id": f"sim_call_{os.urandom(4).hex()}",
-            "message": f"Simulated call dispatched to {clean_phone}"
+            "message": f"Simulated call dispatched to {masked_phone}"
         }
 
     try:
@@ -89,7 +92,7 @@ async def trigger_voice_agent_call(
             "error": f"HTTP {http_err.response.status_code}: {http_err.response.text}"
         }
     except Exception as e:
-        logging.error(f"[HunarAI] Failed to dispatch voice call to {clean_phone}: {str(e)}")
+        logging.error(f"[HunarAI] Failed to dispatch voice call to {masked_phone}: {str(e)}")
         return {
             "status": "error",
             "simulated": False,
