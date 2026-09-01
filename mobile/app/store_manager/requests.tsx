@@ -15,6 +15,7 @@ export default function StoreManagerRequestsScreen() {
 
   // Request state
   const [requestsList, setRequestsList] = useState<any[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, boolean>>({});
 
   const getWorkerStatusDisplay = (worker: any, minutesUntilShift: number, shiftHasStarted: boolean) => {
     if (worker.status === 'cancelled') return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
@@ -116,6 +117,19 @@ export default function StoreManagerRequestsScreen() {
             <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>
               {job.shift_date} • {job.start_time}
             </Text>
+
+            {job.request_status?.toLowerCase() === 'open' && job.accepted_workers && job.accepted_workers.some((w: any) => w.status === 'cancelled') && !dismissedAlerts[job.request_id || job.id] && (
+              <View style={{ marginBottom: 14, backgroundColor: '#FFFBEB', padding: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderColor: '#FEF3C7', borderLeftWidth: 4, borderLeftColor: '#F59E0B', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
+                <Ionicons name="alert-circle" size={20} color="#D97706" style={{ marginRight: 10, marginTop: 2 }} />
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 4 }}>Replacement in progress</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: '#B45309', lineHeight: 18 }}>A worker missed their check-in. We are automatically assigning a new replacement ASAP.</Text>
+                </View>
+                <TouchableOpacity onPress={() => setDismissedAlerts(prev => ({...prev, [job.request_id || job.id]: true}))} style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 2 }}>
+                  <Text style={{ color: '#D97706', fontWeight: '700', fontSize: 11 }}>Got it</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
               <View>
