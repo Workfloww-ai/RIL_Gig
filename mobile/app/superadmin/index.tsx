@@ -117,7 +117,7 @@ export default function SuperadminDashboard() {
                     disabled={processingId === job.request_id}
                     style={{ flex: 1, backgroundColor: '#FFFFFF', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginLeft: 8, borderWidth: 1, borderColor: '#FCA5A5', opacity: processingId === job.request_id ? 0.7 : 1 }}
                   >
-                    <Text style={{ color: '#EF4444', fontWeight: '700', fontSize: 14 }}>Reject</Text>
+                    <Text style={{ color: '#D32F2F', fontWeight: '700', fontSize: 14 }}>Reject</Text>
                   </TouchableOpacity>
                 </View>
               </View>

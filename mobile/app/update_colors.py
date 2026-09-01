@@ -17,7 +17,7 @@ replacements = [
     (r'text-\[\#666666\]', 'text-sage'),
     (r'text-\[\#1A1A1A\]', 'text-slate'),
     (r'text-\[\#10472B\]', 'text-moss'),
-    (r'bg-\[\#E31B23\]', 'bg-clay'),
+    (r'bg-\[\#D32F2F\]', 'bg-clay'),
     (r'bg-\[\#10472B\]', 'bg-moss'),
     (r'border-\[\#10472B\]', 'border-moss'),
     (r'border-gray-100', 'border-sage/10'),

@@ -108,7 +108,7 @@ export default function SuperadminStores() {
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Stores</Text>
           <TouchableOpacity
             onPress={() => setIsAddModalOpen(true)}
-            style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+            style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
           >
             <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
             <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Add Store</Text>
@@ -198,12 +198,12 @@ export default function SuperadminStores() {
                         <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 13, marginBottom: 8, marginLeft: 4 }}>State</Text>
                         <TouchableOpacity 
                           onPress={() => setShowStateModal(true)}
-                          style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.state ? '#EF4444' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                          style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.state ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                         >
                           <Text style={{ color: value ? '#111827' : '#9CA3AF' }}>{value || "State"}</Text>
                           <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
                         </TouchableOpacity>
-                        {errors.state && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.state.message}</Text>}
+                        {errors.state && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.state.message}</Text>}
                       </View>
                     )}
                   />
@@ -221,12 +221,12 @@ export default function SuperadminStores() {
                           onPress={() => {
                             if (selectedStateCode) setShowCityModal(true);
                           }}
-                          style={{ backgroundColor: !selectedStateCode ? '#F3F4F6' : '#F9FAFB', borderWidth: 1, borderColor: errors.city ? '#EF4444' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: !selectedStateCode ? 0.7 : 1 }}
+                          style={{ backgroundColor: !selectedStateCode ? '#F3F4F6' : '#F9FAFB', borderWidth: 1, borderColor: errors.city ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: !selectedStateCode ? 0.7 : 1 }}
                         >
                           <Text style={{ color: value ? '#111827' : '#9CA3AF' }}>{value || "City"}</Text>
                           <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
                         </TouchableOpacity>
-                        {errors.city && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.city.message}</Text>}
+                        {errors.city && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.city.message}</Text>}
                       </View>
                     )}
                   />

@@ -328,7 +328,7 @@ export default function LibraryScreen() {
      statusText = "NO SHOW";
      iconName = "x-circle";
      textColor = "text-clay";
-     iconColor = "#EF4444";
+     iconColor = "#D32F2F";
    } else if (job.assignment_status === 'started') {
      iconName = "play-circle";
      textColor = "text-blue-600";
@@ -362,7 +362,7 @@ export default function LibraryScreen() {
  {/* T-90 */}
  <View className="items-center w-[30%]">
  <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t90State === 'confirmed' ? 'bg-moss/10' : t90State === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
- <Feather name={t90State === 'confirmed' ? 'check' : t90State === 'missed' ? 'x' : 'clock'} size={14} color={t90State === 'confirmed' ? '#10B981' : t90State === 'missed' ? '#EF4444' : '#9CA3AF'} />
+ <Feather name={t90State === 'confirmed' ? 'check' : t90State === 'missed' ? 'x' : 'clock'} size={14} color={t90State === 'confirmed' ? '#10B981' : t90State === 'missed' ? '#D32F2F' : '#9CA3AF'} />
  </View>
  <Text className="text-[9px] font-bold text-slate text-center">{t90State === 'missed' ? 'Missed' : '90m Before'}</Text>
  {t90State === 'active' && (
@@ -385,7 +385,7 @@ export default function LibraryScreen() {
  {/* T-60 */}
  <View className="items-center w-[30%]">
  <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t60State === 'confirmed' ? 'bg-moss/10' : t60State === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
- <Feather name={t60State === 'confirmed' ? 'check' : t60State === 'missed' ? 'x' : 'navigation'} size={14} color={t60State === 'confirmed' ? '#10B981' : t60State === 'missed' ? '#EF4444' : '#9CA3AF'} />
+ <Feather name={t60State === 'confirmed' ? 'check' : t60State === 'missed' ? 'x' : 'navigation'} size={14} color={t60State === 'confirmed' ? '#10B981' : t60State === 'missed' ? '#D32F2F' : '#9CA3AF'} />
  </View>
  <Text className="text-[9px] font-bold text-slate text-center">{t60State === 'missed' ? 'Missed' : '60m Before'}</Text>
  {t90State !== 'locked' && t60State === 'active' && (
@@ -408,7 +408,7 @@ export default function LibraryScreen() {
  {/* Arrival */}
  <View className="items-center w-[30%]">
  <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${arrivalState === 'confirmed' ? 'bg-moss/10' : arrivalState === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
- <Feather name={arrivalState === 'confirmed' ? 'check' : arrivalState === 'missed' ? 'x' : 'map-pin'} size={14} color={arrivalState === 'confirmed' ? '#10B981' : arrivalState === 'missed' ? '#EF4444' : '#9CA3AF'} />
+ <Feather name={arrivalState === 'confirmed' ? 'check' : arrivalState === 'missed' ? 'x' : 'map-pin'} size={14} color={arrivalState === 'confirmed' ? '#10B981' : arrivalState === 'missed' ? '#D32F2F' : '#9CA3AF'} />
  </View>
  <Text className="text-[9px] font-bold text-slate text-center">{arrivalState === 'missed' ? 'Missed' : 'On Arrival'}</Text>
  {t60State !== 'locked' && arrivalState === 'active' && (
@@ -508,10 +508,10 @@ export default function LibraryScreen() {
  className="mt-2 bg-clay/10 border border-red-200 py-3 rounded-xl items-center flex-row justify-center"
  >
  {cancellingJobId === job.request_id ? (
- <ActivityIndicator size="small" color="#EF4444" />
+ <ActivityIndicator size="small" color="#D32F2F" />
  ) : (
  <>
- <Feather name="x-circle" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+ <Feather name="x-circle" size={16} color="#D32F2F" style={{ marginRight: 6 }} />
  <Text className="text-clay font-bold">Cancel Job</Text>
  </>
  )}

@@ -22,7 +22,7 @@ export default function StoreManagerRequestsScreen() {
     if (worker.arrival_status === 'arrived') return { label: '✅ Arrived', color: '#059669', showCancel: false };
 
     if (shiftHasStarted) {
-      if (worker.arrival_status === 'pending') return { label: '🔴 No Show (Pending Arrival)', color: '#EF4444', showCancel: false };
+      if (worker.arrival_status === 'pending') return { label: '🔴 No Show (Pending Arrival)', color: '#D32F2F', showCancel: false };
     }
     
     // Instantly reflect missed checkpoints as cancelled before the cron job officially cancels them
@@ -86,7 +86,7 @@ export default function StoreManagerRequestsScreen() {
         {userProfile?.role_name !== 'supervisor' && (
           <TouchableOpacity
             onPress={() => setIsRaiseModalOpen(true)}
-            style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+            style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
           >
             <Ionicons name="add-outline" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
             <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>New Request</Text>

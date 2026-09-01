@@ -280,7 +280,7 @@ export default function StoreManagerDashboard() {
     if (worker.status === 'started') return { label: 'Verified', bgColor: '#10B981', textColor: '#FFFFFF' };
     
     if (shiftHasStarted) {
-      if (worker.status === 'accepted') return { label: 'No Show', bgColor: '#FEE2E2', textColor: '#EF4444' };
+      if (worker.status === 'accepted') return { label: 'No Show', bgColor: '#FEE2E2', textColor: '#D32F2F' };
     }
 
     if (worker.arrival_status === 'arrived') return { label: 'Arrived', bgColor: '#D1FAE5', textColor: '#059669' };
@@ -442,7 +442,7 @@ export default function StoreManagerDashboard() {
                     {worker.status === 'started' && isJobEnded && (
                       <TouchableOpacity
                         onPress={() => handleOpenRating(worker)}
-                        style={{ backgroundColor: '#E31B23', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
+                        style={{ backgroundColor: '#D32F2F', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
                         activeOpacity={0.85}
                       >
                         <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
@@ -660,7 +660,7 @@ export default function StoreManagerDashboard() {
               {userProfile?.role_name !== 'supervisor' && (
                 <TouchableOpacity
                   onPress={() => setIsRaiseModalOpen(true)}
-                  style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
+                  style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' }}
                   activeOpacity={0.85}
                 >
                   <Ionicons name="add-outline" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
@@ -748,7 +748,7 @@ export default function StoreManagerDashboard() {
               style={{ backgroundColor: '#FEF2F2', borderRadius: 24, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FEE2F2', flexDirection: 'row', justifyContent: 'center', marginBottom: 40 }}
               activeOpacity={0.85}
             >
-              <Text style={{ color: '#E31B23', fontWeight: '700', fontSize: 16 }}>Logout</Text>
+              <Text style={{ color: '#D32F2F', fontWeight: '700', fontSize: 16 }}>Logout</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -780,9 +780,9 @@ export default function StoreManagerDashboard() {
           <Ionicons
             name={activeTab === 'home' ? 'home' : 'home-outline'}
             size={22}
-            color={activeTab === 'home' ? '#E31B23' : '#9CA3AF'}
+            color={activeTab === 'home' ? '#D32F2F' : '#9CA3AF'}
           />
-          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: activeTab === 'home' ? '#E31B23' : '#9CA3AF' }}>
+          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: activeTab === 'home' ? '#D32F2F' : '#9CA3AF' }}>
             Home
           </Text>
         </TouchableOpacity>
@@ -791,9 +791,9 @@ export default function StoreManagerDashboard() {
           <Ionicons
             name={activeTab === 'requests' ? 'clipboard' : 'clipboard-outline'}
             size={22}
-            color={activeTab === 'requests' ? '#E31B23' : '#9CA3AF'}
+            color={activeTab === 'requests' ? '#D32F2F' : '#9CA3AF'}
           />
-          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: activeTab === 'requests' ? '#E31B23' : '#9CA3AF' }}>
+          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: activeTab === 'requests' ? '#D32F2F' : '#9CA3AF' }}>
             Requests
           </Text>
         </TouchableOpacity>
@@ -887,7 +887,7 @@ export default function StoreManagerDashboard() {
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={{ textAlign: 'center', fontSize: 14, fontWeight: '700', color: '#E31B23', marginBottom: 20 }}>
+            <Text style={{ textAlign: 'center', fontSize: 14, fontWeight: '700', color: '#D32F2F', marginBottom: 20 }}>
               {ratingScore === 5
                 ? '★ 5.0 - Outstanding Effort!'
                 : ratingScore === 4
@@ -914,10 +914,10 @@ export default function StoreManagerDashboard() {
                         borderRadius: 12,
                         borderWidth: 1,
                         backgroundColor: isSelected ? '#FEF2F2' : '#F7F8F9',
-                        borderColor: isSelected ? '#E31B23' : '#E5E7EB',
+                        borderColor: isSelected ? '#D32F2F' : '#E5E7EB',
                       }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: isSelected ? '#E31B23' : '#666666' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: isSelected ? '#D32F2F' : '#666666' }}>
                         {isSelected ? '✓ ' : ''}
                         {tag}
                       </Text>
@@ -941,7 +941,7 @@ export default function StoreManagerDashboard() {
             <TouchableOpacity
               onPress={handleSubmitRating}
               disabled={submittingRating}
-              style={{ backgroundColor: submittingRating ? '#9CA3AF' : '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+              style={{ backgroundColor: submittingRating ? '#9CA3AF' : '#D32F2F', borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
               activeOpacity={0.85}
             >
               <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
@@ -974,32 +974,32 @@ export default function StoreManagerDashboard() {
               onPress={() => { setSortOption('date_desc'); setIsSortModalOpen(false); }}
               style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
             >
-              <Text style={{ fontSize: 16, color: sortOption === 'date_desc' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'date_desc' ? '700' : '500' }}>Date (Newest First)</Text>
-              {sortOption === 'date_desc' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+              <Text style={{ fontSize: 16, color: sortOption === 'date_desc' ? '#D32F2F' : '#1A1A1A', fontWeight: sortOption === 'date_desc' ? '700' : '500' }}>Date (Newest First)</Text>
+              {sortOption === 'date_desc' && <Ionicons name="checkmark" size={20} color="#D32F2F" />}
             </TouchableOpacity>
 
             <TouchableOpacity 
               onPress={() => { setSortOption('date_asc'); setIsSortModalOpen(false); }}
               style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
             >
-              <Text style={{ fontSize: 16, color: sortOption === 'date_asc' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'date_asc' ? '700' : '500' }}>Date (Oldest First)</Text>
-              {sortOption === 'date_asc' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+              <Text style={{ fontSize: 16, color: sortOption === 'date_asc' ? '#D32F2F' : '#1A1A1A', fontWeight: sortOption === 'date_asc' ? '700' : '500' }}>Date (Oldest First)</Text>
+              {sortOption === 'date_asc' && <Ionicons name="checkmark" size={20} color="#D32F2F" />}
             </TouchableOpacity>
 
             <TouchableOpacity 
               onPress={() => { setSortOption('open_first'); setIsSortModalOpen(false); }}
               style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
             >
-              <Text style={{ fontSize: 16, color: sortOption === 'open_first' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'open_first' ? '700' : '500' }}>Status (Open First)</Text>
-              {sortOption === 'open_first' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+              <Text style={{ fontSize: 16, color: sortOption === 'open_first' ? '#D32F2F' : '#1A1A1A', fontWeight: sortOption === 'open_first' ? '700' : '500' }}>Status (Open First)</Text>
+              {sortOption === 'open_first' && <Ionicons name="checkmark" size={20} color="#D32F2F" />}
             </TouchableOpacity>
 
             <TouchableOpacity 
               onPress={() => { setSortOption('closed_first'); setIsSortModalOpen(false); }}
               style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 }}
             >
-              <Text style={{ fontSize: 16, color: sortOption === 'closed_first' ? '#E31B23' : '#1A1A1A', fontWeight: sortOption === 'closed_first' ? '700' : '500' }}>Status (Closed First)</Text>
-              {sortOption === 'closed_first' && <Ionicons name="checkmark" size={20} color="#E31B23" />}
+              <Text style={{ fontSize: 16, color: sortOption === 'closed_first' ? '#D32F2F' : '#1A1A1A', fontWeight: sortOption === 'closed_first' ? '700' : '500' }}>Status (Closed First)</Text>
+              {sortOption === 'closed_first' && <Ionicons name="checkmark" size={20} color="#D32F2F" />}
             </TouchableOpacity>
 
           </View>

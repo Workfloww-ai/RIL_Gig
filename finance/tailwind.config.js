@@ -11,7 +11,7 @@ module.exports = {
         sand: '#F9F9F9',
         sage: '#666666',
         moss: '#0B5B31',
-        clay: '#ED1C24',
+        clay: '#D32F2F',
         slate: '#3C3C3B',
         cream: '#FFFFFF',
       },

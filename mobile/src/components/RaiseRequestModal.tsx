@@ -222,7 +222,7 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
 
               <TouchableOpacity
                 onPress={handlePublishRequest}
-                style={{ backgroundColor: '#E31B23', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
+                style={{ backgroundColor: '#D32F2F', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
                 activeOpacity={0.85}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Publish to Worker Pool</Text>
