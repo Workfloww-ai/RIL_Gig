@@ -11,7 +11,7 @@ export default function SuperadminDashboard() {
   const [requestsList, setRequestsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
@@ -63,7 +63,7 @@ export default function SuperadminDashboard() {
           ) : (
             requestsList.map((job) => (
               <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
-                
+
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <Text style={{ fontWeight: '700', color: '#111827', fontSize: 16, flex: 1, marginRight: 8 }}>{job.job_name}</Text>
                   <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: '#FEF3C7' }}>
@@ -89,7 +89,7 @@ export default function SuperadminDashboard() {
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Workers Needed</Text>
+                      <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Sahyogi's Needed</Text>
                       <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.workers_needed}</Text>
                     </View>
                     <View style={{ flex: 1 }}>

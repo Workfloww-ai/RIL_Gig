@@ -74,7 +74,7 @@ export default function StoreManagerProfileScreen() {
             <Text className="text-yellow-500 mr-2 text-lg">⭐⭐⭐⭐⭐</Text>
             <Text className="text-yellow-700 font-bold">{stats?.rating?.toFixed(1) || '5.0'}</Text>
           </View>
-          <Text className="text-gray-400 text-xs mt-2">Rated by Gig Workers & Operations</Text>
+          <Text className="text-gray-400 text-xs mt-2">Rated by Sahyogis & Operations</Text>
         </View>
 
         {/* Stats Grid - Identical card styling to Worker Profile */}
@@ -91,28 +91,12 @@ export default function StoreManagerProfileScreen() {
             <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
               <Text className="text-blue-500 text-xl">👥</Text>
             </View>
-            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Workers Hired</Text>
+            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Sahyogis Hired</Text>
             <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.workers_hired || 0}</Text>
           </View>
         </View>
 
-        {/* Management Settings Card */}
-        <View className="mx-5 mt-6 bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-          <TouchableOpacity className="py-3 flex-row items-center justify-between border-b border-gray-100">
-            <Text className="text-gray-900 font-semibold text-sm">Store Settings & Locations</Text>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
 
-          <TouchableOpacity className="py-3 flex-row items-center justify-between border-b border-gray-100">
-            <Text className="text-gray-900 font-semibold text-sm">Sahyogi Escalations</Text>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity className="py-3 flex-row items-center justify-between">
-            <Text className="text-gray-900 font-semibold text-sm">Help & Support</Text>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
 
         {/* Logout Button - Identical styling to Worker Profile */}
         <View className="mx-5 mb-10 mt-6">
