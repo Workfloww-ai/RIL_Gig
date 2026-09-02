@@ -11,7 +11,7 @@ Token	Hex Code	Swatch	Role	Usage
 Sand	#F9F9F9	🟫	Background (Primary)	Page background, form inputs, mobile menu
 Sage	#666666	⬜	Text (Secondary)	Body copy, descriptions, labels, nav links
 Moss	#0B5B31	🟩	Brand Green (Primary)	Headings, process steps, CTA outlines, nav bar, footer
-Clay	#ED1C24	🟥	Brand Red (Accent)	CTA buttons, highlights, subtitles, hover states
+Clay	#D32F2F	🟥	Brand Red (Accent)	CTA buttons, highlights, subtitles, hover states
 Slate	#3C3C3B	⬛	Text (Primary)	Main headings (h1, h2), body text colour
 Cream	#FFFFFF	⬜	White / Surface	Cards, hero section background, stat cards
 CSS Variable Definitions
@@ -41,41 +41,41 @@ Form inputs	#F9F9F9	bg-sand
 Accent / Feature Blocks
 Context	Colour	Token / Class
 Stat card (green)	#0B5B31	bg-moss
-Stat card (red)	#ED1C24	bg-clay
-Award badge circle	#ED1C24	bg-clay
+Stat card (red)	#D32F2F	bg-clay
+Award badge circle	#D32F2F	bg-clay
 Process step circles	#0B5B31	bg-moss
 Hospitality advantage box	#0B5B31	bg-moss
 "Ready to Scale" card	#0B5B31	bg-moss
 ✍️ Typography Colours
 Element	Colour	Hex	Class
 Main headings (h1, h2)	Dark charcoal	#3C3C3B	text-slate
-Heading accents / emphasis	Brand red	#ED1C24	text-clay
+Heading accents / emphasis	Brand red	#D32F2F	text-clay
 Sub-headings (h3, h4)	Deep green	#0B5B31	text-moss
 Body text	Medium grey	#666666	text-sage
 Text on dark (moss) backgrounds	Near-white	#F9F9F9	text-sand
 Text on red/green cards	Near-white	#F9F9F9	text-sand
 Nav brand name	Deep green	#0B5B31	text-moss
-Nav tagline	Brand red	#ED1C24	text-clay
-Footer section headings	Brand red	#ED1C24	text-clay
+Nav tagline	Brand red	#D32F2F	text-clay
+Footer section headings	Brand red	#D32F2F	text-clay
 🔘 Button & CTA Colours
 Button Type	Background	Text	Border	Hover / Shadow
-Primary CTA ("Enquire Now", "Submit")	#ED1C24	#FFFFFF	—	bg-clay/90, shadow-clay/20
+Primary CTA ("Enquire Now", "Submit")	#D32F2F	#FFFFFF	—	bg-clay/90, shadow-clay/20
 Secondary CTA ("Our Credentials")	Transparent	#0B5B31	#0B5B31 at 20%	bg-moss/5
-CTA on dark bg ("Connect with us")	#ED1C24	#FFFFFF	—	rounded-full, shadow-clay/20
-Disabled state	#ED1C24 at 70%	#FFFFFF	—	opacity-70, cursor-not-allowed
+CTA on dark bg ("Connect with us")	#D32F2F	#FFFFFF	—	rounded-full, shadow-clay/20
+Disabled state	#D32F2F at 70%	#FFFFFF	—	opacity-70, cursor-not-allowed
 🖼️ Decorative & Subtle Colours
 Element	Colour / Opacity	Purpose
 Hero diagonal SVG lines	#666666 at 5% opacity	Subtle background texture
 Hero green glow	#0B5B31 at 5% opacity, blur-150px	Ambient radial gradient
-Hero red glow	#ED1C24 at 5% opacity, blur-150px	Ambient radial gradient
-About section red glow	#ED1C24 at 20% opacity, blur-100px	Decorative orb behind CTA card
+Hero red glow	#D32F2F at 5% opacity, blur-150px	Ambient radial gradient
+About section red glow	#D32F2F at 20% opacity, blur-100px	Decorative orb behind CTA card
 Card borders	#0B5B31 at 5%	Very subtle separation
 Header border	#0B5B31 at 10%	Thin bottom separator
 Footer divider	#F9F9F9 at 10%	Section separator
-Selection highlight	#ED1C24 at 20%	selection:bg-clay/20
+Selection highlight	#D32F2F at 20%	selection:bg-clay/20
 Text shadow (hero)	rgba(0,0,0,0.1)	Subtle depth on large text
-Left accent border (card)	#ED1C24 solid 8px	Feature card highlight
-Input focus border	#ED1C24	focus:border-clay
+Left accent border (card)	#D32F2F solid 8px	Feature card highlight
+Input focus border	#D32F2F	focus:border-clay
 ✅ Status / Feedback Colours
 Used for form submission feedback messages:
 
@@ -125,7 +125,7 @@ Mermaid diagram
 🎨 Quick Copy Reference
 
 Primary Green (Moss):   #0B5B31  ·  rgb(11, 91, 49)
-Primary Red (Clay):     #ED1C24  ·  rgb(237, 28, 36)
+Primary Red (Clay):     #D32F2F  ·  rgb(237, 28, 36)
 Dark Text (Slate):      #3C3C3B  ·  rgb(60, 60, 59)
 Medium Text (Sage):     #666666  ·  rgb(102, 102, 102)
 Background (Sand):      #F9F9F9  ·  rgb(249, 249, 249)

@@ -9,7 +9,7 @@ export default function StoreManagerProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; role_name?: string } | null>(null);
-  const [stats, setStats] = useState<{ store_name: string; total_requests: number; workers_hired: number; rating: number } | null>(null);
+  const [stats, setStats] = useState<{ store_name: string; total_requests: number; hours_completed: number; rating: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const handleLogout = () => {
@@ -17,12 +17,23 @@ export default function StoreManagerProfileScreen() {
     router.replace('/');
   };
 
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  const monthStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
+  
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthDisplay = `${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+
+  const now = new Date();
+  const isCurrentMonth = selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() === now.getMonth();
+
   useEffect(() => {
     const fetchProfile = async () => {
+      setLoading(true);
       try {
         const [profileRes, statsRes] = await Promise.all([
           apiClient.get('/auth/me'),
-          apiClient.get('/auth/me/stats')
+          apiClient.get(`/auth/me/stats?month=${monthStr}`)
         ]);
         setUserProfile(profileRes.data);
         if (statsRes.data) {
@@ -35,7 +46,7 @@ export default function StoreManagerProfileScreen() {
       }
     };
     fetchProfile();
-  }, []);
+  }, [monthStr]);
 
   if (loading) {
     return (
@@ -74,7 +85,29 @@ export default function StoreManagerProfileScreen() {
             <Text className="text-yellow-500 mr-2 text-lg">⭐⭐⭐⭐⭐</Text>
             <Text className="text-yellow-700 font-bold">{stats?.rating?.toFixed(1) || '5.0'}</Text>
           </View>
-          <Text className="text-gray-400 text-xs mt-2">Rated by Gig Workers & Operations</Text>
+          <Text className="text-gray-400 text-xs mt-2">Rated by Sahyogis & Operations</Text>
+        </View>
+
+        {/* Month Selector */}
+        <View className="mx-5 mt-6 flex-row items-center justify-between bg-white px-4 py-3 rounded-2xl shadow-sm border border-gray-100">
+          <TouchableOpacity 
+            onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}
+            className="w-10 h-10 items-center justify-center bg-gray-50 rounded-full"
+          >
+            <Feather name="chevron-left" size={20} color="#4B5563" />
+          </TouchableOpacity>
+          <Text className="font-bold text-gray-800 text-base">{monthDisplay}</Text>
+          <TouchableOpacity 
+            onPress={() => {
+              if (!isCurrentMonth) {
+                setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
+              }
+            }}
+            disabled={isCurrentMonth}
+            className={`w-10 h-10 items-center justify-center rounded-full ${isCurrentMonth ? 'bg-gray-50/50' : 'bg-gray-50'}`}
+          >
+            <Feather name="chevron-right" size={20} color={isCurrentMonth ? "#D1D5DB" : "#4B5563"} />
+          </TouchableOpacity>
         </View>
 
         {/* Stats Grid - Identical card styling to Worker Profile */}
@@ -83,7 +116,7 @@ export default function StoreManagerProfileScreen() {
             <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mb-3">
               <Text className="text-green-500 text-xl">📋</Text>
             </View>
-            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Requests</Text>
+            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Requests</Text>
             <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.total_requests || 0}</Text>
           </View>
 
@@ -91,28 +124,12 @@ export default function StoreManagerProfileScreen() {
             <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
               <Text className="text-blue-500 text-xl">👥</Text>
             </View>
-            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Workers Hired</Text>
-            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.workers_hired || 0}</Text>
+            <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-1 text-center">Hours</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.hours_completed || 0}</Text>
           </View>
         </View>
 
-        {/* Management Settings Card */}
-        <View className="mx-5 mt-6 bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-          <TouchableOpacity className="py-3 flex-row items-center justify-between border-b border-gray-100">
-            <Text className="text-gray-900 font-semibold text-sm">Store Settings & Locations</Text>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
 
-          <TouchableOpacity className="py-3 flex-row items-center justify-between border-b border-gray-100">
-            <Text className="text-gray-900 font-semibold text-sm">Sahyogi Escalations</Text>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity className="py-3 flex-row items-center justify-between">
-            <Text className="text-gray-900 font-semibold text-sm">Help & Support</Text>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
 
         {/* Logout Button - Identical styling to Worker Profile */}
         <View className="mx-5 mb-10 mt-6">

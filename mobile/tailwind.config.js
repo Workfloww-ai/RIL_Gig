@@ -8,7 +8,7 @@ module.exports = {
         sand: '#F7F8F9',
         sage: '#666666',
         moss: '#10472B',
-        clay: '#E31B23',
+        clay: '#D32F2F',
         slate: '#1A1A1A',
         cream: '#FFFFFF',
         primary: {
@@ -23,7 +23,7 @@ module.exports = {
           800: '#071D12',
           900: '#041009',
         },
-        accent: '#E31B23', // Primary Red
+        accent: '#D32F2F', // Primary Red
         taupe: '#9C8F80',
         background: '#FFFFFF', // Pure White
       }

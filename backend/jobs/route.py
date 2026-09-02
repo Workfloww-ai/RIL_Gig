@@ -198,7 +198,7 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
         if not existing.data:
             raise HTTPException(status_code=400, detail="You have not accepted this job")
             
-        # 1.5 Check time restriction (cannot cancel < 3 hours before start)
+        # 1.5 Check time restriction (cannot cancel < 100 minutes before start)
         req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
         if req_res.data:
             from datetime import datetime
@@ -207,8 +207,8 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
             if shift_date and start_time:
                 shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
                 diff = shift_datetime - datetime.now()
-                if diff.total_seconds() > 0 and diff.total_seconds() < 3 * 3600:
-                    raise HTTPException(status_code=400, detail="Cannot cancel job less than 3 hours before start time")
+                if diff.total_seconds() > 0 and diff.total_seconds() < 6000:
+                    raise HTTPException(status_code=400, detail="Cannot cancel job less than 100 minutes before start time")
                     
         # 2. Delete the assignment
         supabase.table("worker_job_assignments").delete().eq("request_id", request_id).eq("worker_id", user_id).execute()
@@ -321,7 +321,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
         
         # Now fetch requests for this store
         response = supabase.table("manpower_requests").select(
-            "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
+            "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city), "
             "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, users!fk_wja_worker(first_name, last_name))"
@@ -371,6 +371,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                 "hours_duration": float(r.get("hours_duration", 0)),
                 "request_status": r.get("request_status", ""),
                 "approval_status": r.get("approval_status", ""),
+                "decline_reason": r.get("decline_reason", ""),
                 "job_id": job_info.get("job_id", ""),
                 "job_name": job_info.get("job_name", ""),
                 "base_compensation": float(job_info.get("base_compensation", 0)),

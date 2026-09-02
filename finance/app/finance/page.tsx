@@ -280,8 +280,8 @@ export default function FinanceDashboard() {
           </td>
           <td className="px-6 py-4">
             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${group.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                group.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                  'bg-gray-100 text-gray-800'
+              group.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
               }`}>
               {group.status.charAt(0).toUpperCase() + group.status.slice(1)}
             </span>
@@ -289,7 +289,7 @@ export default function FinanceDashboard() {
           <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setSelectedGroup(group)}
-              className="rounded-lg bg-clay px-4 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors shadow-sm"
+              className="rounded-lg bg-clay px-4 py-2 text-xs font-semibold text-white hover:bg-clay/90 transition-colors shadow-sm"
             >
               Process Total
             </button>
@@ -398,13 +398,13 @@ export default function FinanceDashboard() {
       <div className="rounded-xl bg-cream shadow-sm border border-gray-100 overflow-hidden mt-6">
         <div className="bg-sand border-b border-gray-200 p-3 px-4 flex items-center justify-between">
           <h3 className="font-semibold text-moss">Today's Jobs</h3>
-          <span className="text-xs font-medium bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full">{presentGroups.length} Workers</span>
+          <span className="text-xs font-medium bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full">{presentGroups.length} Sahyogi</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate">
             <thead className="bg-gray-50 text-xs uppercase text-sage border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3">Worker Details</th>
+                <th className="px-6 py-3">Sahyogi Details</th>
                 <th className="px-6 py-3">UPI ID</th>
                 <th className="px-6 py-3">Jobs Summary</th>
                 <th className="px-6 py-3">Total Amount</th>
@@ -423,13 +423,13 @@ export default function FinanceDashboard() {
       <div className="rounded-xl bg-cream shadow-sm border border-gray-100 overflow-hidden mt-6">
         <div className="bg-sand border-b border-gray-200 p-3 px-4 flex items-center justify-between">
           <h3 className="font-semibold text-clay">Past / Rollover Jobs</h3>
-          <span className="text-xs font-medium bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full">{pastGroups.length} Workers</span>
+          <span className="text-xs font-medium bg-clay/10 text-clay px-2.5 py-0.5 rounded-full">{pastGroups.length}Sahyogi</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate">
             <thead className="bg-gray-50 text-xs uppercase text-sage border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3">Worker Details</th>
+                <th className="px-6 py-3">Sahyogi Details</th>
                 <th className="px-6 py-3">UPI ID</th>
                 <th className="px-6 py-3">Jobs Summary</th>
                 <th className="px-6 py-3">Total Amount</th>
@@ -460,7 +460,7 @@ export default function FinanceDashboard() {
 
             <div className="mb-6 rounded-xl bg-sand p-4 border border-gray-200">
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-sage">Worker</span>
+                <span className="text-sm text-sage">Sahyogi Name</span>
                 <span className="text-sm font-medium text-slate">
                   {selectedGroup ? selectedGroup.worker_name : selectedPayment?.worker_name}
                 </span>
@@ -510,7 +510,7 @@ export default function FinanceDashboard() {
             </div>
 
             {processError && (
-              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-clay border border-red-100">
+              <div className="mb-4 rounded-lg bg-clay/5 p-3 text-sm text-clay border border-clay/20">
                 {processError}
               </div>
             )}

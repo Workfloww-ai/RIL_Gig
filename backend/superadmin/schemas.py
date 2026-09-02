@@ -12,6 +12,10 @@ class SuperadminJobResponse(BaseModel):
     workers_needed: int
     compensation: float
     approval_status: str
+    decline_reason: Optional[str] = None
+
+class RejectRequestPayload(BaseModel):
+    decline_reason: str
 
 class SuperadminRequestsResponse(BaseModel):
     status: str

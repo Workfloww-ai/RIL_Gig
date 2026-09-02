@@ -77,18 +77,18 @@ export default function SuperadminLayout() {
         }}
       >
         <TouchableOpacity onPress={() => router.push('/superadmin')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
-          <Ionicons name="clipboard-outline" size={22} color={pathname === '/superadmin' ? '#E31B23' : '#9CA3AF'} />
-          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin' ? '#E31B23' : '#9CA3AF' }}>Requests</Text>
+          <Ionicons name="clipboard-outline" size={22} color={pathname === '/superadmin' ? '#D32F2F' : '#9CA3AF'} />
+          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin' ? '#D32F2F' : '#9CA3AF' }}>Requests</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push('/superadmin/managers')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
-          <Feather name="home" size={22} color={pathname === '/superadmin/managers' ? '#E31B23' : '#9CA3AF'} />
-          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/managers' ? '#E31B23' : '#9CA3AF' }}>Managers</Text>
+          <Feather name="home" size={22} color={pathname === '/superadmin/managers' ? '#D32F2F' : '#9CA3AF'} />
+          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/managers' ? '#D32F2F' : '#9CA3AF' }}>Managers</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push('/superadmin/stores')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
-          <Feather name="box" size={22} color={pathname === '/superadmin/stores' ? '#E31B23' : '#9CA3AF'} />
-          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/stores' ? '#E31B23' : '#9CA3AF' }}>Stores</Text>
+          <Feather name="box" size={22} color={pathname === '/superadmin/stores' ? '#D32F2F' : '#9CA3AF'} />
+          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/stores' ? '#D32F2F' : '#9CA3AF' }}>Stores</Text>
         </TouchableOpacity>
       </View>
     </View>

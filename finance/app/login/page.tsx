@@ -70,7 +70,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-lg bg-red-50 p-3 text-sm text-clay border border-red-100">
+          <div className="mb-6 rounded-lg bg-clay/5 p-3 text-sm text-clay border border-clay/20">
             {error}
           </div>
         )}
@@ -100,7 +100,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-clay px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-200 disabled:opacity-50"
+              className="w-full rounded-lg bg-clay px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-clay/90 focus:outline-none focus:ring-4 focus:ring-clay/30 disabled:opacity-50"
             >
               {loading ? 'Sending OTP...' : 'Send OTP'}
             </button>
