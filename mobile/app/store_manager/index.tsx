@@ -350,6 +350,13 @@ export default function StoreManagerDashboard() {
           <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.base_compensation * job.hours_duration}</Text>
         </View>
       </View>
+      
+      {job.approval_status === 'declined' && job.decline_reason && (
+        <View style={{ marginTop: 12, backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FCA5A5' }}>
+          <Text style={{ color: '#B91C1C', fontSize: 12, fontWeight: '700', marginBottom: 4 }}>Reason for Decline:</Text>
+          <Text style={{ color: '#991B1B', fontSize: 14 }}>{job.decline_reason}</Text>
+        </View>
+      )}
     </View>
   );
 

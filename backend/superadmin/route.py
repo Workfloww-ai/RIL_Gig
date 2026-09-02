@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
-from .schemas import SuperadminRequestsResponse, SuperadminJobResponse, ActionResponse
+from .schemas import SuperadminRequestsResponse, SuperadminJobResponse, ActionResponse, RejectRequestPayload
 from utils.supabase_client import supabase
 from utils.jwt_auth import get_current_user
 import datetime
@@ -10,14 +10,14 @@ router = APIRouter()
 @router.get("/requests", response_model=SuperadminRequestsResponse)
 async def get_pending_requests(user_id: str = Depends(get_current_user)):
     """
-    Fetch all pending manpower requests for superadmin across all stores.
+    Fetch all manpower requests for superadmin across all stores.
     """
     try:
         response = supabase.table("manpower_requests").select(
-            "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
+            "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city)"
-        ).eq("approval_status", "pending").execute()
+        ).order("created_at", desc=True).execute()
         
         requests = []
         for r in response.data:
@@ -42,7 +42,8 @@ async def get_pending_requests(user_id: str = Depends(get_current_user)):
                 start_time=r.get("start_time", ""),
                 workers_needed=r.get("workers_needed", 1),
                 compensation=hours * base_comp,
-                approval_status=r.get("approval_status", "")
+                approval_status=r.get("approval_status", ""),
+                decline_reason=r.get("decline_reason")
             ))
             
         return SuperadminRequestsResponse(status="success", requests=requests)
@@ -67,11 +68,12 @@ async def approve_request(request_id: str, user_id: str = Depends(get_current_us
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/requests/{request_id}/reject", response_model=ActionResponse)
-async def reject_request(request_id: str, user_id: str = Depends(get_current_user)):
+async def reject_request(request_id: str, payload: RejectRequestPayload, user_id: str = Depends(get_current_user)):
     try:
         res = supabase.table("manpower_requests").update({
             "approval_status": "declined",
-            "request_status": "closed"
+            "request_status": "closed",
+            "decline_reason": payload.decline_reason
         }).eq("request_id", request_id).execute()
         
         if not res.data:
