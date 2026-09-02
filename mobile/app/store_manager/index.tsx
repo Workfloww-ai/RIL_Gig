@@ -80,6 +80,9 @@ export default function StoreManagerDashboard() {
   // Interactive Expandable Jobs State (ID of expanded job card, defaults to 'job-1')
   const [expandedJobId, setExpandedJobId] = useState<string | null>('job-1');
 
+  // Dismissed Alerts State
+  const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, boolean>>({});
+
   // Modal States
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -384,33 +387,48 @@ export default function StoreManagerDashboard() {
         key={job.request_id}
         style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
       >
-        {/* Job Card Header (Clickable to Expand / Collapse) */}
         <TouchableOpacity
           onPress={() => toggleExpandJob(job.request_id)}
-          style={{ padding: 18, backgroundColor: isExpanded ? '#FAFBFB' : '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+          style={{ padding: 18, backgroundColor: isExpanded ? '#FAFBFB' : '#FFFFFF', flexDirection: 'column' }}
           activeOpacity={0.8}
         >
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
-              <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
+                <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#10472B' }}>
+                  {acceptedWorkers.length} {acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
+                </Text>
               </View>
             </View>
 
-            <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
-
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#10472B' }}>
-                {acceptedWorkers.length} {acceptedWorkers.length === 1 ? 'Worker Assigned' : 'Workers Assigned'}
-              </Text>
+            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#1A1A1A" />
             </View>
           </View>
-
-          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#1A1A1A" />
-          </View>
+            
+          {/* Show replacement indicator if job is open and a worker was cancelled */}
+          {job.request_status?.toLowerCase() === 'open' && acceptedWorkers.some((w: any) => w.status === 'cancelled') && !dismissedAlerts[job.request_id] && (
+            <View style={{ marginTop: 14, backgroundColor: '#FFFBEB', padding: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderColor: '#FEF3C7', borderLeftWidth: 4, borderLeftColor: '#F59E0B', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
+              <Ionicons name="alert-circle" size={20} color="#D97706" style={{ marginRight: 10, marginTop: 2 }} />
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 4 }}>Replacement in progress</Text>
+                <Text style={{ fontSize: 12, fontWeight: '500', color: '#B45309', lineHeight: 18 }}>A worker missed their check-in. We are automatically assigning a new replacement ASAP.</Text>
+              </View>
+              <TouchableOpacity onPress={() => setDismissedAlerts(prev => ({...prev, [job.request_id]: true}))} style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 2 }}>
+                <Text style={{ color: '#D97706', fontWeight: '700', fontSize: 11 }}>Got it</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </TouchableOpacity>
 
         {/* EXPANDED SECTION: ASSIGNED WORKERS & STATUS FOR THIS JOB */}
@@ -834,7 +852,7 @@ export default function StoreManagerDashboard() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => { }} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
+        {/* <TouchableOpacity onPress={() => { }} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons
             name="bar-chart-outline"
             size={22}
@@ -843,7 +861,7 @@ export default function StoreManagerDashboard() {
           <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: '#9CA3AF' }}>
             Insights
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* ==================== OTP VERIFICATION MODAL ==================== */}
