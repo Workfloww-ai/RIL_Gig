@@ -207,8 +207,8 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
             if shift_date and start_time:
                 shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
                 diff = shift_datetime - datetime.now()
-                if diff.total_seconds() > 0 and diff.total_seconds() < 6000:
-                    raise HTTPException(status_code=400, detail="Cannot cancel job less than 100 minutes before start time")
+                if diff.total_seconds() > 0 and diff.total_seconds() < 5400:
+                    raise HTTPException(status_code=400, detail="Cannot cancel job less than 90 minutes before start time")
                     
         # 2. Delete the assignment
         supabase.table("worker_job_assignments").delete().eq("request_id", request_id).eq("worker_id", user_id).execute()
