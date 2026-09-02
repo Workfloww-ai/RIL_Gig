@@ -124,7 +124,7 @@ export default function ProfileScreen() {
                     <View className="flex-1">
                       <Text className="font-bold text-slate text-base mb-1">{activity.job_name || 'Shift Payment'}</Text>
                       <Text className="text-sage text-xs">
-                        {activity.payment_status === 'processed' ? 'Payment Processed' : 'Processing'} - {activity.hours || 0} hrs
+                        {activity.store_name || 'Unknown Store'}
                       </Text>
                     </View>
                     <View className="items-end">

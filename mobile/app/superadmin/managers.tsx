@@ -122,7 +122,7 @@ export default function SuperadminManagers() {
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Store Managers</Text>
           <TouchableOpacity
             onPress={() => setIsAddModalOpen(true)}
-            style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+            style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
           >
             <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>+ Add Manager</Text>
           </TouchableOpacity>
@@ -131,7 +131,7 @@ export default function SuperadminManagers() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}>
           {loading ? (
             <View style={{ padding: 20, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#E31B23" />
+              <ActivityIndicator size="large" color="#D32F2F" />
             </View>
           ) : managers.length === 0 ? (
             <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
@@ -150,7 +150,7 @@ export default function SuperadminManagers() {
                     </View>
                   </View>
                   <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="storefront" size={20} color="#EF4444" />
+                    <Ionicons name="storefront" size={20} color="#D32F2F" />
                   </View>
                 </View>
 
@@ -166,7 +166,7 @@ export default function SuperadminManagers() {
 
                 {manager.role_name && (
                   <View style={{ position: 'absolute', bottom: 16, right: 16 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#E31B23', textTransform: 'capitalize' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#D32F2F', textTransform: 'capitalize' }}>
                       {manager.role_name}
                     </Text>
                   </View>
@@ -245,12 +245,12 @@ export default function SuperadminManagers() {
                         <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 13, marginBottom: 8, marginLeft: 4 }}>State</Text>
                         <TouchableOpacity 
                           onPress={() => setShowStateModal(true)}
-                          style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.state ? '#EF4444' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                          style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.state ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                         >
                           <Text style={{ color: value ? '#111827' : '#9CA3AF' }}>{value || "State"}</Text>
                           <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
                         </TouchableOpacity>
-                        {errors.state && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.state.message}</Text>}
+                        {errors.state && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.state.message}</Text>}
                       </View>
                     )}
                   />
@@ -267,12 +267,12 @@ export default function SuperadminManagers() {
                           onPress={() => {
                             if (selectedStateCode) setShowCityModal(true);
                           }}
-                          style={{ backgroundColor: !selectedStateCode ? '#F3F4F6' : '#F9FAFB', borderWidth: 1, borderColor: errors.city ? '#EF4444' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: !selectedStateCode ? 0.7 : 1 }}
+                          style={{ backgroundColor: !selectedStateCode ? '#F3F4F6' : '#F9FAFB', borderWidth: 1, borderColor: errors.city ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: !selectedStateCode ? 0.7 : 1 }}
                         >
                           <Text style={{ color: value ? '#111827' : '#9CA3AF' }}>{value || "City"}</Text>
                           <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
                         </TouchableOpacity>
-                        {errors.city && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.city.message}</Text>}
+                        {errors.city && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.city.message}</Text>}
                       </View>
                     )}
                   />
@@ -297,12 +297,12 @@ export default function SuperadminManagers() {
                     <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 13, marginBottom: 8, marginLeft: 4 }}>Role</Text>
                     <TouchableOpacity 
                       onPress={() => setShowRoleModal(true)}
-                      style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.role ? '#EF4444' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                      style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.role ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                     >
                       <Text style={{ color: value ? '#111827' : '#9CA3AF', textTransform: value ? 'capitalize' : 'none' }}>{value || "Select role"}</Text>
                       <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
                     </TouchableOpacity>
-                    {errors.role && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.role.message}</Text>}
+                    {errors.role && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.role.message}</Text>}
                   </View>
                 )}
               />
@@ -315,14 +315,14 @@ export default function SuperadminManagers() {
                     <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 13, marginBottom: 8, marginLeft: 4 }}>Assigned Store</Text>
                     <TouchableOpacity 
                       onPress={() => setShowStoreModal(true)}
-                      style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.store_id ? '#EF4444' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                      style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.store_id ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                     >
                       <Text style={{ color: value ? '#111827' : '#9CA3AF' }} numberOfLines={1}>
                         {value ? getStoreName(value) : "Select a store..."}
                       </Text>
                       <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
                     </TouchableOpacity>
-                    {errors.store_id && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.store_id.message}</Text>}
+                    {errors.store_id && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.store_id.message}</Text>}
                   </View>
                 )}
               />

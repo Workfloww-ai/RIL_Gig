@@ -74,7 +74,7 @@ export default function FinanceLayout({
         <div className="p-4 border-t border-green-800">
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg bg-clay px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-red-700"
+            className="flex w-full items-center gap-3 rounded-lg bg-clay px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-clay/90"
           >
             <LogOut className="h-5 w-5" />
             Logout
@@ -147,7 +147,7 @@ export default function FinanceLayout({
               <div className="p-4 border-t border-green-800">
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-lg bg-clay px-4 py-3 text-sm font-medium text-white hover:bg-red-700"
+                  className="flex w-full items-center gap-3 rounded-lg bg-clay px-4 py-3 text-sm font-medium text-white hover:bg-clay/90"
                 >
                   <LogOut className="h-5 w-5" />
                   Logout

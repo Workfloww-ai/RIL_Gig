@@ -34,7 +34,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-  
+
   const fetchHistory = async () => {
     try {
       setLoading(true);
@@ -79,8 +79,8 @@ export default function HistoryPage() {
     setExpandedGroups(prev => ({ ...prev, [phone]: !prev[phone] }));
   };
 
-  const filteredHistory = history.filter(p => 
-    p.worker_name.toLowerCase().includes(search.toLowerCase()) || 
+  const filteredHistory = history.filter(p =>
+    p.worker_name.toLowerCase().includes(search.toLowerCase()) ||
     (p.transaction_reference && p.transaction_reference.includes(search)) ||
     p.worker_phone.includes(search)
   );
@@ -99,17 +99,17 @@ export default function HistoryPage() {
     }
     acc[curr.worker_phone].total_amount += curr.amount;
     acc[curr.worker_phone].payments.push(curr);
-    
+
     // Keep track of the most recent payment date for sorting/display
     if (curr.processed_at && curr.processed_at > acc[curr.worker_phone].latest_payment_date) {
       acc[curr.worker_phone].latest_payment_date = curr.processed_at;
     }
-    
+
     return acc;
   }, {} as Record<string, GroupedHistory>);
 
   // Sort groups so the most recently paid workers appear at the top
-  const groupedHistory = Object.values(groupedHistoryMap).sort((a, b) => 
+  const groupedHistory = Object.values(groupedHistoryMap).sort((a, b) =>
     b.latest_payment_date.localeCompare(a.latest_payment_date)
   );
 
@@ -119,7 +119,7 @@ export default function HistoryPage() {
         <div className="border-b border-gray-200 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-slate">Payment History</h2>
-            
+
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -131,7 +131,7 @@ export default function HistoryPage() {
                   className="w-full rounded-lg border border-gray-200 pl-9 pr-4 py-2 text-sm focus:border-moss focus:outline-none focus:ring-1 focus:ring-moss sm:w-64"
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -152,7 +152,7 @@ export default function HistoryPage() {
           <table className="w-full text-left text-sm text-slate">
             <thead className="bg-sand text-xs uppercase text-sage">
               <tr>
-                <th className="px-6 py-3">Worker Details</th>
+                <th className="px-6 py-3">Sahyogi Details</th>
                 <th className="px-6 py-3">UPI ID</th>
                 <th className="px-6 py-3">Jobs Summary</th>
                 <th className="px-6 py-3">Total Amount Paid</th>
@@ -179,7 +179,7 @@ export default function HistoryPage() {
                 groupedHistory.map((group) => (
                   <React.Fragment key={group.worker_phone}>
                     {/* Parent Row (Group) */}
-                    <tr 
+                    <tr
                       className={`hover:bg-gray-50/50 cursor-pointer ${expandedGroups[group.worker_phone] ? 'bg-gray-50/50' : ''}`}
                       onClick={() => toggleGroup(group.worker_phone)}
                     >
@@ -206,7 +206,7 @@ export default function HistoryPage() {
                         <div className="text-sm text-slate">{formatDate(group.latest_payment_date)}</div>
                       </td>
                     </tr>
-                    
+
                     {/* Child Rows (Individual Payments Breakdown) */}
                     {expandedGroups[group.worker_phone] && group.payments.map((payment) => (
                       <tr key={payment.payment_id} className="bg-sand/30 hover:bg-sand/60 border-t-0">
@@ -225,9 +225,8 @@ export default function HistoryPage() {
                           {formatCurrency(payment.amount)}
                         </td>
                         <td className="px-6 py-3">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            payment.payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${payment.payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-clay/10 text-clay'
+                            }`}>
                             {payment.payment_status.charAt(0).toUpperCase() + payment.payment_status.slice(1)}
                           </span>
                         </td>
@@ -239,11 +238,11 @@ export default function HistoryPage() {
             </tbody>
           </table>
         </div>
-        
+
         {/* Pagination Dummy */}
         <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6">
           <div className="text-sm text-sage">
-            Showing <span className="font-medium">1</span> to <span className="font-medium">{groupedHistory.length}</span> of <span className="font-medium">{groupedHistory.length}</span> workers
+            Showing <span className="font-medium">1</span> to <span className="font-medium">{groupedHistory.length}</span> of <span className="font-medium">{groupedHistory.length}</span> Sahogi
           </div>
           <div className="flex gap-2">
             <button className="rounded-lg border border-gray-200 p-1 text-gray-400 disabled:opacity-50 hover:bg-gray-50" disabled>

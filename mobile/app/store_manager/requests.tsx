@@ -9,7 +9,7 @@ export default function StoreManagerRequestsScreen() {
   const router = useRouter();
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
-  
+
   const [managerStoreName, setManagerStoreName] = useState<string>('Loading store...');
   const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -23,9 +23,9 @@ export default function StoreManagerRequestsScreen() {
     if (worker.arrival_status === 'arrived') return { label: '✅ Arrived', color: '#059669', showCancel: false };
 
     if (shiftHasStarted) {
-      if (worker.arrival_status === 'pending') return { label: '🔴 No Show (Pending Arrival)', color: '#EF4444', showCancel: false };
+      if (worker.arrival_status === 'pending') return { label: '🔴 No Show (Pending Arrival)', color: '#D32F2F', showCancel: false };
     }
-    
+
     // Instantly reflect missed checkpoints as cancelled before the cron job officially cancels them
     if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
       return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
@@ -33,12 +33,12 @@ export default function StoreManagerRequestsScreen() {
     if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
       return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
     }
-    
+
     // If they are not cancelled, and T-60 or T-90 is confirmed, they are Enroute.
     if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
       return { label: '🟢 Enroute', color: '#10B981', showCancel: false };
     }
-    
+
     return { label: '⚪ Pending', color: '#6B7280', showCancel: false };
   };
 
@@ -87,7 +87,7 @@ export default function StoreManagerRequestsScreen() {
         {userProfile?.role_name !== 'supervisor' && (
           <TouchableOpacity
             onPress={() => setIsRaiseModalOpen(true)}
-            style={{ backgroundColor: '#E31B23', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+            style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
           >
             <Ionicons name="add-outline" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
             <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>New Request</Text>
@@ -133,7 +133,7 @@ export default function StoreManagerRequestsScreen() {
 
             <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
               <View>
-                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Workers</Text>
+                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Sahyogis</Text>
                 <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workers_needed || job.workersNeeded} Needed</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
@@ -145,11 +145,11 @@ export default function StoreManagerRequestsScreen() {
         ))}
       </ScrollView>
 
-      <RaiseRequestModal 
-        visible={isRaiseModalOpen} 
-        onClose={() => setIsRaiseModalOpen(false)} 
-        onSuccess={fetchRequests} 
-        managerStoreName={managerStoreName} 
+      <RaiseRequestModal
+        visible={isRaiseModalOpen}
+        onClose={() => setIsRaiseModalOpen(false)}
+        onSuccess={fetchRequests}
+        managerStoreName={managerStoreName}
       />
     </SafeAreaView>
   );
