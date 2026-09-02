@@ -191,7 +191,7 @@ export default function LibraryScreen() {
  const shiftDateTime = new Date(`${shift_date}T${start_time}`);
  const now = new Date();
  const diffMs = shiftDateTime.getTime() - now.getTime();
- return diffMs > 3 * 60 * 60 * 1000;
+ return diffMs > 100 * 60 * 1000;
  };
 
  const showToast = (msg: string) => {
@@ -586,7 +586,16 @@ export default function LibraryScreen() {
  <Text className="text-clay/80 text-center mt-10">{error}</Text>
  ) : (
  modules.map((module) => (
- <View key={module.id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
+ <TouchableOpacity 
+ key={module.id} 
+ className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10"
+ onPress={() => {
+ if (module.status !== 'locked') {
+ handleStartLesson(module.id);
+ }
+ }}
+ activeOpacity={module.status === 'locked' ? 1 : 0.7}
+ >
  <View className="flex-row mb-4">
  {/* Thumbnail / Icon */}
  <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
@@ -631,21 +640,19 @@ export default function LibraryScreen() {
  <Text className="text-sage font-bold">Locked</Text>
  </View>
  ) : module.status === 'quiz_passed' ? (
- <TouchableOpacity
- onPress={() => handleStartLesson(module.id)}
+ <View
  className="bg-moss/5 px-5 py-2.5 rounded-full flex-row items-center border border-moss/20"
  >
  <Text className="text-moss font-bold mr-2">✓ Passed</Text>
  <Text className="text-moss/80 text-xs font-medium bg-moss/10 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
- </TouchableOpacity>
+ </View>
  ) : (
- <TouchableOpacity
- onPress={() => handleStartLesson(module.id)}
+ <View
  className="bg-moss px-5 py-2.5 rounded-full flex-row items-center shadow-sm shadow-primary-500/50"
  >
  <Text className="text-white mr-2">▶</Text>
  <Text className="text-white font-bold">Start Lesson</Text>
- </TouchableOpacity>
+ </View>
  )}
  </View>
 
@@ -662,7 +669,7 @@ export default function LibraryScreen() {
  </ScrollView>
  </View>
  )}
- </View>
+ </TouchableOpacity>
  ))
  )}
  </View>
