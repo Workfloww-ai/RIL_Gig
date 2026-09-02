@@ -852,7 +852,7 @@ export default function StoreManagerDashboard() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => { }} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
+        {/* <TouchableOpacity onPress={() => { }} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons
             name="bar-chart-outline"
             size={22}
@@ -861,7 +861,7 @@ export default function StoreManagerDashboard() {
           <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: '#9CA3AF' }}>
             Insights
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* ==================== OTP VERIFICATION MODAL ==================== */}

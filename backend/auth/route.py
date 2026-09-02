@@ -55,8 +55,12 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
     return user_data
 
 @router.get("/me/stats")
-async def get_my_stats(user_id: str = Depends(get_current_user)):
+async def get_my_stats(month: str = None, user_id: str = Depends(get_current_user)):
     try:
+        from datetime import datetime
+        if not month:
+            month = datetime.now().strftime("%Y-%m")
+            
         # Get store name
         assignment_response = supabase.table("user_store_assignment").select(
             "store_id, stores(store_name)"
@@ -68,24 +72,37 @@ async def get_my_stats(user_id: str = Depends(get_current_user)):
             if store_data:
                 store_name = store_data.get("store_name", "DMart")
 
-        # Get total requests raised by this manager's store (or by this manager specifically if we had created_by, but we only have store_assignment_id)
-        # Actually, let's just count manpower_requests where store_id matches their assigned store_id
         total_requests = 0
-        workers_hired = 0
+        hours_completed = 0
         
         if assignment_response.data and len(assignment_response.data) > 0:
             store_id = assignment_response.data[0]["store_id"]
-            requests_resp = supabase.table("manpower_requests").select("request_id", count="exact").eq("store_id", store_id).execute()
-            total_requests = requests_resp.count if hasattr(requests_resp, 'count') and requests_resp.count is not None else len(requests_resp.data)
             
-            # For workers hired, we can count worker_job_assignments for requests in this store
-            hired_resp = supabase.table("worker_job_assignments").select("job_assignment_id", count="exact").eq("store_id", store_id).eq("assignment_status", "accepted").execute()
-            workers_hired = hired_resp.count if hasattr(hired_resp, 'count') and hired_resp.count is not None else len(hired_resp.data)
+            requests_resp = supabase.table("manpower_requests").select("request_id, shift_date").eq("store_id", store_id).execute()
+            if requests_resp.data:
+                for req in requests_resp.data:
+                    if req.get("shift_date", "") and req.get("shift_date", "").startswith(month):
+                        total_requests += 1
+            
+            # Calculate hours completed for the selected month
+            
+            assignments_resp = supabase.table("worker_job_assignments").select(
+                "assignment_status, manpower_requests(hours_duration, shift_date)"
+            ).eq("store_id", store_id).eq("assignment_status", "completed").execute()
+            
+            if assignments_resp.data:
+                for row in assignments_resp.data:
+                    req = row.get("manpower_requests")
+                    if req:
+                        req_data = req[0] if isinstance(req, list) and len(req) > 0 else (req if isinstance(req, dict) else {})
+                        shift_date = req_data.get("shift_date", "")
+                        if shift_date.startswith(month):
+                            hours_completed += float(req_data.get("hours_duration", 0))
 
         return {
             "store_name": store_name,
             "total_requests": total_requests,
-            "workers_hired": workers_hired,
+            "hours_completed": int(hours_completed),
             "rating": 5.0
         }
     except Exception as e:
