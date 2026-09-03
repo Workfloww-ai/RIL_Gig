@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable } from 'react-native';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
@@ -792,6 +792,15 @@ export default function LibraryScreen() {
  <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
  <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
  </View>
+ {job.google_map_link && (
+ <TouchableOpacity 
+   onPress={() => Linking.openURL(job.google_map_link)} 
+   className="mt-1 flex-row items-center bg-sage/10 self-start px-2 py-1 rounded"
+ >
+   <Feather name="navigation" size={10} color="#0B5B31" style={{ marginRight: 4 }} />
+   <Text className="text-sage text-[10px] font-bold">See Distance</Text>
+ </TouchableOpacity>
+ )}
  </View>
  <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
  <Text className="text-white font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>

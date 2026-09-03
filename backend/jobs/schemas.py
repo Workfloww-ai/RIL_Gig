@@ -50,6 +50,7 @@ class JobResponse(BaseModel):
     store_name: str
     address: Optional[str] = None
     city: Optional[str] = None
+    google_map_link: Optional[str] = None
 
 class AvailableJobsResponse(BaseModel):
     status: str
@@ -72,6 +73,7 @@ class AcceptedJobResponse(BaseModel):
     store_name: str
     address: Optional[str] = None
     city: Optional[str] = None
+    google_map_link: Optional[str] = None
     t90_status: str
     t60_status: str
     arrival_status: str
