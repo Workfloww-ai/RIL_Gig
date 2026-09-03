@@ -17,10 +17,8 @@ const managerSchema = z.object({
   last_name: z.string().min(2, "Last name is required"),
   email: z.string().email("Must be a valid email"),
   mobile_number: z.string().min(10, "Phone number is required"),
-  address: z.string().min(5, "Street address is required"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
-  pincode: z.string().length(6, "PIN Code must be 6 digits"),
   role: z.string().min(2, "Role is required"),
   store_id: z.string().min(2, "Assigned store is required")
 });
@@ -45,17 +43,15 @@ export default function SuperadminManagers() {
   
   const [selectedStateCode, setSelectedStateCode] = useState('');
 
-  const { control, handleSubmit, setValue, reset, formState: { errors } } = useForm<ManagerFormData>({
+  const { control, handleSubmit, setValue, reset, watch, formState: { errors } } = useForm<ManagerFormData>({
     resolver: zodResolver(managerSchema),
     defaultValues: {
       first_name: '',
       last_name: '',
       email: '',
       mobile_number: '',
-      address: '',
       city: '',
       state: '',
-      pincode: '',
       role: '',
       store_id: ''
     }
@@ -227,13 +223,6 @@ export default function SuperadminManagers() {
                 )}
               />
 
-              <Controller
-                control={control}
-                name="address"
-                render={({ field: { onChange, value } }) => (
-                  <Input label="Street Address" placeholder="123 Main St" value={value} onChangeText={onChange} error={errors.address?.message} />
-                )}
-              />
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <View style={{ flex: 1, marginRight: 8 }}>
@@ -279,15 +268,6 @@ export default function SuperadminManagers() {
                 </View>
               </View>
 
-              <Controller
-                control={control}
-                name="pincode"
-                render={({ field: { onChange, value } }) => (
-                  <View style={{ width: '48%' }}>
-                    <Input label="PIN Code" placeholder="000000" keyboardType="numeric" maxLength={6} value={value} onChangeText={onChange} error={errors.pincode?.message} />
-                  </View>
-                )}
-              />
 
               <Controller
                 control={control}
@@ -409,13 +389,21 @@ export default function SuperadminManagers() {
               </TouchableOpacity>
             </View>
             <FlatList
-              data={stores}
+              data={stores.filter(store => 
+                (!watch('state') || store.state === watch('state')) && 
+                (!watch('city') || store.city === watch('city'))
+              )}
               keyExtractor={item => item.store_id}
               renderItem={({ item }) => (
                 <TouchableOpacity onPress={() => { setValue('store_id', item.store_id, { shouldValidate: true }); setShowStoreModal(false); }} style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' }}>
                   <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '700', marginBottom: 4 }}>{item.store_name}</Text>
                   <Text style={{ fontSize: 13, color: '#6B7280' }}>{item.address}, {item.city}</Text>
                 </TouchableOpacity>
+              )}
+              ListEmptyComponent={() => (
+                <View style={{ padding: 24, alignItems: 'center', marginTop: 20 }}>
+                  <Text style={{ color: '#6B7280', fontSize: 15, textAlign: 'center' }}>No store found for this city and state</Text>
+                </View>
               )}
             />
           </View>
