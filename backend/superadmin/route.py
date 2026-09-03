@@ -103,7 +103,8 @@ async def get_all_stores(user_id: str = Depends(get_current_user)):
                 city=s.get("city"),
                 state=s.get("state"),
                 pincode=s.get("pincode"),
-                google_map_link=s.get("google_map_link")
+                google_map_link=s.get("google_map_link"),
+                store_type=s.get("store_type")
             ))
             
         return StoresListResponse(status="success", stores=stores)
