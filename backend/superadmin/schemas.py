@@ -69,9 +69,16 @@ class ManagerResponse(BaseModel):
     mobile_number: str
     role_name: str
     store_name: Optional[str] = None
+    is_verified: bool = False
 
 class ManagersListResponse(BaseModel):
     status: str
     managers: List[ManagerResponse]
 
+class DeclineReason(BaseModel):
+    id: str
+    reason_text: str
 
+class DeclineReasonsResponse(BaseModel):
+    status: str
+    reasons: List[DeclineReason]

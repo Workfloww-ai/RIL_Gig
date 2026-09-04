@@ -353,7 +353,7 @@ export default function StoreManagerDashboard() {
           <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.base_compensation * job.hours_duration}</Text>
         </View>
       </View>
-      
+
       {job.approval_status === 'declined' && job.decline_reason && (
         <View style={{ marginTop: 12, backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FCA5A5' }}>
           <Text style={{ color: '#B91C1C', fontSize: 12, fontWeight: '700', marginBottom: 4 }}>Reason for Decline:</Text>
@@ -415,7 +415,7 @@ export default function StoreManagerDashboard() {
               <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#1A1A1A" />
             </View>
           </View>
-            
+
           {/* Show replacement indicator if job is open and a worker was cancelled */}
           {job.request_status?.toLowerCase() === 'open' && acceptedWorkers.some((w: any) => w.status === 'cancelled') && !dismissedAlerts[job.request_id] && (
             <View style={{ marginTop: 14, backgroundColor: '#FFFBEB', padding: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderColor: '#FEF3C7', borderLeftWidth: 4, borderLeftColor: '#F59E0B', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
@@ -424,7 +424,7 @@ export default function StoreManagerDashboard() {
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 4 }}>Replacement in progress</Text>
                 <Text style={{ fontSize: 12, fontWeight: '500', color: '#B45309', lineHeight: 18 }}>A worker missed their check-in. We are automatically assigning a new replacement ASAP.</Text>
               </View>
-              <TouchableOpacity onPress={() => setDismissedAlerts(prev => ({...prev, [job.request_id]: true}))} style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 2 }}>
+              <TouchableOpacity onPress={() => setDismissedAlerts(prev => ({ ...prev, [job.request_id]: true }))} style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 2 }}>
                 <Text style={{ color: '#D97706', fontWeight: '700', fontSize: 11 }}>Got it</Text>
               </TouchableOpacity>
             </View>
@@ -546,7 +546,9 @@ export default function StoreManagerDashboard() {
             <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>
               Hi, {userProfile ? `${userProfile.first_name}` : 'Rajesh'}
             </Text>
-            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>{managerStoreName}</Text>
+            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>
+              {managerStoreName} {userProfile?.role_name ? `. ${userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` : '. Store Manager'}
+            </Text>
           </View>
         </View>
       </View>
@@ -771,10 +773,10 @@ export default function StoreManagerDashboard() {
               <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 12 }}>{userProfile?.role_name ? userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Store Manager'} • {managerStoreName}</Text>
 
               {/* Rating Badge */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#FDE68A' }}>
+              {/* <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#FDE68A' }}>
                 <Text style={{ color: '#F59E0B', marginRight: 6, fontSize: 14 }}>⭐⭐⭐⭐⭐</Text>
                 <Text style={{ color: '#B45309', fontWeight: '700', fontSize: 13 }}>5.0</Text>
-              </View>
+              </View> */}
               <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6 }}>Rated by Sahyogis & Operations</Text>
             </View>
 

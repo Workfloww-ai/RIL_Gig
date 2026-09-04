@@ -160,13 +160,18 @@ export default function SuperadminManagers() {
                   <Text style={{ fontSize: 14, color: '#4B5563', fontWeight: '500' }}>{manager.email || 'N/A'}</Text>
                 </View>
 
-                {manager.role_name && (
-                  <View style={{ position: 'absolute', bottom: 16, right: 16 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#D32F2F', textTransform: 'capitalize' }}>
+                <View style={{ position: 'absolute', bottom: 16, right: 16, alignItems: 'flex-end' }}>
+                  {manager.role_name && (
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#D32F2F', textTransform: 'capitalize', marginBottom: 4 }}>
                       {manager.role_name}
                     </Text>
+                  )}
+                  <View style={{ backgroundColor: manager.is_verified ? '#DCFCE7' : '#FEF2F2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: manager.is_verified ? '#15803D' : '#D32F2F' }}>
+                      {manager.is_verified ? 'Verified' : 'Not Verified'}
+                    </Text>
                   </View>
-                )}
+                </View>
               </View>
             ))
           )}

@@ -18,9 +18,9 @@ export default function StoreManagerProfileScreen() {
   };
 
   const [selectedDate, setSelectedDate] = useState(new Date());
-  
+
   const monthStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
-  
+
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const monthDisplay = `${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
 
@@ -81,66 +81,66 @@ export default function StoreManagerProfileScreen() {
           <Text className="text-gray-500 text-sm font-medium mb-3">{roleDisplay} • {stats?.store_name || 'Loading...'}</Text>
 
           {/* Rating Badge */}
-          <View className="flex-row items-center bg-yellow-50 px-4 py-2 rounded-full border border-yellow-100">
+          {/* <View className="flex-row items-center bg-yellow-50 px-4 py-2 rounded-full border border-yellow-100">
             <Text className="text-yellow-500 mr-2 text-lg">⭐⭐⭐⭐⭐</Text>
             <Text className="text-yellow-700 font-bold">{stats?.rating?.toFixed(1) || '5.0'}</Text>
           </View>
-          <Text className="text-gray-400 text-xs mt-2">Rated by Sahyogis & Operations</Text>
+          <Text className="text-gray-400 text-xs mt-2">Rated by Sahyogis & Operations</Text> */}
         </View>
 
-        {/* Month Selector */}
-        <View className="mx-5 mt-6 flex-row items-center justify-between bg-white px-4 py-3 rounded-2xl shadow-sm border border-gray-100">
-          <TouchableOpacity 
-            onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}
-            className="w-10 h-10 items-center justify-center bg-gray-50 rounded-full"
-          >
-            <Feather name="chevron-left" size={20} color="#4B5563" />
-          </TouchableOpacity>
-          <Text className="font-bold text-gray-800 text-base">{monthDisplay}</Text>
-          <TouchableOpacity 
-            onPress={() => {
-              if (!isCurrentMonth) {
-                setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
-              }
-            }}
-            disabled={isCurrentMonth}
-            className={`w-10 h-10 items-center justify-center rounded-full ${isCurrentMonth ? 'bg-gray-50/50' : 'bg-gray-50'}`}
-          >
-            <Feather name="chevron-right" size={20} color={isCurrentMonth ? "#D1D5DB" : "#4B5563"} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Stats Grid - Identical card styling to Worker Profile */}
-        <View className="mx-5 mt-6 flex-row justify-between">
-          <View className="bg-white flex-1 mr-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mb-3">
-              <Text className="text-green-500 text-xl">📋</Text>
-            </View>
-            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Requests</Text>
-            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.total_requests || 0}</Text>
+          {/* Month Selector */}
+          <View className="mx-5 mt-6 flex-row items-center justify-between bg-white px-4 py-3 rounded-2xl shadow-sm border border-gray-100">
+            <TouchableOpacity
+              onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}
+              className="w-10 h-10 items-center justify-center bg-gray-50 rounded-full"
+            >
+              <Feather name="chevron-left" size={20} color="#4B5563" />
+            </TouchableOpacity>
+            <Text className="font-bold text-gray-800 text-base">{monthDisplay}</Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (!isCurrentMonth) {
+                  setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
+                }
+              }}
+              disabled={isCurrentMonth}
+              className={`w-10 h-10 items-center justify-center rounded-full ${isCurrentMonth ? 'bg-gray-50/50' : 'bg-gray-50'}`}
+            >
+              <Feather name="chevron-right" size={20} color={isCurrentMonth ? "#D1D5DB" : "#4B5563"} />
+            </TouchableOpacity>
           </View>
 
-          <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
-              <Text className="text-blue-500 text-xl">👥</Text>
+          {/* Stats Grid - Identical card styling to Worker Profile */}
+          <View className="mx-5 mt-6 flex-row justify-between">
+            <View className="bg-white flex-1 mr-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+              <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mb-3">
+                <Text className="text-green-500 text-xl">📋</Text>
+              </View>
+              <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Requests</Text>
+              <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.total_requests || 0}</Text>
             </View>
-            <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-1 text-center">Hours</Text>
-            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.hours_completed || 0}</Text>
+
+            <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+              <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
+                <Text className="text-blue-500 text-xl">👥</Text>
+              </View>
+              <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-1 text-center">Hours</Text>
+              <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.hours_completed || 0}</Text>
+            </View>
           </View>
-        </View>
 
 
 
-        {/* Logout Button - Identical styling to Worker Profile */}
-        <View className="mx-5 mb-10 mt-6">
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
-            activeOpacity={0.85}
-          >
-            <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Logout Button - Identical styling to Worker Profile */}
+          <View className="mx-5 mb-10 mt-6">
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
+              activeOpacity={0.85}
+            >
+              <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
+            </TouchableOpacity>
+          </View>
       </ScrollView>
     </SafeAreaView>
   );
