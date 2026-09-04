@@ -1,5 +1,5 @@
 import json
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Path
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Path, Request
 from typing import List
 import random
 
@@ -11,6 +11,8 @@ from fastapi import Depends
 from db.auth_db import mark_user_verified
 import hmac
 import hashlib
+from utils.limiter import limiter
+from datetime import datetime, timedelta, timezone
 
 def hash_otp(otp: str) -> str:
     """Creates an HMAC-SHA256 hash of the OTP to prevent trivial brute force."""
@@ -28,7 +30,7 @@ def get_mobile_variations(mobile: str):
 async def check_mobile(payload: MobileCheckRequest):
     clean, with_plus = get_mobile_variations(payload.mobile_number)
     # Check for both variations in the database to prevent duplicates
-    response = supabase.table("users").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
+    response = supabase.table("users").select("user_id").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
     
     if len(response.data) > 0:
         # User exists, they should just login (we can trigger send OTP here or let them call /send-otp)
@@ -189,7 +191,7 @@ async def upload_documents(
             
             # Manually check if document exists since there's no unique constraint for upsert
             try:
-                existing = supabase.table("user_documents").select("*").eq("user_id", user_id).eq("doc_id", doc_id).execute()
+                existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
                 
                 if len(existing.data) > 0:
                     # Update existing record
@@ -216,12 +218,21 @@ async def upload_documents(
 
 # 3. POST /auth/send-otp
 @router.post("/send-otp")
-async def send_otp(payload: SendOTPRequest):
-    otp_code = "000000" 
-    # otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
+@limiter.limit("5/minute")
+async def send_otp(request: Request, payload: SendOTPRequest):
+    clean_mobile, _ = get_mobile_variations(payload.mobile_number)
+    
+    # Check DB limit: max 3 OTPs per phone per 15 minutes
+    fifteen_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=15)).isoformat()
+    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", fifteen_mins_ago).execute()
+    
+    if len(recent_otps.data) >= 3:
+        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 15 minutes. Please try again later.")
+        
+    # otp_code = "000000" 
+    otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
     
     # Calculate expiration time (e.g., 5 minutes from now)
-    from datetime import datetime, timedelta, timezone
     expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     
     # 1. Save OTP to DB
@@ -237,8 +248,8 @@ async def send_otp(payload: SendOTPRequest):
     
     # 2. Send SMS (Bypassed for testing)
     # ye line uncomment krni h baad me
-    success = True   
-    # success = await send_otp_sms(payload.mobile_number, otp_code)  
+    # success = True   
+    success = await send_otp_sms(payload.mobile_number, otp_code)  
     
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send SMS. Check terminal logs for Dovesoft API errors.")
@@ -248,22 +259,39 @@ async def send_otp(payload: SendOTPRequest):
 
 # 4. POST /auth/verify-otp
 @router.post("/verify-otp")
-async def verify_otp(payload: VerifyOTPRequest):
+@limiter.limit("5/minute")
+async def verify_otp(request: Request, payload: VerifyOTPRequest):
     # 1. Fetch OTP from DB
     clean, with_plus = get_mobile_variations(payload.mobile_number)
-    response = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
+    response = supabase.table("otp_codes").select("id, mobile_number, otp_hash, expires_at, failed_attempts, locked_until").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
     if not response.data:
         raise HTTPException(status_code=400, detail="No OTP found for this number.")
         
     otp_record = response.data[0]
     
+    # Check if locked
+    locked_until = otp_record.get("locked_until")
+    if locked_until:
+        if locked_until.endswith("Z"):
+            locked_until = locked_until[:-1] + "+00:00"
+        locked_dt = datetime.fromisoformat(locked_until)
+        if datetime.now(timezone.utc) < locked_dt:
+            raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 30 minutes.")
+    
     # 2. Check if OTP matches
     if str(otp_record["otp_hash"]) != hash_otp(payload.otp):
+        failed_attempts = otp_record.get("failed_attempts", 0) + 1
+        update_data = {"failed_attempts": failed_attempts}
+        if failed_attempts >= 5:
+            update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+        supabase.table("otp_codes").update(update_data).eq("id", otp_record["id"]).execute()
+        
+        if failed_attempts >= 5:
+            raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 30 minutes.")
         raise HTTPException(status_code=400, detail="Incorrect OTP.")
         
     # 3. Check expiration
-    from datetime import datetime, timezone
     expires_at_str = otp_record["expires_at"]
     if expires_at_str.endswith("Z"):
         expires_at_str = expires_at_str[:-1] + "+00:00"
@@ -296,7 +324,9 @@ async def verify_otp(payload: VerifyOTPRequest):
 
 # 5. POST /auth/verify-and-signup
 @router.post("/verify-and-signup")
+@limiter.limit("5/minute")
 async def verify_and_signup(
+    request: Request,
     mobile_number: str = Form(...),
     otp: str = Form(...),
     user_details: str = Form(..., description="JSON string of SignupRequest"),
@@ -305,17 +335,33 @@ async def verify_and_signup(
 ):
     # 1. Verify OTP from DB
     clean, with_plus = get_mobile_variations(mobile_number)
-    otp_resp = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
+    otp_resp = supabase.table("otp_codes").select("id, mobile_number, otp_hash, expires_at, failed_attempts, locked_until").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
     if not otp_resp.data:
         raise HTTPException(status_code=400, detail="No OTP found for this number.")
         
     otp_record = otp_resp.data[0]
     
+    # Check if locked
+    locked_until = otp_record.get("locked_until")
+    if locked_until:
+        if locked_until.endswith("Z"):
+            locked_until = locked_until[:-1] + "+00:00"
+        locked_dt = datetime.fromisoformat(locked_until)
+        if datetime.now(timezone.utc) < locked_dt:
+            raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 30 minutes.")
+    
     if str(otp_record["otp_hash"]) != hash_otp(otp):
+        failed_attempts = otp_record.get("failed_attempts", 0) + 1
+        update_data = {"failed_attempts": failed_attempts}
+        if failed_attempts >= 5:
+            update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+        supabase.table("otp_codes").update(update_data).eq("id", otp_record["id"]).execute()
+        
+        if failed_attempts >= 5:
+            raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 30 minutes.")
         raise HTTPException(status_code=400, detail="Incorrect OTP.")
         
-    from datetime import datetime, timezone
     expires_at_str = otp_record["expires_at"]
     if expires_at_str.endswith("Z"):
         expires_at_str = expires_at_str[:-1] + "+00:00"
@@ -401,7 +447,7 @@ async def verify_and_signup(
             doc_url = supabase.storage.from_("documents").get_public_url(file_path)
             
             try:
-                existing = supabase.table("user_documents").select("*").eq("user_id", user_id).eq("doc_id", doc_id).execute()
+                existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
                 if len(existing.data) > 0:
                     res = supabase.table("user_documents").update({
                         "doc_number": meta.doc_number,

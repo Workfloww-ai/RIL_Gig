@@ -41,7 +41,7 @@ async def get_decline_reasons(user_id: str = Depends(verify_superadmin)):
         raise HTTPException(status_code=500, detail="Failed to fetch decline reasons")
 
 @router.get("/requests", response_model=SuperadminRequestsResponse)
-async def get_pending_requests(user_id: str = Depends(verify_superadmin)):
+async def get_pending_requests(limit: int = 100, offset: int = 0, user_id: str = Depends(verify_superadmin)):
     """
     Fetch all manpower requests for superadmin across all stores.
     """
@@ -50,7 +50,7 @@ async def get_pending_requests(user_id: str = Depends(verify_superadmin)):
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city)"
-        ).order("created_at", desc=True).execute()
+        ).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         
         requests = []
         for r in response.data:
@@ -63,7 +63,7 @@ async def get_pending_requests(user_id: str = Depends(verify_superadmin)):
                 store_info = store_info[0]
             
             hours = float(r.get("hours_duration", 0))
-            base_comp = float(job_info.get("base_compensation", 0))
+            base_comp = float(job_info.get("base_compensation", 0)) / 100.0
                 
             requests.append(SuperadminJobResponse(
                 request_id=r.get("request_id", ""),
@@ -125,7 +125,7 @@ async def get_all_stores(user_id: str = Depends(verify_superadmin)):
     """
     try:
         # Fetch stores
-        stores_res = supabase.table("stores").select("*").order("created_at", desc=True).execute()
+        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, store_type").order("created_at", desc=True).execute()
                 
         stores = []
         for s in stores_res.data:

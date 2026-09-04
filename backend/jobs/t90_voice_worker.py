@@ -82,7 +82,8 @@ async def process_t90_voice_calls():
                     if isinstance(job_data, list) and len(job_data) > 0:
                         job_data = job_data[0]
                     job_title = job_data.get("job_name", "Gig Worker")
-                    payout_rate = str(job_data.get("base_compensation", "₹500"))
+                    payout_rate_paise = job_data.get("base_compensation", 50000)
+                    payout_rate = f"₹{float(payout_rate_paise) / 100.0:.0f}"
                     
                     if not mobile_number:
                         logger.warning(f"[T90VoiceWorker] No mobile number found for assignment {assignment_id}")

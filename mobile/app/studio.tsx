@@ -6,6 +6,71 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { apiClient } from '../src/api/client';
 import { Feather } from '@expo/vector-icons';
 
+const formatTime = (inputSeconds: number) => {
+  if (!inputSeconds || isNaN(inputSeconds)) return "00:00";
+  const totalSeconds = Math.floor(inputSeconds);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
+const PlayerProgress = ({ player, module, isFullscreen = false, router }: any) => {
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    if (!player) return;
+    const interval = setInterval(() => {
+      setCurrentTime(player.currentTime);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [player]);
+
+  const progressPercent = player && player.duration ? (currentTime / player.duration) * 100 : 0;
+  const isCompleted = progressPercent >= 95;
+
+  if (isFullscreen) {
+    return (
+      <View className="absolute bottom-8 left-12 right-12 z-20 pointer-events-none">
+        <View className="h-1.5 bg-cream/20 rounded-full mb-3 overflow-hidden flex-row">
+          <View className="h-full bg-moss/80" style={{ width: `${progressPercent}%` }} />
+        </View>
+        <Text className="text-white/90 text-sm font-bold tracking-widest text-center shadow-sm">
+          {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="p-5 opacity-100" style={{ opacity: player ? 1 : 0.5 }} pointerEvents={player ? 'auto' : 'none'}>
+      <View className="h-2 bg-sage/10 rounded-full mb-2 overflow-hidden flex-row">
+        <View className="h-full bg-moss/80" style={{ width: `${progressPercent}%` }} />
+      </View>
+      
+      <View className="flex-row justify-between items-center mb-5">
+        <Text className="text-muted text-xs font-medium tracking-widest">
+          {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
+        </Text>
+      </View>
+
+      <View className="flex-row items-center justify-end">
+        {isCompleted ? (
+          <TouchableOpacity 
+            onPress={() => router.push({ pathname: '/quiz', params: { id: module.id } })}
+            className="bg-green-500 px-5 py-3 rounded-xl shadow-sm shadow-green-500/30"
+          >
+            <Text className="text-white font-bold">Take Quiz</Text>
+          </TouchableOpacity>
+        ) : (
+          <View className="bg-sand px-4 py-2.5 rounded-xl border border-sage/10 items-center">
+            <Text className="text-sage text-xs font-medium">Complete 100% to Unlock Quiz</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
 export default function StudioScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -42,8 +107,6 @@ export default function StudioScreen() {
 
   const player = activeTab === 'video' ? videoPlayer : audioPlayer;
 
-  const [currentTime, setCurrentTime] = useState(0);
-
   useEffect(() => {
     if (!player) return;
     
@@ -55,12 +118,7 @@ export default function StudioScreen() {
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     }
 
-    // Actively poll the player time so the React component re-renders
-    const interval = setInterval(() => {
-      setCurrentTime(player.currentTime);
-    }, 500);
     return () => {
-      clearInterval(interval);
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     };
   }, [player, player?.playing]);
@@ -71,9 +129,7 @@ export default function StudioScreen() {
     };
   }, []);
 
-  // Calculate completion percentage
-  const progressPercent = player && player.duration ? (currentTime / player.duration) * 100 : 0;
-  const isCompleted = progressPercent >= 95; // unlock quiz at 95% to be safe
+  // Calculate completion percentage moved to PlayerProgress
 
   useEffect(() => {
     // In a real app, we would fetch the specific module by ID
@@ -134,14 +190,7 @@ export default function StudioScreen() {
     );
   }
 
-  // Helper to format s to mm:ss
-  const formatTime = (inputSeconds: number) => {
-    if (!inputSeconds || isNaN(inputSeconds)) return "00:00";
-    const totalSeconds = Math.floor(inputSeconds);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  };
+  // Helper to format s to mm:ss moved to PlayerProgress
 
   return (
     <SafeAreaView className="flex-1 bg-sand pt-8">
@@ -262,35 +311,7 @@ export default function StudioScreen() {
             )}
           </View>
 
-          <View className="p-5 opacity-100" style={{ opacity: player ? 1 : 0.5 }} pointerEvents={player ? 'auto' : 'none'}>
-            <View className="h-2 bg-sage/10 rounded-full mb-2 overflow-hidden flex-row">
-              <View className="h-full bg-moss/80" style={{ width: `${progressPercent}%` }} />
-            </View>
-            
-            <View className="flex-row justify-between items-center mb-5">
-              <Text className="text-muted text-xs font-medium tracking-widest">
-                {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
-              </Text>
-            </View>
-
-            <View className="flex-row items-center justify-end">
-
-
-              {isCompleted ? (
-                <TouchableOpacity 
-                  onPress={() => router.push({ pathname: '/quiz', params: { id: module.id } })}
-                  className="bg-green-500 px-5 py-3 rounded-xl shadow-sm shadow-green-500/30"
-                >
-                  <Text className="text-white font-bold">Take Quiz</Text>
-                </TouchableOpacity>
-              ) : (
-                <View className="bg-sand px-4 py-2.5 rounded-xl border border-sage/10 items-center">
-                  <Text className="text-sage text-xs font-medium">Complete 100% to Unlock Quiz</Text>
-                  
-                </View>
-              )}
-            </View>
-          </View>
+          <PlayerProgress player={player} module={module} router={router} />
         </View>
 
         <View className="bg-white mx-4 rounded-3xl p-6 shadow-sm border border-gray-100 mb-10">
@@ -360,14 +381,7 @@ export default function StudioScreen() {
           )}
 
           {/* Fullscreen Progress Bar */}
-          <View className="absolute bottom-8 left-12 right-12 z-20 pointer-events-none">
-            <View className="h-1.5 bg-cream/20 rounded-full mb-3 overflow-hidden flex-row">
-              <View className="h-full bg-moss/80" style={{ width: `${progressPercent}%` }} />
-            </View>
-            <Text className="text-white/90 text-sm font-bold tracking-widest text-center shadow-sm">
-              {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
-            </Text>
-          </View>
+          <PlayerProgress player={player} module={module} router={router} isFullscreen={true} />
         </View>
       </Modal>
     </SafeAreaView>

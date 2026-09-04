@@ -9,11 +9,11 @@ from utils.supabase_client import supabase
 router = APIRouter()
 
 @router.get("/roles", response_model=list[JobRoleResponse])
-async def fetch_available_job_roles(user_id: str = Depends(get_current_user)):
+async def fetch_available_job_roles(limit: int = 100, offset: int = 0, user_id: str = Depends(get_current_user)):
     """
     Fetches all available job roles for the dropdown.
     """
-    jobs = get_all_jobs()
+    jobs = get_all_jobs(limit=limit, offset=offset)
     return jobs
 
 @router.post("/", response_model=JobRequestResponse, status_code=status.HTTP_201_CREATED)
@@ -99,7 +99,7 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
                 request_status=r.get("request_status", ""),
                 job_id=job_info.get("job_id", ""),
                 job_name=job_info.get("job_name", ""),
-                base_compensation=float(job_info.get("base_compensation", 0)),
+                base_compensation=float(job_info.get("base_compensation", 0)) / 100.0,
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),
@@ -117,34 +117,7 @@ import datetime
 @router.post("/accept/{request_id}", response_model=AcceptJobResponse)
 async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
     try:
-        # 1. Check if already accepted
-        existing = supabase.table("worker_job_assignments").select("job_assignment_id").eq("request_id", request_id).eq("worker_id", user_id).execute()
-        if existing.data:
-            raise HTTPException(status_code=400, detail="You have already accepted this job")
-
-        # 2. Get request details
-        req_resp = supabase.table("manpower_requests").select("workers_needed, request_status, store_id").eq("request_id", request_id).execute()
-        if not req_resp.data:
-            raise HTTPException(status_code=404, detail="Job not found")
-            
-        req = req_resp.data[0]
-        if req.get("request_status") != "open":
-            raise HTTPException(status_code=400, detail="This job is no longer available")
-            
-        workers_needed = req.get("workers_needed", 1)
-        store_id = req.get("store_id")
-        
-        # 3. Check current accepted count
-        assignments = supabase.table("worker_job_assignments").select("job_assignment_id", count="exact").eq("request_id", request_id).in_("assignment_status", ["accepted", "completed"]).execute()
-        # Supabase python client count might be in assignments.count
-        current_count = assignments.count if hasattr(assignments, 'count') and assignments.count is not None else len(assignments.data)
-        
-        if current_count >= workers_needed:
-            # Auto close it just in case
-            supabase.table("manpower_requests").update({"request_status": "closed"}).eq("request_id", request_id).execute()
-            raise HTTPException(status_code=400, detail="Job has already been filled")
-            
-        # 4. Determine if we need to bypass checkpoints
+        # 1. Determine if we need to bypass checkpoints
         req_details = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
         
         t90_status = "pending"
@@ -169,20 +142,24 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
                         t60_status = "confirmed"
                 except Exception as e:
                     print(f"Error parsing date for accept_job bypass: {e}")
-        
-        # 5. Insert assignment
-        supabase.table("worker_job_assignments").insert({
-            "request_id": request_id,
-            "store_id": store_id,
-            "worker_id": user_id,
-            "assignment_status": "accepted",
-            "t90_status": t90_status,
-            "t60_status": t60_status
-        }).execute()
-        
-        # 5. Check if it's filled now
-        if current_count + 1 >= workers_needed:
-            supabase.table("manpower_requests").update({"request_status": "closed"}).eq("request_id", request_id).execute()
+        else:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        # 2. Call the atomic RPC to lock, check and insert
+        rpc_response = supabase.rpc(
+            "accept_job_atomic", 
+            {
+                "p_request_id": request_id,
+                "p_worker_id": user_id,
+                "p_t90_status": t90_status,
+                "p_t60_status": t60_status
+            }
+        ).execute()
+
+        result = rpc_response.data
+        if not result.get("success"):
+            status_code = result.get("status_code", 400)
+            raise HTTPException(status_code=status_code, detail=result.get("message", "Failed to accept job"))
             
         return AcceptJobResponse(status="success", message="Job accepted successfully")
     except HTTPException:
@@ -253,7 +230,7 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
                 hours_duration=float(req_info.get("hours_duration", 0)),
                 job_id=job_info.get("job_id", ""),
                 job_name=job_info.get("job_name", ""),
-                base_compensation=float(job_info.get("base_compensation", 0)),
+                base_compensation=float(job_info.get("base_compensation", 0)) / 100.0,
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),
@@ -376,7 +353,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                 "decline_reason": r.get("decline_reason", ""),
                 "job_id": job_info.get("job_id", ""),
                 "job_name": job_info.get("job_name", ""),
-                "base_compensation": float(job_info.get("base_compensation", 0)),
+                "base_compensation": float(job_info.get("base_compensation", 0)) / 100.0,
                 "store_id": store_info.get("store_id", ""),
                 "store_name": store_info.get("store_name", ""),
                 "accepted_workers": accepted_workers
@@ -621,9 +598,13 @@ async def manager_complete_job(
                 job_id = req_resp.data[0].get("job_id")
                 
                 job_resp = supabase.table("jobs").select("base_compensation").eq("job_id", job_id).execute()
-                base_comp = job_resp.data[0].get("base_compensation", 0) if job_resp.data else 0
+                base_comp_paise = job_resp.data[0].get("base_compensation", 0) if job_resp.data else 0
                 
-                amount = hours * base_comp
+                from decimal import Decimal, ROUND_HALF_UP
+                hours_dec = Decimal(str(hours))
+                base_comp_dec = Decimal(str(base_comp_paise)) / Decimal('100')
+                
+                amount = float((hours_dec * base_comp_dec).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
                 
                 user_res = supabase.table("users").select("upi_id").eq("user_id", worker_id).execute()
                 upi_id = user_res.data[0].get("upi_id") if user_res.data else None

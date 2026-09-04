@@ -7,9 +7,9 @@ from utils.jwt_auth import get_current_user
 router = APIRouter()
 
 @router.get("/modules", response_model=List[ContentModuleResponse])
-async def fetch_modules(user_id: str = Depends(get_current_user)):
+async def fetch_modules(limit: int = 100, offset: int = 0, user_id: str = Depends(get_current_user)):
     try:
-        modules = get_modules_with_progress(user_id)
+        modules = get_modules_with_progress(user_id, limit=limit, offset=offset)
         return modules
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch content modules: {str(e)}")

@@ -8,7 +8,7 @@ router = APIRouter()
 @router.get("/", response_model=StoresListResponse)
 async def get_all_stores(user_id: str = Depends(get_current_user)):
     try:
-        response = supabase.table("stores").select("*").execute()
+        response = supabase.table("stores").select("store_id, store_name, address, city").execute()
         
         stores = []
         for r in response.data:

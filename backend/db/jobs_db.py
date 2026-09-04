@@ -45,13 +45,20 @@ def create_job_request(user_id: str, request_data: Dict[str, Any]):
         
     return insert_response.data[0]
 
-def get_all_jobs():
+def get_all_jobs(limit: int = None, offset: int = None):
     """
     Fetches all available jobs to populate the dropdown on the frontend.
     Avoids SELECT * per enterprise guidelines.
     """
-    response = supabase.table("jobs").select("job_id, job_name, base_compensation").execute()
-    return response.data
+    query = supabase.table("jobs").select("job_id, job_name, base_compensation")
+    if limit is not None and offset is not None:
+        query = query.range(offset, offset + limit - 1)
+    response = query.execute()
+    data = response.data or []
+    for item in data:
+        if "base_compensation" in item and item["base_compensation"] is not None:
+            item["base_compensation"] = float(item["base_compensation"]) / 100.0
+    return data
 
 def get_pending_t90_call_assignments():
     """
@@ -109,7 +116,7 @@ def get_recent_activity(user_id: str):
             store_name = "Unknown Store"
             
         hours = float(req.get("hours_duration", 0))
-        rate = float(job.get("base_compensation", 0))
+        rate = float(job.get("base_compensation", 0)) / 100.0
         amount = hours * rate
         
         payment = row.get("payments")

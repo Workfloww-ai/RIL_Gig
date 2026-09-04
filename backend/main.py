@@ -14,11 +14,20 @@ from finance.route import router as finance_router
 from apscheduler.schedulers.background import BackgroundScheduler
 from jobs.cron_tasks import check_t90_voice_calls
 
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from utils.limiter import limiter
+
 app = FastAPI(
     title="Reliance Project",
     description="Backend API",
     version="1.0.0"
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 scheduler = BackgroundScheduler()
 
