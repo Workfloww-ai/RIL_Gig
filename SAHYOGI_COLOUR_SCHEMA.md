@@ -11,7 +11,7 @@ Token	Hex Code	Swatch	Role	Usage
 Sand	#F9F9F9	🟫	Background (Primary)	Page background, form inputs, mobile menu
 Sage	#666666	⬜	Text (Secondary)	Body copy, descriptions, labels, nav links
 Moss	#0B5B31	🟩	Brand Green (Primary)	Headings, process steps, CTA outlines, nav bar, footer
-Clay	#D32F2F	🟥	Brand Red (Accent)	CTA buttons, highlights, subtitles, hover states
+Clay	#ED1C24	🟥	Brand Red (Accent)	CTA buttons, highlights, subtitles, hover states
 Slate	#3C3C3B	⬛	Text (Primary)	Main headings (h1, h2), body text colour
 Cream	#FFFFFF	⬜	White / Surface	Cards, hero section background, stat cards
 CSS Variable Definitions

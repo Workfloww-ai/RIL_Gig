@@ -1,11 +1,23 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
-from .schemas import SuperadminRequestsResponse, SuperadminJobResponse, ActionResponse, RejectRequestPayload
+from .schemas import SuperadminRequestsResponse, SuperadminJobResponse, ActionResponse, RejectRequestPayload, DeclineReasonsResponse
 from utils.supabase_client import supabase
 from utils.jwt_auth import get_current_user
 import datetime
 
 router = APIRouter()
+
+@router.get("/decline-reasons", response_model=DeclineReasonsResponse)
+async def get_decline_reasons(user_id: str = Depends(get_current_user)):
+    """
+    Fetch all active decline reasons from the database.
+    """
+    try:
+        response = supabase.table("decline_reasons").select("id, reason_text").eq("is_active", True).order("created_at", desc=False).execute()
+        return DeclineReasonsResponse(status="success", reasons=response.data)
+    except Exception as e:
+        print(f"Error fetching decline reasons: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch decline reasons")
 
 @router.get("/requests", response_model=SuperadminRequestsResponse)
 async def get_pending_requests(user_id: str = Depends(get_current_user)):
@@ -174,8 +186,8 @@ async def get_all_managers(user_id: str = Depends(get_current_user)):
         if not role_ids:
             return ManagersListResponse(status="success", managers=[])
             
-        # Fetch users
-        users_res = supabase.table("users").select("*").in_("role_id", role_ids).order("created_at", desc=True).execute()
+        # Fetch users explicitly
+        users_res = supabase.table("users").select("user_id, first_name, last_name, email, mobile_number, role_id, is_verified").in_("role_id", role_ids).order("created_at", desc=True).execute()
         
         # Fetch store assignments
         user_ids = [u["user_id"] for u in users_res.data]
@@ -201,7 +213,8 @@ async def get_all_managers(user_id: str = Depends(get_current_user)):
                 email=u.get("email"),
                 mobile_number=u.get("mobile_number", ""),
                 role_name=role_map.get(u["role_id"], "unknown").replace("_", " "),
-                store_name=assignments_map.get(u["user_id"])
+                store_name=assignments_map.get(u["user_id"]),
+                is_verified=u.get("is_verified", False)
             ))
             
         return ManagersListResponse(status="success", managers=managers)
@@ -225,12 +238,18 @@ async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(g
             raise HTTPException(status_code=500, detail=f"Role '{role_name_clean}' not found in database")
         role_id = role_res.data[0]["role_id"]
         
+        mobile_num = request.mobile_number.strip()
+        if mobile_num.startswith("+"):
+            mobile_num = mobile_num[1:]
+        if not mobile_num.startswith("91"):
+            mobile_num = "91" + mobile_num
+
         # Insert user
         user_dict = {
             "first_name": request.first_name,
             "last_name": request.last_name,
             "email": request.email,
-            "mobile_number": request.mobile_number,
+            "mobile_number": mobile_num,
             "address": request.address,
             "city": request.city,
             "state": request.state,

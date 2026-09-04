@@ -17,6 +17,18 @@ def send_welcome_email(to_email: str, manager_name: str, role: str, store_name: 
     <li><strong>Google Map Link:</strong> <a href="{google_map_link}">{google_map_link}</a></li>
 </ul>
 <br>
+<p><strong>Action Required - Please Verify Your Account:</strong></p>
+<p>Please download the SahYogi app from the link below and log in to confirm your verification.</p>
+<p><strong>Download App:</strong> <a href=https://expo.dev/artifacts/eas/wpOrPP-kUZnySaysCKrzSjkiq5jSiBeSNpx_cmB7nmc.apk
+>Download SahYogi</a></p>
+<br>
+<p><strong>How to Login:</strong></p>
+<ol>
+    <li>Open the app and select <strong>Login</strong>.</li>
+    <li>Enter your registered mobile number.</li>
+    <li>You will receive an OTP via SMS. Enter it to verify and access your dashboard.</li>
+</ol>
+<br>
 <p>Welcome to the team!</p>
 <br>
 <p>Best regards,<br>SahYogi Team</p>

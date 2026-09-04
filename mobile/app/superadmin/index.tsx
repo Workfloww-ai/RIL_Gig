@@ -17,10 +17,12 @@ export default function SuperadminDashboard() {
     approved: false,
     declined: false
   });
-  
+
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [jobToDecline, setJobToDecline] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [declineReasonsList, setDeclineReasonsList] = useState<{id: string, reason_text: string}[]>([]);
 
   const toggleSection = (section: 'pending' | 'approved' | 'declined') => {
     setExpandedSections(prev => ({
@@ -44,8 +46,20 @@ export default function SuperadminDashboard() {
     }
   };
 
+  const fetchDeclineReasons = async () => {
+    try {
+      const res = await apiClient.get('/superadmin/decline-reasons');
+      if (res.data && res.data.reasons) {
+        setDeclineReasonsList(res.data.reasons);
+      }
+    } catch (error) {
+      console.error('Failed to fetch decline reasons', error);
+    }
+  };
+
   useEffect(() => {
     fetchRequests();
+    fetchDeclineReasons();
   }, []);
 
   const handleAction = async (requestId: string, action: 'approve' | 'reject', reason?: string) => {
@@ -56,6 +70,7 @@ export default function SuperadminDashboard() {
       Alert.alert('Success', action === 'approve' ? 'Job has been published live.' : 'Job has been rejected.');
       if (action === 'reject') {
         setIsDeclineModalOpen(false);
+        setIsDropdownOpen(false);
         setDeclineReason('');
         setJobToDecline(null);
       }
@@ -110,12 +125,12 @@ export default function SuperadminDashboard() {
           </View>
         </View>
       </View>
-      
+
       {job.approval_status === 'declined' && job.decline_reason && (
-          <View style={{ backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginBottom: 12 }}>
-              <Text style={{ color: '#B91C1C', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Reason for Decline:</Text>
-              <Text style={{ color: '#991B1B', fontSize: 14 }}>{job.decline_reason}</Text>
-          </View>
+        <View style={{ backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+          <Text style={{ color: '#B91C1C', fontSize: 12, fontWeight: '600', marginBottom: 4 }}>Reason for Decline:</Text>
+          <Text style={{ color: '#991B1B', fontSize: 14 }}>{job.decline_reason}</Text>
+        </View>
       )}
 
       {isPending && (
@@ -155,7 +170,7 @@ export default function SuperadminDashboard() {
         </View>
       ) : (
         <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }} showsVerticalScrollIndicator={false}>
-          
+
           <TouchableOpacity onPress={() => toggleSection('pending')} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Pending Approval</Text>
@@ -230,20 +245,64 @@ export default function SuperadminDashboard() {
           <View style={{ backgroundColor: '#FFF', borderRadius: 16, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 10 }}>Decline Request</Text>
             <Text style={{ color: '#6B7280', marginBottom: 16 }}>Please provide a reason for declining this request. This will be visible to the store manager.</Text>
-            
-            <TextInput
-              style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, padding: 12, minHeight: 100, textAlignVertical: 'top', color: '#111827', marginBottom: 20 }}
-              placeholder="e.g. Budget exceeded, insufficient details..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              value={declineReason}
-              onChangeText={setDeclineReason}
-            />
+
+            {/* Custom Dropdown */}
+            <View style={{ marginBottom: 20, zIndex: 1000 }}>
+              <TouchableOpacity
+                onPress={() => setIsDropdownOpen(!isDropdownOpen)}
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <Text style={{ color: declineReason ? '#111827' : '#9CA3AF', fontSize: 15 }}>
+                  {declineReason || 'Select a reason'}
+                </Text>
+                <Feather name={isDropdownOpen ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
+              </TouchableOpacity>
+
+              {isDropdownOpen && (
+                <View style={{
+                  backgroundColor: '#FFF',
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 12,
+                  marginTop: 4,
+                  maxHeight: 150
+                }}>
+                  <ScrollView nestedScrollEnabled={true}>
+                    {declineReasonsList.map((reasonObj, index) => (
+                      <TouchableOpacity
+                        key={reasonObj.id}
+                        style={{
+                          padding: 12,
+                          borderBottomWidth: index === declineReasonsList.length - 1 ? 0 : 1,
+                          borderBottomColor: '#E5E7EB'
+                        }}
+                        onPress={() => {
+                          setDeclineReason(reasonObj.reason_text);
+                          setIsDropdownOpen(false);
+                        }}
+                      >
+                        <Text style={{ color: '#111827', fontSize: 15 }}>{reasonObj.reason_text}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <TouchableOpacity
                 onPress={() => {
                   setIsDeclineModalOpen(false);
+                  setIsDropdownOpen(false);
                   setDeclineReason('');
                   setJobToDecline(null);
                 }}
@@ -251,7 +310,7 @@ export default function SuperadminDashboard() {
               >
                 <Text style={{ color: '#4B5563', fontWeight: '700', fontSize: 15 }}>Cancel</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 onPress={() => {
                   if (!declineReason.trim()) {

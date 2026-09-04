@@ -1,5 +1,5 @@
 from utils.supabase_client import supabase
-from datetime import datetime
+from datetime import datetime, timezone
 
 def create_payment_record(job_assignment_id: str, worker_id: str, amount: float, upi_id: str = None):
     # Check if a payment record already exists for this assignment (idempotent)
@@ -7,7 +7,7 @@ def create_payment_record(job_assignment_id: str, worker_id: str, amount: float,
     if existing.data:
         return existing.data[0]
         
-    now_iso = datetime.now().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     payment_data = {
         "job_assignment_id": job_assignment_id,
         "worker_id": worker_id,
@@ -132,7 +132,7 @@ def get_pending_payments(search: str = None, date_from: str = None, date_to: str
     return paginated_results, total_count
 
 def process_payment(payment_id: str, processed_by: str, transaction_reference: str, remarks: str = None):
-    now_iso = datetime.now().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     update_data = {
         "payment_status": "completed",
         "transaction_reference": transaction_reference,
