@@ -7,8 +7,29 @@ import datetime
 
 router = APIRouter()
 
+async def verify_superadmin(user_id: str = Depends(get_current_user)):
+    try:
+        user_res = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if not user_res.data:
+            raise HTTPException(status_code=403, detail="User not found")
+            
+        role_id = user_res.data[0].get("role_id")
+        if not role_id:
+            raise HTTPException(status_code=403, detail="Role not found for user")
+            
+        role_res = supabase.table("roles").select("role_name").eq("role_id", role_id).execute()
+        if not role_res.data or role_res.data[0].get("role_name") != "superadmin":
+            raise HTTPException(status_code=403, detail="Not authorized. Superadmin access required.")
+            
+        return user_id
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error verifying superadmin role: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error during authorization")
+
 @router.get("/decline-reasons", response_model=DeclineReasonsResponse)
-async def get_decline_reasons(user_id: str = Depends(get_current_user)):
+async def get_decline_reasons(user_id: str = Depends(verify_superadmin)):
     """
     Fetch all active decline reasons from the database.
     """
@@ -20,7 +41,7 @@ async def get_decline_reasons(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to fetch decline reasons")
 
 @router.get("/requests", response_model=SuperadminRequestsResponse)
-async def get_pending_requests(user_id: str = Depends(get_current_user)):
+async def get_pending_requests(user_id: str = Depends(verify_superadmin)):
     """
     Fetch all manpower requests for superadmin across all stores.
     """
@@ -64,7 +85,7 @@ async def get_pending_requests(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/requests/{request_id}/approve", response_model=ActionResponse)
-async def approve_request(request_id: str, user_id: str = Depends(get_current_user)):
+async def approve_request(request_id: str, user_id: str = Depends(verify_superadmin)):
     try:
         # Check if the user is a superadmin in a real world app here
         res = supabase.table("manpower_requests").update({
@@ -80,7 +101,7 @@ async def approve_request(request_id: str, user_id: str = Depends(get_current_us
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/requests/{request_id}/reject", response_model=ActionResponse)
-async def reject_request(request_id: str, payload: RejectRequestPayload, user_id: str = Depends(get_current_user)):
+async def reject_request(request_id: str, payload: RejectRequestPayload, user_id: str = Depends(verify_superadmin)):
     try:
         res = supabase.table("manpower_requests").update({
             "approval_status": "declined",
@@ -98,7 +119,7 @@ async def reject_request(request_id: str, payload: RejectRequestPayload, user_id
 from .schemas import StoresListResponse, StoreCreateRequest, StoreResponse
 
 @router.get("/stores", response_model=StoresListResponse)
-async def get_all_stores(user_id: str = Depends(get_current_user)):
+async def get_all_stores(user_id: str = Depends(verify_superadmin)):
     """
     Fetch all stores for superadmin.
     """
@@ -125,7 +146,7 @@ async def get_all_stores(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/stores", response_model=ActionResponse)
-async def create_store(request: StoreCreateRequest, user_id: str = Depends(get_current_user)):
+async def create_store(request: StoreCreateRequest, user_id: str = Depends(verify_superadmin)):
     """
     Create a new store.
     """
@@ -150,7 +171,7 @@ class SuperadminStatsResponse(BaseModel):
     total_managers: int
 
 @router.get("/stats", response_model=SuperadminStatsResponse)
-async def get_superadmin_stats(user_id: str = Depends(get_current_user)):
+async def get_superadmin_stats(user_id: str = Depends(verify_superadmin)):
     """
     Fetch high level statistics for the superadmin dashboard.
     """
@@ -174,7 +195,7 @@ async def get_superadmin_stats(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/managers", response_model=ManagersListResponse)
-async def get_all_managers(user_id: str = Depends(get_current_user)):
+async def get_all_managers(user_id: str = Depends(verify_superadmin)):
     """
     Fetch all users with role 'store_manager' or 'supervisor'.
     """
@@ -224,7 +245,7 @@ async def get_all_managers(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/managers", response_model=ActionResponse)
-async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(get_current_user)):
+async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(verify_superadmin)):
     """
     Create a new store manager or supervisor.
     """

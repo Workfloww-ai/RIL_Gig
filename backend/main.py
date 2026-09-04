@@ -1,3 +1,4 @@
+import os
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -35,9 +36,14 @@ def shutdown_scheduler():
 
 
 # Configure CORS
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:3000,http://localhost:8081"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Change this in production
+    allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
