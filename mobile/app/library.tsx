@@ -191,7 +191,7 @@ export default function LibraryScreen() {
  const shiftDateTime = new Date(`${shift_date}T${start_time}`);
  const now = new Date();
  const diffMs = shiftDateTime.getTime() - now.getTime();
- return diffMs > 100 * 60 * 1000;
+ return diffMs > 90 * 60 * 1000;
  };
 
  const showToast = (msg: string) => {
