@@ -19,7 +19,8 @@ const storeSchema = z.object({
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
   pincode: z.string().length(6, "PIN Code must be 6 digits"),
-  google_map_link: z.string().url("Must be a valid URL").optional().or(z.literal(''))
+  google_map_link: z.string().url("Must be a valid URL").optional().or(z.literal('')),
+  store_type: z.string().min(2, "Store type is required")
 });
 
 type StoreFormData = z.infer<typeof storeSchema>;
@@ -42,6 +43,7 @@ export default function SuperadminStores() {
   // State/City modal state
   const [showStateModal, setShowStateModal] = useState(false);
   const [showCityModal, setShowCityModal] = useState(false);
+  const [showStoreTypeModal, setShowStoreTypeModal] = useState(false);
   const [selectedStateCode, setSelectedStateCode] = useState('');
 
   const { control, handleSubmit, setValue, reset, formState: { errors } } = useForm<StoreFormData>({
@@ -52,7 +54,8 @@ export default function SuperadminStores() {
       city: '',
       state: '',
       pincode: '',
-      google_map_link: ''
+      google_map_link: '',
+      store_type: ''
     }
   });
 
@@ -129,7 +132,14 @@ export default function SuperadminStores() {
               <View key={store.store_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}>
                 <TouchableOpacity onPress={() => toggleExpand(store.store_id)} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <View style={{ flex: 1, paddingRight: 10 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 }}>{store.store_name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginRight: 8 }}>{store.store_name}</Text>
+                      {store.store_type ? (
+                        <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, color: '#4F46E5', fontWeight: '600', textTransform: 'capitalize' }}>{store.store_type}</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Ionicons name="location-outline" size={14} color="#6B7280" style={{ marginRight: 4 }} />
                       <Text style={{ fontSize: 13, color: '#6B7280' }} numberOfLines={1}>
@@ -244,7 +254,23 @@ export default function SuperadminStores() {
                   />
                 </View>
                 <View style={{ flex: 1, marginLeft: 8 }}>
-                  {/* Empty View to balance row instead of country */}
+                  <Controller
+                    control={control}
+                    name="store_type"
+                    render={({ field: { value } }) => (
+                      <View style={{ marginBottom: 16 }}>
+                        <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 13, marginBottom: 8, marginLeft: 4 }}>Store Type</Text>
+                        <TouchableOpacity 
+                          onPress={() => setShowStoreTypeModal(true)}
+                          style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.store_type ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                        >
+                          <Text style={{ color: value ? '#111827' : '#9CA3AF', textTransform: value ? 'capitalize' : 'none' }}>{value || "Store Type"}</Text>
+                          <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+                        </TouchableOpacity>
+                        {errors.store_type && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.store_type.message}</Text>}
+                      </View>
+                    )}
+                  />
                 </View>
               </View>
 
@@ -255,6 +281,7 @@ export default function SuperadminStores() {
                   <Input label="Google Maps Link" placeholder="https://maps.google.com/..." value={value} onChangeText={onChange} error={errors.google_map_link?.message} />
                 )}
               />
+
 
               <View style={{ marginTop: 24, paddingBottom: 24 }}>
                 <Button title="Create Store" onPress={handleSubmit(onSubmit)} loading={submitting} />
@@ -323,6 +350,30 @@ export default function SuperadminStores() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Store Type Modal */}
+      <Modal visible={showStoreTypeModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowStoreTypeModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 24 }} onStartShouldSetResponder={() => true}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Select Store Type</Text>
+              <TouchableOpacity onPress={() => setShowStoreTypeModal(false)}>
+                <Text style={{ color: '#6B7280', fontWeight: '600' }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => { setValue('store_type', 'offline store', { shouldValidate: true }); setShowStoreTypeModal(false); }} style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' }}>
+              <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>Offline Store</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setValue('store_type', 'dark store', { shouldValidate: true }); setShowStoreTypeModal(false); }} style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' }}>
+              <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>Dark Store</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setValue('store_type', 'hybrid store', { shouldValidate: true }); setShowStoreTypeModal(false); }} style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' }}>
+              <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>Hybrid Store</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </View>
   );
 }

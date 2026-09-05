@@ -83,7 +83,7 @@ def get_recent_activity(user_id: str):
     Fetches the recent completed jobs (activity) for a worker.
     """
     response = supabase.table("worker_job_assignments").select(
-        "job_assignment_id, assignment_status, updated_at, stores(store_name), manpower_requests(request_id, shift_date, hours_duration, jobs(job_name, base_compensation))"
+        "job_assignment_id, assignment_status, updated_at, stores(store_name), manpower_requests(request_id, shift_date, hours_duration, jobs(job_name, base_compensation)), payments(payment_status)"
     ).eq("worker_id", user_id).eq("assignment_status", "completed").order("updated_at", desc=True).execute()
     
     activities = []
@@ -112,6 +112,13 @@ def get_recent_activity(user_id: str):
         rate = float(job.get("base_compensation", 0))
         amount = hours * rate
         
+        payment = row.get("payments")
+        payment_status = "pending"
+        if isinstance(payment, list) and len(payment) > 0:
+            payment_status = payment[0].get("payment_status", "pending")
+        elif isinstance(payment, dict):
+            payment_status = payment.get("payment_status", "pending")
+
         activities.append({
             "id": row.get("job_assignment_id"),
             "job_name": job.get("job_name", "Unknown Job"),
@@ -119,6 +126,7 @@ def get_recent_activity(user_id: str):
             "shift_date": req.get("shift_date"),
             "hours": hours,
             "amount": amount,
-            "updated_at": row.get("updated_at")
+            "updated_at": row.get("updated_at"),
+            "payment_status": payment_status
         })
     return activities

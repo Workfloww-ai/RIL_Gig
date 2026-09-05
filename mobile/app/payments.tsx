@@ -10,6 +10,8 @@ export default function PaymentsScreen() {
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<any[]>([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [totalReceived, setTotalReceived] = useState(0);
+  const [pendingBalance, setPendingBalance] = useState(0);
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -19,7 +21,10 @@ export default function PaymentsScreen() {
           setPayments(res.data.recent_activity);
           
           const total = res.data.recent_activity.reduce((sum: number, act: any) => sum + (act.amount || 0), 0);
+          const received = res.data.recent_activity.reduce((sum: number, act: any) => sum + (act.payment_status === 'completed' ? (act.amount || 0) : 0), 0);
           setTotalEarnings(total);
+          setTotalReceived(received);
+          setPendingBalance(total - received);
         }
       } catch (error) {
         console.error('Error fetching payments:', error);
@@ -51,11 +56,21 @@ export default function PaymentsScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         
         {/* Earnings Summary Card */}
-        <View className="bg-moss mx-5 mt-6 rounded-3xl p-6 shadow-sm items-center">
-          <Text className="text-sand/80 text-xs font-bold tracking-widest uppercase mb-2">Lifetime Earnings</Text>
-          <Text className="text-white text-4xl font-bold mb-4">₹ {totalEarnings.toLocaleString()}</Text>
-          <View className="bg-moss/80 px-4 py-2 rounded-full border border-moss">
-            <Text className="text-white text-xs font-medium">Earnings from all completed shifts</Text>
+        <View className="bg-moss mx-5 mt-6 rounded-3xl p-6 shadow-sm">
+          <View className="items-center mb-6">
+            <Text className="text-sand/80 text-xs font-bold tracking-widest uppercase mb-2">Lifetime Earnings</Text>
+            <Text className="text-white text-4xl font-bold">₹ {totalEarnings.toLocaleString()}</Text>
+          </View>
+          
+          <View className="flex-row justify-between border-t border-white/10 pt-4">
+            <View className="flex-1 items-center border-r border-white/10">
+              <Text className="text-sand/80 text-xs font-bold mb-1 uppercase">Received</Text>
+              <Text className="text-white text-xl font-bold">₹ {totalReceived.toLocaleString()}</Text>
+            </View>
+            <View className="flex-1 items-center">
+              <Text className="text-sand/80 text-xs font-bold mb-1 uppercase">Pending</Text>
+              <Text className="text-white text-xl font-bold text-[#FBBF24]">₹ {pendingBalance.toLocaleString()}</Text>
+            </View>
           </View>
         </View>
 
@@ -74,8 +89,8 @@ export default function PaymentsScreen() {
                 
                 <View className="flex-row items-center justify-between border-t border-sage/10 pt-3">
                   <View className="flex-row items-center w-full">
-                    <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'processed' ? 'bg-moss/10' : 'bg-sage/10'}`}>
-                      {activity.payment_status === 'processed' ? (
+                    <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'completed' ? 'bg-moss/10' : 'bg-sage/10'}`}>
+                      {activity.payment_status === 'completed' ? (
                         <Text className="text-moss text-xl">✓</Text>
                       ) : (
                         <Feather name="clock" size={24} color="#CA8A04" />

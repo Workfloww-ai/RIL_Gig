@@ -32,6 +32,7 @@ class StoreCreateRequest(BaseModel):
     state: str
     pincode: str
     google_map_link: Optional[str] = None
+    store_type: str
 
 class StoreResponse(BaseModel):
     store_id: str
@@ -42,6 +43,7 @@ class StoreResponse(BaseModel):
     pincode: Optional[str] = None
     google_map_link: Optional[str] = None
     manager_name: Optional[str] = None
+    store_type: Optional[str] = None
 
 class StoresListResponse(BaseModel):
     status: str
@@ -52,10 +54,10 @@ class ManagerCreateRequest(BaseModel):
     last_name: str
     email: str
     mobile_number: str
-    address: str
+    address: Optional[str] = ""
     city: str
     state: str
-    pincode: str
+    pincode: Optional[str] = ""
     role: str # "store manager" or "supervisor"
     store_id: str
 
@@ -67,9 +69,16 @@ class ManagerResponse(BaseModel):
     mobile_number: str
     role_name: str
     store_name: Optional[str] = None
+    is_verified: bool = False
 
 class ManagersListResponse(BaseModel):
     status: str
     managers: List[ManagerResponse]
 
+class DeclineReason(BaseModel):
+    id: str
+    reason_text: str
 
+class DeclineReasonsResponse(BaseModel):
+    status: str
+    reasons: List[DeclineReason]

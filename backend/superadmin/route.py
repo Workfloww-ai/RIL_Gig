@@ -1,14 +1,47 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
-from .schemas import SuperadminRequestsResponse, SuperadminJobResponse, ActionResponse, RejectRequestPayload
+from .schemas import SuperadminRequestsResponse, SuperadminJobResponse, ActionResponse, RejectRequestPayload, DeclineReasonsResponse
 from utils.supabase_client import supabase
 from utils.jwt_auth import get_current_user
 import datetime
 
 router = APIRouter()
 
+async def verify_superadmin(user_id: str = Depends(get_current_user)):
+    try:
+        user_res = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if not user_res.data:
+            raise HTTPException(status_code=403, detail="User not found")
+            
+        role_id = user_res.data[0].get("role_id")
+        if not role_id:
+            raise HTTPException(status_code=403, detail="Role not found for user")
+            
+        role_res = supabase.table("roles").select("role_name").eq("role_id", role_id).execute()
+        if not role_res.data or role_res.data[0].get("role_name") != "superadmin":
+            raise HTTPException(status_code=403, detail="Not authorized. Superadmin access required.")
+            
+        return user_id
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error verifying superadmin role: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error during authorization")
+
+@router.get("/decline-reasons", response_model=DeclineReasonsResponse)
+async def get_decline_reasons(user_id: str = Depends(verify_superadmin)):
+    """
+    Fetch all active decline reasons from the database.
+    """
+    try:
+        response = supabase.table("decline_reasons").select("id, reason_text").eq("is_active", True).order("created_at", desc=False).execute()
+        return DeclineReasonsResponse(status="success", reasons=response.data)
+    except Exception as e:
+        print(f"Error fetching decline reasons: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch decline reasons")
+
 @router.get("/requests", response_model=SuperadminRequestsResponse)
-async def get_pending_requests(user_id: str = Depends(get_current_user)):
+async def get_pending_requests(user_id: str = Depends(verify_superadmin)):
     """
     Fetch all manpower requests for superadmin across all stores.
     """
@@ -52,7 +85,7 @@ async def get_pending_requests(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/requests/{request_id}/approve", response_model=ActionResponse)
-async def approve_request(request_id: str, user_id: str = Depends(get_current_user)):
+async def approve_request(request_id: str, user_id: str = Depends(verify_superadmin)):
     try:
         # Check if the user is a superadmin in a real world app here
         res = supabase.table("manpower_requests").update({
@@ -68,7 +101,7 @@ async def approve_request(request_id: str, user_id: str = Depends(get_current_us
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/requests/{request_id}/reject", response_model=ActionResponse)
-async def reject_request(request_id: str, payload: RejectRequestPayload, user_id: str = Depends(get_current_user)):
+async def reject_request(request_id: str, payload: RejectRequestPayload, user_id: str = Depends(verify_superadmin)):
     try:
         res = supabase.table("manpower_requests").update({
             "approval_status": "declined",
@@ -86,7 +119,7 @@ async def reject_request(request_id: str, payload: RejectRequestPayload, user_id
 from .schemas import StoresListResponse, StoreCreateRequest, StoreResponse
 
 @router.get("/stores", response_model=StoresListResponse)
-async def get_all_stores(user_id: str = Depends(get_current_user)):
+async def get_all_stores(user_id: str = Depends(verify_superadmin)):
     """
     Fetch all stores for superadmin.
     """
@@ -103,7 +136,8 @@ async def get_all_stores(user_id: str = Depends(get_current_user)):
                 city=s.get("city"),
                 state=s.get("state"),
                 pincode=s.get("pincode"),
-                google_map_link=s.get("google_map_link")
+                google_map_link=s.get("google_map_link"),
+                store_type=s.get("store_type")
             ))
             
         return StoresListResponse(status="success", stores=stores)
@@ -112,7 +146,7 @@ async def get_all_stores(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/stores", response_model=ActionResponse)
-async def create_store(request: StoreCreateRequest, user_id: str = Depends(get_current_user)):
+async def create_store(request: StoreCreateRequest, user_id: str = Depends(verify_superadmin)):
     """
     Create a new store.
     """
@@ -137,7 +171,7 @@ class SuperadminStatsResponse(BaseModel):
     total_managers: int
 
 @router.get("/stats", response_model=SuperadminStatsResponse)
-async def get_superadmin_stats(user_id: str = Depends(get_current_user)):
+async def get_superadmin_stats(user_id: str = Depends(verify_superadmin)):
     """
     Fetch high level statistics for the superadmin dashboard.
     """
@@ -161,7 +195,7 @@ async def get_superadmin_stats(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/managers", response_model=ManagersListResponse)
-async def get_all_managers(user_id: str = Depends(get_current_user)):
+async def get_all_managers(user_id: str = Depends(verify_superadmin)):
     """
     Fetch all users with role 'store_manager' or 'supervisor'.
     """
@@ -174,8 +208,8 @@ async def get_all_managers(user_id: str = Depends(get_current_user)):
         if not role_ids:
             return ManagersListResponse(status="success", managers=[])
             
-        # Fetch users
-        users_res = supabase.table("users").select("*").in_("role_id", role_ids).order("created_at", desc=True).execute()
+        # Fetch users explicitly
+        users_res = supabase.table("users").select("user_id, first_name, last_name, email, mobile_number, role_id, is_verified").in_("role_id", role_ids).order("created_at", desc=True).execute()
         
         # Fetch store assignments
         user_ids = [u["user_id"] for u in users_res.data]
@@ -201,7 +235,8 @@ async def get_all_managers(user_id: str = Depends(get_current_user)):
                 email=u.get("email"),
                 mobile_number=u.get("mobile_number", ""),
                 role_name=role_map.get(u["role_id"], "unknown").replace("_", " "),
-                store_name=assignments_map.get(u["user_id"])
+                store_name=assignments_map.get(u["user_id"]),
+                is_verified=u.get("is_verified", False)
             ))
             
         return ManagersListResponse(status="success", managers=managers)
@@ -210,7 +245,7 @@ async def get_all_managers(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/managers", response_model=ActionResponse)
-async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(get_current_user)):
+async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(verify_superadmin)):
     """
     Create a new store manager or supervisor.
     """
@@ -225,12 +260,18 @@ async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(g
             raise HTTPException(status_code=500, detail=f"Role '{role_name_clean}' not found in database")
         role_id = role_res.data[0]["role_id"]
         
+        mobile_num = request.mobile_number.strip()
+        if mobile_num.startswith("+"):
+            mobile_num = mobile_num[1:]
+        if not mobile_num.startswith("91"):
+            mobile_num = "91" + mobile_num
+
         # Insert user
         user_dict = {
             "first_name": request.first_name,
             "last_name": request.last_name,
             "email": request.email,
-            "mobile_number": request.mobile_number,
+            "mobile_number": mobile_num,
             "address": request.address,
             "city": request.city,
             "state": request.state,

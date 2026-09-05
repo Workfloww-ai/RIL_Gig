@@ -40,7 +40,7 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
         response = supabase.table("manpower_requests").select(
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
             "jobs(job_id, job_name, base_compensation), "
-            "stores(store_id, store_name, address, city)"
+            "stores(store_id, store_name, address, city, google_map_link)"
         ).eq("request_status", "open").execute()
         
         # Allow either 'approved' or 'confirmed'
@@ -103,7 +103,8 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),
-                city=store_info.get("city")
+                city=store_info.get("city"),
+                google_map_link=store_info.get("google_map_link")
             ))
             
         return AvailableJobsResponse(status="success", jobs=jobs)
@@ -225,7 +226,7 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
 async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
     try:
         response = supabase.table("worker_job_assignments").select(
-            "assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city))"
+            "assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city, google_map_link))"
         ).eq("worker_id", user_id).execute()
         
         jobs = []
@@ -257,6 +258,7 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),
                 city=store_info.get("city"),
+                google_map_link=store_info.get("google_map_link"),
                 t90_status=r.get("t90_status", "pending"),
                 t60_status=r.get("t60_status", "pending"),
                 arrival_status=r.get("arrival_status", "pending"),

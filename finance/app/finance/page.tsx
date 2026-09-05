@@ -190,6 +190,17 @@ export default function FinanceDashboard() {
     return false;
   };
 
+  const isPastJob = (p: Payment) => {
+    if (!p.created_at) {
+      return p.shift_date < todayStr;
+    }
+    const createdAt = new Date(p.created_at);
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    return createdAt < startOfToday;
+  };
+
   const groupPayments = (paymentList: Payment[]) => {
     const grouped = paymentList.reduce((acc, curr) => {
       if (!acc[curr.worker_phone]) {
@@ -213,7 +224,7 @@ export default function FinanceDashboard() {
   };
 
   const presentPayments = filteredPayments.filter(p => isPresentJob(p));
-  const pastPayments = filteredPayments.filter(p => !isPresentJob(p));
+  const pastPayments = filteredPayments.filter(p => isPastJob(p));
 
   const presentGroups = groupPayments(presentPayments);
   const pastGroups = groupPayments(pastPayments);

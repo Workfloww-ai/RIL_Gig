@@ -8,6 +8,7 @@ from utils.sms import send_otp_sms
 from utils.supabase_client import supabase
 from utils.jwt_auth import create_access_token, get_current_user, SECRET_KEY
 from fastapi import Depends
+from db.auth_db import mark_user_verified
 import hmac
 import hashlib
 
@@ -285,6 +286,9 @@ async def verify_otp(payload: VerifyOTPRequest):
         role_resp = supabase.table("roles").select("role_name").eq("role_id", user_data["role_id"]).execute()
         if role_resp.data:
             role_name = role_resp.data[0]["role_name"].lower()
+    
+    # Mark user as verified upon successful login
+    mark_user_verified(user_id)
     
     access_token = create_access_token({"sub": user_id})
     return {"status": "login_success", "token": access_token, "role": role_name}

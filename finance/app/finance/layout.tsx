@@ -48,9 +48,9 @@ export default function FinanceLayout({
     <div className="flex h-screen overflow-hidden bg-sand">
       {/* Sidebar - Desktop */}
       <aside className="hidden w-64 flex-col bg-moss text-white md:flex">
-        <div className="flex h-16 items-center justify-center gap-2 border-b border-green-800">
-          <img src="/images/logo.jpeg" alt="SahYogi Logo" className="h-8 w-8 object-contain rounded-md bg-white" />
-          <h1 className="text-xl font-bold tracking-wider">SAHYOGI</h1>
+        <div className="flex flex-col items-center justify-center gap-2 border-b border-green-800 py-6">
+          <img src="/images/logowithoutbg.png" alt="SahYogi Logo" className="h-28 w-28 object-contain bg-white rounded-xl shadow-sm" />
+          <h1 className="text-3xl font-bold tracking-wider mt-1">SahYogi</h1>
         </div>
 
         <nav className="flex-1 space-y-2 p-4">
@@ -93,7 +93,7 @@ export default function FinanceLayout({
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
             <div className="ml-3 flex items-center gap-2 md:hidden">
-              <img src="/images/logo.jpeg" alt="SahYogi Logo" className="h-7 w-7 object-contain rounded-md" />
+              <img src="/images/logowithoutbg.png" alt="SahYogi Logo" className="h-7 w-7 object-contain rounded-md" />
               <h1 className="text-lg font-bold text-moss">SahYogi</h1>
             </div>
           </div>
@@ -117,14 +117,15 @@ export default function FinanceLayout({
           <div className="absolute inset-0 z-50 flex md:hidden">
             <div className="fixed inset-0 bg-black/50" onClick={() => setIsMobileMenuOpen(false)}></div>
             <aside className="relative flex w-64 flex-col bg-moss text-white shadow-xl">
-              <div className="flex h-16 items-center justify-between px-4 border-b border-green-800">
-                <div className="flex items-center gap-2">
-                  <img src="/images/logo.jpeg" alt="SahYogi Logo" className="h-8 w-8 object-contain rounded-md bg-white" />
-                  <h1 className="text-xl font-bold">SahYogi</h1>
-                </div>
-                <button onClick={() => setIsMobileMenuOpen(false)}>
+              <div className="flex flex-col items-center gap-2 py-6 border-b border-green-800 relative">
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="absolute top-4 right-4"
+                >
                   <X className="h-6 w-6" />
                 </button>
+                <img src="/images/logowithoutbg.png" alt="SahYogi Logo" className="h-28 w-28 object-contain rounded-xl bg-white shadow-sm mt-2" />
+                <h1 className="text-3xl font-bold tracking-wider mt-1">SahYogi</h1>
               </div>
               <nav className="flex-1 space-y-2 p-4">
                 {navLinks.map((link) => {
