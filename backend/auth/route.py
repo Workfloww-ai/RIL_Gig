@@ -164,7 +164,15 @@ async def upload_documents(
 
     uploaded_docs = []
     
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+    
     for file in files:
+        if file.content_type not in ALLOWED_MIME_TYPES:
+            raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed types: JPEG, PNG, PDF.")
+        if file.size and file.size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail=f"File {file.filename} is too large. Maximum size is 10MB.")
+            
         meta = next((m for m in parsed_metadata if m.filename == file.filename), None)
         if meta:
             doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", meta.doc_name).execute()
@@ -381,7 +389,16 @@ async def verify_and_signup(
         raise HTTPException(status_code=400, detail=f"Invalid metadata JSON: {str(e)}")
 
     uploaded_docs = []
+    
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+    
     for file in files:
+        if file.content_type not in ALLOWED_MIME_TYPES:
+            raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed types: JPEG, PNG, PDF.")
+        if file.size and file.size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail=f"File {file.filename} is too large. Maximum size is 10MB.")
+            
         meta = next((m for m in parsed_metadata if m.filename == file.filename), None)
         if meta:
             doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", meta.doc_name).execute()
