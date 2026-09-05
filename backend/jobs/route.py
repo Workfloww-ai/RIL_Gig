@@ -99,7 +99,7 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
                 request_status=r.get("request_status", ""),
                 job_id=job_info.get("job_id", ""),
                 job_name=job_info.get("job_name", ""),
-                base_compensation=float(job_info.get("base_compensation", 0)) / 100.0,
+                base_compensation=float(job_info.get("base_compensation", 0)),
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),
@@ -230,7 +230,7 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
                 hours_duration=float(req_info.get("hours_duration", 0)),
                 job_id=job_info.get("job_id", ""),
                 job_name=job_info.get("job_name", ""),
-                base_compensation=float(job_info.get("base_compensation", 0)) / 100.0,
+                base_compensation=float(job_info.get("base_compensation", 0)),
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),
@@ -353,7 +353,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                 "decline_reason": r.get("decline_reason", ""),
                 "job_id": job_info.get("job_id", ""),
                 "job_name": job_info.get("job_name", ""),
-                "base_compensation": float(job_info.get("base_compensation", 0)) / 100.0,
+                "base_compensation": float(job_info.get("base_compensation", 0)),
                 "store_id": store_info.get("store_id", ""),
                 "store_name": store_info.get("store_name", ""),
                 "accepted_workers": accepted_workers
@@ -602,7 +602,7 @@ async def manager_complete_job(
                 
                 from decimal import Decimal, ROUND_HALF_UP
                 hours_dec = Decimal(str(hours))
-                base_comp_dec = Decimal(str(base_comp_paise)) / Decimal('100')
+                base_comp_dec = Decimal(str(base_comp_paise))
                 
                 amount = float((hours_dec * base_comp_dec).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
                 

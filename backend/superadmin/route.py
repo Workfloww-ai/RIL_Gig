@@ -63,7 +63,7 @@ async def get_pending_requests(limit: int = 100, offset: int = 0, user_id: str =
                 store_info = store_info[0]
             
             hours = float(r.get("hours_duration", 0))
-            base_comp = float(job_info.get("base_compensation", 0)) / 100.0
+            base_comp = float(job_info.get("base_compensation", 0))
                 
             requests.append(SuperadminJobResponse(
                 request_id=r.get("request_id", ""),

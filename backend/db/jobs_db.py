@@ -57,7 +57,7 @@ def get_all_jobs(limit: int = None, offset: int = None):
     data = response.data or []
     for item in data:
         if "base_compensation" in item and item["base_compensation"] is not None:
-            item["base_compensation"] = float(item["base_compensation"]) / 100.0
+            item["base_compensation"] = float(item["base_compensation"])
     return data
 
 def get_pending_t90_call_assignments():
@@ -116,7 +116,7 @@ def get_recent_activity(user_id: str):
             store_name = "Unknown Store"
             
         hours = float(req.get("hours_duration", 0))
-        rate = float(job.get("base_compensation", 0)) / 100.0
+        rate = float(job.get("base_compensation", 0))
         amount = hours * rate
         
         payment = row.get("payments")

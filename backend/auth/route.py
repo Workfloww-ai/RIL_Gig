@@ -30,9 +30,15 @@ def get_mobile_variations(mobile: str):
 async def check_mobile(payload: MobileCheckRequest):
     clean, with_plus = get_mobile_variations(payload.mobile_number)
     # Check for both variations in the database to prevent duplicates
-    response = supabase.table("users").select("user_id").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
+    response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
     
     if len(response.data) > 0:
+        user_data = response.data[0]
+        if user_data.get("role_id"):
+            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_data["role_id"]).execute()
+            if role_resp.data and role_resp.data[0]["role_name"].lower() == "finance":
+                return {"status": "redirect_finance", "message": "Finance users should login via the web portal."}
+                
         # User exists, they should just login (we can trigger send OTP here or let them call /send-otp)
         return {"status": "existing_user", "message": "User found, proceed to login"}
     else:
@@ -220,7 +226,10 @@ async def upload_documents(
 @router.post("/send-otp")
 @limiter.limit("5/minute")
 async def send_otp(request: Request, payload: SendOTPRequest):
-    clean_mobile, _ = get_mobile_variations(payload.mobile_number)
+    clean_mobile, with_plus = get_mobile_variations(payload.mobile_number)
+    
+    pass
+
     
     # Check DB limit: max 3 OTPs per phone per 15 minutes
     fifteen_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=15)).isoformat()
