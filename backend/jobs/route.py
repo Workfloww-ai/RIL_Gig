@@ -463,14 +463,33 @@ async def generate_start_otp(request_id: str, user_id: str = Depends(get_current
                 if len(start_time.split(':')) == 2:
                     start_time += ":00"
                 try:
+                    from datetime import timezone
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
                     if datetime.now() < shift_datetime - timedelta(minutes=10):
                         raise HTTPException(status_code=400, detail="Cannot generate OTP more than 10 minutes before shift")
                     if datetime.now() > shift_datetime:
                         supabase.table("worker_job_assignments").update({
-                            "assignment_status": "no_show"
+                            "assignment_status": "no_show",
+                            "rating_score": 1,
+                            "rating_feedback": "Auto-assigned due to No Show",
+                            "rated_at": datetime.now(timezone.utc).isoformat()
                         }).eq("job_assignment_id", assignment.get("job_assignment_id")).execute()
+                        
+                        # Recalculate average rating
+                        worker_id = user_id
+                        ratings_resp = supabase.table("worker_job_assignments").select("rating_score").eq("worker_id", worker_id).not_.is_("rating_score", "null").execute()
+                        if ratings_resp.data:
+                            total_score = sum([r.get("rating_score", 0) for r in ratings_resp.data])
+                            num_rated_shifts = len(ratings_resp.data)
+                            avg_score = round(total_score / num_rated_shifts)
+                            supabase.table("users").update({
+                                "ratings": avg_score,
+                                "shifts_completed": num_rated_shifts
+                            }).eq("user_id", worker_id).execute()
+                            
                         raise HTTPException(status_code=400, detail="Shift start time has already passed. Marked as No Show.")
+                except HTTPException:
+                    raise
                 except Exception as e:
                     print(f"Error parsing date in start-otp: {e}")
 
@@ -526,12 +545,31 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
                 if len(start_time.split(':')) == 2:
                     start_time += ":00"
                 try:
+                    from datetime import timezone
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
                     if datetime.now() > shift_datetime:
                         supabase.table("worker_job_assignments").update({
-                            "assignment_status": "no_show"
+                            "assignment_status": "no_show",
+                            "rating_score": 1,
+                            "rating_feedback": "Auto-assigned due to No Show",
+                            "rated_at": datetime.now(timezone.utc).isoformat()
                         }).eq("job_assignment_id", assignment_id).execute()
+                        
+                        # Recalculate average rating
+                        worker_id = payload.worker_id
+                        ratings_resp = supabase.table("worker_job_assignments").select("rating_score").eq("worker_id", worker_id).not_.is_("rating_score", "null").execute()
+                        if ratings_resp.data:
+                            total_score = sum([r.get("rating_score", 0) for r in ratings_resp.data])
+                            num_rated_shifts = len(ratings_resp.data)
+                            avg_score = round(total_score / num_rated_shifts)
+                            supabase.table("users").update({
+                                "ratings": avg_score,
+                                "shifts_completed": num_rated_shifts
+                            }).eq("user_id", worker_id).execute()
+                            
                         raise HTTPException(status_code=400, detail="Job start time has passed. Worker marked as No Show.")
+                except HTTPException:
+                    raise
                 except Exception as e:
                     print(f"Error parsing date in verify-otp: {e}")
 
@@ -546,7 +584,7 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
         if otp_resp.data[0]["otp_code"] != payload.otp_code:
             raise HTTPException(status_code=400, detail="Invalid OTP code")
             
-        supabase.table("job_start_otps").update({"is_verified": True}).eq("id", otp_resp.data[0]["id"]).execute()
+        supabase.table("job_start_otps").delete().eq("id", otp_resp.data[0]["id"]).execute()
         
         supabase.table("worker_job_assignments").update({
             "assignment_status": "started"

@@ -272,6 +272,9 @@ async def verify_otp(payload: VerifyOTPRequest):
     if datetime.now(timezone.utc) > expires_at:
         raise HTTPException(status_code=400, detail="OTP has expired.")
         
+    # 4. Delete OTP after verification
+    supabase.table("otp_codes").delete().eq("id", otp_record["id"]).execute()
+        
     # 5. Fetch user_id and role to inject into token and response
     clean_user, with_plus_user = get_mobile_variations(otp_record["mobile_number"])
     user_response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean_user},mobile_number.eq.{with_plus_user}").execute()
