@@ -47,13 +47,12 @@ def shutdown_scheduler():
 # Configure CORS
 # allowed_origins = os.getenv(
 #     "ALLOWED_ORIGINS", 
-#     "http://localhost:3000,http://localhost:8081"
+#     "http://localhost:3000,http://localhost:8081,http://[IP_ADDRESS]"
 # ).split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

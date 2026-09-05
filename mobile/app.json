@@ -30,8 +30,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "image": "./assets/images/logo-sahyogi.png",
+          "imageWidth": 200
         }
       ],
       "expo-video",

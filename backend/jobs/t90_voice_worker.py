@@ -124,11 +124,20 @@ def run_t90_worker_sync():
 
 if __name__ == "__main__":
     import time
+    from dotenv import load_dotenv
     POLL_INTERVAL = 30 # seconds
     logger.info(f"Starting T-90 Voice Worker Daemon (Polling DB every {POLL_INTERVAL} seconds). Press Ctrl+C to stop.\n")
     try:
         while True:
-            run_t90_worker_sync()
+            # Reload .env on each tick so the flag can be toggled without restarting the script
+            load_dotenv(override=True)
+            is_worker_on = os.getenv("IS_WORKER_ON", "false").lower() in ("true", "1", "t", "yes")
+            
+            if is_worker_on:
+                run_t90_worker_sync()
+            else:
+                logger.info("[T90VoiceWorker] IS_WORKER_ON is not set to true. Skipping this cycle.")
+                
             time.sleep(POLL_INTERVAL)
     except KeyboardInterrupt:
         logger.info("\n[T90VoiceWorker] Daemon stopped by user.")
