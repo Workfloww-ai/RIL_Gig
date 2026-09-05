@@ -25,3 +25,19 @@ apiClient.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+// Add a response interceptor to handle network errors globally
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (!error.response && (error.code === 'ECONNABORTED' || error.message === 'Network Error' || error.message.includes('Network'))) {
+      // Modify the error so frontend components can easily extract the detail string
+      error.response = {
+        data: {
+          detail: 'Poor network connection. Please check your signal and try again.',
+        },
+      };
+    }
+    return Promise.reject(error);
+  }
+);
