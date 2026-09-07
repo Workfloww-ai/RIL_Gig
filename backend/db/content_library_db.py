@@ -30,7 +30,7 @@ def initialize_user_progress_if_needed(user_id: str):
     if progress_rows:
         supabase.table("user_module_progress").insert(progress_rows).execute()
 
-def get_modules_with_progress(user_id: str):
+def get_modules_with_progress(user_id: str, limit: int = 100, offset: int = 0):
     """
     Fetches all modules and joins with the user's progress.
     """
@@ -38,10 +38,10 @@ def get_modules_with_progress(user_id: str):
     initialize_user_progress_if_needed(user_id)
     
     # Fetch all modules
-    modules = get_all_modules()
+    modules = get_all_modules(limit=limit, offset=offset)
     
     # Fetch user progress
-    progress = supabase.table("user_module_progress").select("*").eq("user_id", user_id).execute()
+    progress = supabase.table("user_module_progress").select("module_id, status, highest_quiz_score, completed_at").eq("user_id", user_id).execute()
     progress_dict = {p['module_id']: p for p in progress.data}
     
     # Merge
@@ -61,7 +61,7 @@ def process_quiz_submission(user_id: str, module_id: str, score: int, passing_sc
     Saves the quiz score. If passed, unlocks the next module.
     """
     # Get current progress for this module
-    curr_prog = supabase.table("user_module_progress").select("*").eq("user_id", user_id).eq("module_id", module_id).execute()
+    curr_prog = supabase.table("user_module_progress").select("id, status, highest_quiz_score").eq("user_id", user_id).eq("module_id", module_id).execute()
     if not curr_prog.data:
         raise Exception("Module progress not found")
         
@@ -110,14 +110,19 @@ def process_quiz_submission(user_id: str, module_id: str, score: int, passing_sc
                 
     return {"success": True, "passed": passed, "score": score}
 
-def get_all_modules():
+def get_all_modules(limit: int = None, offset: int = None):
     """
     Fetches all modules from the content_library table.
     Explicitly selects columns to avoid SELECT * per enterprise rules.
     Orders them by order_index.
     """
-    response = supabase.table("content_library").select(
+    query = supabase.table("content_library").select(
         "id, title, category_name, duration_text, video_url, podcast_url, overview_text, quiz_questions, key_module_topics, order_index, is_locked_default"
-    ).order("order_index").execute()
+    ).order("order_index")
+    
+    if limit is not None and offset is not None:
+        query = query.range(offset, offset + limit - 1)
+        
+    response = query.execute()
     
     return response.data

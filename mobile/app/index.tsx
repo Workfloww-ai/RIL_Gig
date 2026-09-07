@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, Alert, Linking, Modal, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
@@ -10,6 +10,7 @@ export default function LoginScreen() {
   const [mobile, setMobile] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showFinanceModal, setShowFinanceModal] = useState(false);
 
   const handleContinue = async () => {
     if (mobile.length < 10) {
@@ -27,7 +28,9 @@ export default function LoginScreen() {
       console.log('Backend response:', response.data);
 
       const { status } = response.data;
-      if (status === 'existing_user') {
+      if (status === 'redirect_finance') {
+        setShowFinanceModal(true);
+      } else if (status === 'existing_user') {
         // Send OTP directly for existing user before redirecting
         console.log('User exists, sending OTP...');
         await apiClient.post('/auth/send-otp', {
@@ -72,6 +75,34 @@ export default function LoginScreen() {
           <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={showFinanceModal} transparent animationType="fade">
+        <View className="flex-1 justify-center items-center bg-black/50 px-6">
+          <View className="bg-white rounded-3xl p-6 w-full shadow-xl">
+            <Text className="text-xl font-bold text-slate mb-3">Finance Portal</Text>
+            <Text className="text-sage text-base mb-6 leading-relaxed">
+              Finance users should log in via the web dashboard.
+            </Text>
+            <View className="flex-row justify-end">
+              <TouchableOpacity 
+                onPress={() => setShowFinanceModal(false)} 
+                className="px-5 py-2.5 mr-2 rounded-xl"
+              >
+                <Text className="text-moss font-bold text-base">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowFinanceModal(false);
+                  Linking.openURL('http://financedashboard.sahyogi.net.in/');
+                }} 
+                className="px-5 py-2.5 rounded-xl"
+              >
+                <Text className="text-moss font-bold text-base">Open Portal</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

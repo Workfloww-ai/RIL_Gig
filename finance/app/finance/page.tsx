@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, Check, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, IndianRupee } from 'lucide-react';
 import { getDashboardStats, getPendingPayments, processPayment } from '@/lib/api';
+import currency from 'currency.js';
 
 // Types
 type DashboardStats = {
@@ -213,7 +214,7 @@ export default function FinanceDashboard() {
           status: curr.payment_status
         };
       }
-      acc[curr.worker_phone].total_amount += curr.amount;
+      acc[curr.worker_phone].total_amount = currency(acc[curr.worker_phone].total_amount).add(curr.amount).value;
       acc[curr.worker_phone].payments.push(curr);
       if (acc[curr.worker_phone].status !== curr.payment_status) {
         acc[curr.worker_phone].status = 'mixed';

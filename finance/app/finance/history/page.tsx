@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { getPaymentHistory } from '@/lib/api';
+import currency from 'currency.js';
 
 type HistoryPayment = {
   payment_id: string;
@@ -97,7 +98,7 @@ export default function HistoryPage() {
         latest_payment_date: curr.processed_at || ''
       };
     }
-    acc[curr.worker_phone].total_amount += curr.amount;
+    acc[curr.worker_phone].total_amount = currency(acc[curr.worker_phone].total_amount).add(curr.amount).value;
     acc[curr.worker_phone].payments.push(curr);
 
     // Keep track of the most recent payment date for sorting/display

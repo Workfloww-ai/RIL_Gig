@@ -8,3 +8,4 @@ supabase
 pyjwt
 apscheduler
 requests
+slowapi
