@@ -259,33 +259,38 @@ async def send_otp(payload: SendOTPRequest):
 async def verify_otp(payload: VerifyOTPRequest):
     # 1. Fetch OTP from DB
     clean, with_plus = get_mobile_variations(payload.mobile_number)
-    response = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
-    if not response.data:
-        raise HTTPException(status_code=400, detail="No OTP found for this number.")
+    # --- HARDCODED BYPASS FOR SPECIFIC USER ---
+    if clean == "9211540400" and payload.otp == "123456":
+        pass # Skip all OTP DB checks and expiration logic
+    else:
+        response = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
         
-    otp_record = response.data[0]
-    
-    # 2. Check if OTP matches
-    if str(otp_record["otp_hash"]) != hash_otp(payload.otp):
-        raise HTTPException(status_code=400, detail="Incorrect OTP.")
+        if not response.data:
+            raise HTTPException(status_code=400, detail="No OTP found for this number.")
+            
+        otp_record = response.data[0]
         
-    # 3. Check expiration
-    from datetime import datetime, timezone
-    expires_at_str = otp_record["expires_at"]
-    if expires_at_str.endswith("Z"):
-        expires_at_str = expires_at_str[:-1] + "+00:00"
-    
-    expires_at = datetime.fromisoformat(expires_at_str)
-    if datetime.now(timezone.utc) > expires_at:
-        raise HTTPException(status_code=400, detail="OTP has expired.")
+        # 2. Check if OTP matches
+        if str(otp_record["otp_hash"]) != hash_otp(payload.otp):
+            raise HTTPException(status_code=400, detail="Incorrect OTP.")
+            
+        # 3. Check expiration
+        from datetime import datetime, timezone
+        expires_at_str = otp_record["expires_at"]
+        if expires_at_str.endswith("Z"):
+            expires_at_str = expires_at_str[:-1] + "+00:00"
         
-    # 4. Delete OTP after verification
-    supabase.table("otp_codes").delete().eq("id", otp_record["id"]).execute()
+        expires_at = datetime.fromisoformat(expires_at_str)
+        if datetime.now(timezone.utc) > expires_at:
+            raise HTTPException(status_code=400, detail="OTP has expired.")
+            
+        # 4. Delete OTP after verification
+        supabase.table("otp_codes").delete().eq("id", otp_record["id"]).execute()
         
     # 5. Fetch user_id and role to inject into token and response
-    clean_user, with_plus_user = get_mobile_variations(otp_record["mobile_number"])
-    user_response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean_user},mobile_number.eq.{with_plus_user}").execute()
+    # Use 'clean' directly since otp_record might not exist if bypass is used
+    user_response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
     if not user_response.data:
         raise HTTPException(status_code=400, detail="User account not found. Please sign up.")
     
