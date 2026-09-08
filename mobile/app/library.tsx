@@ -38,7 +38,7 @@ export default function LibraryScreen() {
  const [showCongrats, setShowCongrats] = useState(false);
  const [toastMessage, setToastMessage] = useState('');
 
- const certificateRef = React.useRef<ViewShot>(null);
+ const certificateRef = React.useRef<any>(null);
 
  const shareCertificate = async () => {
  try {
@@ -538,7 +538,7 @@ export default function LibraryScreen() {
  <Text className="text-moss font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
  </TouchableOpacity>
  <View>
- <Text className="text-white font-bold text-xl leading-tight">Hi, {userProfile?.first_name?.charAt(0).toUpperCase() + userProfile?.first_name?.slice(1).toLowerCase() || 'User'}</Text>
+ <Text className="text-white font-bold text-xl leading-tight">Hi, {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() + userProfile.first_name.slice(1).toLowerCase() : 'User'}</Text>
  <Text className="text-sand text-xs">Sahyogi</Text>
  </View>
  </View>

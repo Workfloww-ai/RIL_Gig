@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, Platform, StatusBar, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../src/api/client';
-import useAuthStore from '../src/store/useAuthStore'; // Or however you get the user_id
+import { useAuthStore } from '../src/store/authStore';
 
 interface Question {
   q: string;
