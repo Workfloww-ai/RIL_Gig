@@ -3,6 +3,7 @@ import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicat
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
+import { Watermark } from '../src/components/Watermark';
 
 export default function PaymentsScreen() {
   const router = useRouter();
@@ -44,7 +45,8 @@ export default function PaymentsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-sand pt-8">
+    <Watermark>
+    <SafeAreaView className="flex-1 bg-transparent pt-8">
       {/* Header */}
       <View className="bg-cream px-6 py-4 flex-row items-center border-b border-sage/10 shadow-sm z-10">
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-sage/10 rounded-full mr-3">
@@ -115,5 +117,6 @@ export default function PaymentsScreen() {
 
       </ScrollView>
     </SafeAreaView>
+    </Watermark>
   );
 }

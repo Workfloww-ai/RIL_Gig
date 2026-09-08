@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, Alert, Linking, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, Alert, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { apiClient } from '../src/api/client';
+import { Watermark } from '../src/components/Watermark';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -100,9 +101,27 @@ export default function LoginScreen() {
                 <Text className="text-moss font-bold text-base">Open Portal</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
+
+            <Input
+              label="Mobile Number"
+              placeholder="e.g. 9876543210"
+              keyboardType="numeric"
+              value={mobile}
+              onChangeText={setMobile}
+              error={error}
+              maxLength={10}
+            />
+
+            <View className="mt-4">
+              <Button title="Continue" onPress={handleContinue} loading={loading} />
+            </View>
+
+            <View className="items-center mt-16 mb-4">
+              <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Watermark>
     </SafeAreaView>
   );
 }

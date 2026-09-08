@@ -7,6 +7,7 @@ import { Button } from '../src/components/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { Watermark } from '../src/components/Watermark';
 
 interface Module {
   id: string;
@@ -522,483 +523,503 @@ export default function LibraryScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-sand">
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
+    <Watermark>
+      <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-transparent">
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
 
-        {/* Header Area */}
-        <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 16, paddingHorizontal: 24 }}>
-          <View className="flex-row justify-between items-center mb-6">
-            <View className="flex-row items-center">
-              <TouchableOpacity
-                onPress={() => router.push('/profile')}
-                className="bg-cream h-10 w-10 rounded-full items-center justify-center mr-3 shadow-sm"
-              >
-                <Text className="text-moss font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
-              </TouchableOpacity>
-              <View>
-                <Text className="text-white font-bold text-xl leading-tight">Hi, {userProfile?.first_name?.charAt(0).toUpperCase() + userProfile?.first_name?.slice(1).toLowerCase() || 'User'}</Text>
-                <Text className="text-sand text-xs">SahYogi</Text>
+          {/* Header Area */}
+          <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 16, paddingHorizontal: 24 }}>
+            <View className="flex-row justify-between items-center mb-6">
+              <View className="flex-row items-center">
+                <TouchableOpacity
+                  onPress={() => router.push('/profile')}
+                  className="bg-cream h-10 w-10 rounded-full items-center justify-center mr-3 shadow-sm"
+                >
+                  <Text className="text-moss font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
+                </TouchableOpacity>
+                <View>
+                  <Text className="text-white font-bold text-xl leading-tight">Hi, {userProfile?.first_name?.charAt(0).toUpperCase() + userProfile?.first_name?.slice(1).toLowerCase() || 'User'}</Text>
+                  <Text className="text-sand text-xs">Sahyogi</Text>
+                </View>
               </View>
+
+              {/* Top Right Logo */}
+              <Image
+                source={require('../assets/images/logo-sahyogi.png')}
+                style={{ width: 50, height: 28, resizeMode: 'contain' }}
+              />
             </View>
+
+
           </View>
 
-
-        </View>
-
-        <View className="px-5 pt-6 pb-20">
-          {activeTab === 'modules' && (
-            <View>
-              {/* Dashboard Progress Card */}
-              <View className="bg-moss rounded-3xl p-6 mb-8 shadow-sm">
-                <View className="flex-row justify-between items-center mb-6">
-                  <View className="flex-row items-center">
-                    <View className="h-12 w-12 rounded-full bg-moss/80 items-center justify-center border border-primary-400 mr-3">
-                      <Text className="text-white text-lg font-bold">{userProfile?.first_name?.charAt(0).toUpperCase() || 'U'}</Text>
+          <View className="px-5 pt-6 pb-20">
+            {activeTab === 'modules' && (
+              <View>
+                {/* Dashboard Progress Card */}
+                <View className="bg-moss rounded-3xl p-6 mb-8 shadow-sm">
+                  <View className="flex-row justify-between items-center mb-6">
+                    <View className="flex-row items-center">
+                      <View className="h-12 w-12 rounded-full bg-moss/80 items-center justify-center border border-primary-400 mr-3">
+                        <Text className="text-white text-lg font-bold">{userProfile?.first_name?.charAt(0).toUpperCase() || 'U'}</Text>
+                      </View>
+                      <View>
+                        <Text className="text-primary-200 text-xs font-semibold tracking-wider">CANDIDATE DASHBOARD</Text>
+                        <Text className="text-white text-xl font-bold">{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Loading...'}</Text>
+                      </View>
                     </View>
-                    <View>
-                      <Text className="text-primary-200 text-xs font-semibold tracking-wider">CANDIDATE DASHBOARD</Text>
-                      <Text className="text-white text-xl font-bold">{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Loading...'}</Text>
-                    </View>
+
                   </View>
 
+                  <View className="mb-2 flex-row justify-between">
+                    <Text className="text-white font-semibold"> Module Completion</Text>
+                    <Text className="text-white font-bold">{completedCount} of {totalCount} ({completionPercent}%)</Text>
+                  </View>
+                  <View className="h-2 bg-primary-800 rounded-full mb-4 overflow-hidden flex-row">
+                    <View className="h-full bg-blue-400 rounded-full" style={{ width: `${completionPercent}%` }} />
+                  </View>
+                  <Text className="text-sand text-sm">
+                    Complete all video modules and pass each short quiz to get certified.
+                  </Text>
                 </View>
 
-                <View className="mb-2 flex-row justify-between">
-                  <Text className="text-white font-semibold"> Module Completion</Text>
-                  <Text className="text-white font-bold">{completedCount} of {totalCount} ({completionPercent}%)</Text>
+                <View className="mb-6">
+                  <Text className="text-2xl font-bold text-charcoal">Training Content Library</Text>
+                  <Text className="text-muted mt-1">Empower your growth with our curated training library. </Text>
                 </View>
-                <View className="h-2 bg-primary-800 rounded-full mb-4 overflow-hidden flex-row">
-                  <View className="h-full bg-blue-400 rounded-full" style={{ width: `${completionPercent}%` }} />
-                </View>
-                <Text className="text-sand text-sm">
-                  Complete all video modules and pass each short quiz to get certified.
-                </Text>
-              </View>
 
-              <View className="mb-6">
-                <Text className="text-2xl font-bold text-charcoal">Training Content Library</Text>
-                <Text className="text-muted mt-1">Empower your growth with our curated training library. </Text>
-              </View>
-
-              {loading ? (
-                <ActivityIndicator size="large" color="#0B5B31" className="mt-10" />
-              ) : error ? (
-                <Text className="text-clay/80 text-center mt-10">{error}</Text>
-              ) : (
-                modules.map((module) => (
-                  <TouchableOpacity
-                    key={module.id}
-                    className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10"
-                    onPress={() => {
-                      if (module.status !== 'locked') {
-                        handleStartLesson(module.id);
-                      }
-                    }}
-                    activeOpacity={module.status === 'locked' ? 1 : 0.7}
-                  >
-                    <View className="flex-row mb-4">
-                      {/* Thumbnail / Icon */}
-                      <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
-                        {/* Placeholder for video thumbnail */}
-                        <View className="absolute inset-0 bg-sage/30 opacity-50" />
-                        <View className="absolute inset-0 items-center justify-center">
-                          <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-moss/50' : 'bg-moss/80'}`}>
-                            <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
+                {loading ? (
+                  <ActivityIndicator size="large" color="#0B5B31" className="mt-10" />
+                ) : error ? (
+                  <Text className="text-clay/80 text-center mt-10">{error}</Text>
+                ) : (
+                  modules.map((module) => (
+                    <TouchableOpacity
+                      key={module.id}
+                      className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10"
+                      onPress={() => {
+                        if (module.status !== 'locked') {
+                          handleStartLesson(module.id);
+                        }
+                      }}
+                      activeOpacity={module.status === 'locked' ? 1 : 0.7}
+                    >
+                      <View className="flex-row mb-4">
+                        {/* Thumbnail / Icon */}
+                        <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
+                          {/* Placeholder for video thumbnail */}
+                          <View className="absolute inset-0 bg-sage/30 opacity-50" />
+                          <View className="absolute inset-0 items-center justify-center">
+                            <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-moss/50' : 'bg-moss/80'}`}>
+                              <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
+                            </View>
                           </View>
-                        </View>
-                        {/* <View className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded-md">
+                          {/* <View className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded-md">
  <Text className="text-white text-xs font-medium">{module.duration_text || '2m'}</Text>
  </View> */}
-                      </View>
+                        </View>
 
-                      {/* Details */}
-                      <View className="flex-1 justify-between py-1">
-                        <View>
-                          <View className="bg-moss/10 self-start px-2 py-1 rounded-full mb-2">
-                            <Text className="text-moss text-[10px] font-bold tracking-wider">{module.category_name}</Text>
+                        {/* Details */}
+                        <View className="flex-1 justify-between py-1">
+                          <View>
+                            <View className="bg-moss/10 self-start px-2 py-1 rounded-full mb-2">
+                              <Text className="text-moss text-[10px] font-bold tracking-wider">{module.category_name}</Text>
+                            </View>
+                            <Text className="font-bold text-charcoal text-base leading-tight mb-1" numberOfLines={2}>
+                              {module.title}
+                            </Text>
+                            <Text className="text-muted text-xs" numberOfLines={2}>
+                              {module.overview_text}
+                            </Text>
                           </View>
-                          <Text className="font-bold text-charcoal text-base leading-tight mb-1" numberOfLines={2}>
-                            {module.title}
-                          </Text>
-                          <Text className="text-muted text-xs" numberOfLines={2}>
-                            {module.overview_text}
-                          </Text>
                         </View>
                       </View>
-                    </View>
 
-                    {/* Actions */}
-                    <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
-                      <View className="flex-row items-center">
-                        <Text className="text-gray-400 mr-2">⏱</Text>
-                        <Text className="text-muted text-xs font-medium">{module.duration_text}</Text>
+                      {/* Actions */}
+                      <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
+                        <View className="flex-row items-center">
+                          <Text className="text-gray-400 mr-2">⏱</Text>
+                          <Text className="text-muted text-xs font-medium">{module.duration_text}</Text>
+                        </View>
+
+                        {module.status === 'locked' ? (
+                          <View className="bg-sage/10 px-5 py-2.5 rounded-full flex-row items-center">
+                            <Text className="text-sage mr-2">🔒</Text>
+                            <Text className="text-sage font-bold">Locked</Text>
+                          </View>
+                        ) : module.status === 'quiz_passed' ? (
+                          <View
+                            className="bg-moss/5 px-5 py-2.5 rounded-full flex-row items-center border border-moss/20"
+                          >
+                            <Text className="text-moss font-bold mr-2">✓ Passed</Text>
+                            <Text className="text-moss/80 text-xs font-medium bg-moss/10 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
+                          </View>
+                        ) : (
+                          <View
+                            className="bg-moss px-5 py-2.5 rounded-full flex-row items-center shadow-sm shadow-primary-500/50"
+                          >
+                            <Text className="text-white mr-2">▶</Text>
+                            <Text className="text-white font-bold">Start Lesson</Text>
+                          </View>
+                        )}
                       </View>
 
-                      {module.status === 'locked' ? (
-                        <View className="bg-sage/10 px-5 py-2.5 rounded-full flex-row items-center">
-                          <Text className="text-sage mr-2">🔒</Text>
-                          <Text className="text-sage font-bold">Locked</Text>
-                        </View>
-                      ) : module.status === 'quiz_passed' ? (
-                        <View
-                          className="bg-moss/5 px-5 py-2.5 rounded-full flex-row items-center border border-moss/20"
-                        >
-                          <Text className="text-moss font-bold mr-2">✓ Passed</Text>
-                          <Text className="text-moss/80 text-xs font-medium bg-moss/10 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
-                        </View>
-                      ) : (
-                        <View
-                          className="bg-moss px-5 py-2.5 rounded-full flex-row items-center shadow-sm shadow-primary-500/50"
-                        >
-                          <Text className="text-white mr-2">▶</Text>
-                          <Text className="text-white font-bold">Start Lesson</Text>
+                      {/* Topics Pills */}
+                      {module.key_module_topics && module.key_module_topics.length > 0 && (
+                        <View className="flex-row items-center mt-5">
+                          <Text className="text-sage text-xs font-medium mr-3">Topics:</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            {module.key_module_topics.map((topic, idx) => (
+                              <View key={idx} className="border border-gray-200 rounded-full px-3 py-1 mr-2 bg-white shadow-sm">
+                                <Text className="text-muted text-xs">{topic}</Text>
+                              </View>
+                            ))}
+                          </ScrollView>
                         </View>
                       )}
-                    </View>
-
-                    {/* Topics Pills */}
-                    {module.key_module_topics && module.key_module_topics.length > 0 && (
-                      <View className="flex-row items-center mt-5">
-                        <Text className="text-sage text-xs font-medium mr-3">Topics:</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                          {module.key_module_topics.map((topic, idx) => (
-                            <View key={idx} className="border border-gray-200 rounded-full px-3 py-1 mr-2 bg-white shadow-sm">
-                              <Text className="text-muted text-xs">{topic}</Text>
-                            </View>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
-
-          {activeTab === 'certificate' && (
-            <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
-              {/* Certificate Template */}
-              <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
-                <View className="w-full aspect-[1.4] bg-cream border-8 border-moss rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden">
-                  {/* Branding Logo - Top Left */}
-                  <View className="absolute top-3 left-3 z-20">
-                    <Image
-                      source={require('../assets/images/icon_sahyogi.png')}
-                      style={{ width: 55, height: 25, resizeMode: 'contain' }}
-                    />
-                  </View>
-
-                  {/* Main Content Centered */}
-                  <View className="items-center z-10 w-full mt-2">
-                    <Text className="text-2xl font-serif font-bold text-moss mb-0.5">CERTIFICATE</Text>
-                    <Text className="text-[9px] text-moss tracking-widest uppercase font-bold mb-3">of completion</Text>
-                    <Text className="text-sage italic text-[10px] mb-1">This is proudly presented to</Text>
-                    <View className="px-4 w-full border-b border-sage/20 pb-1 mb-2">
-                      <Text className="text-xl font-bold text-slate w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
-                        {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'STUDENT NAME'}
-                      </Text>
-                    </View>
-                    <Text className="text-sage italic text-center text-[9px] px-6 leading-tight">
-                      For successfully completing all required training modules in the SahYogi program.
-                    </Text>
-                  </View>
-
-                  {/* Date - Bottom Left */}
-                  <View className="absolute bottom-3 left-4 items-center w-20 z-10">
-                    <Text className="text-slate font-bold border-b border-sage/30 pb-0.5 w-full text-center text-[10px]">
-                      {(() => {
-                        const formatDate = (date: Date) => {
-                          const d = String(date.getDate()).padStart(2, '0');
-                          const m = String(date.getMonth() + 1).padStart(2, '0');
-                          const y = date.getFullYear();
-                          return `${d}/${m}/${y}`;
-                        };
-                        const completedModules = modules.filter(m => m.status === 'quiz_passed' && m.completed_at);
-                        if (completedModules.length > 0) {
-                          const maxDate = new Date(Math.max(...completedModules.map(m => new Date(m.completed_at as string).getTime())));
-                          return formatDate(maxDate);
-                        }
-                        return formatDate(new Date());
-                      })()}
-                    </Text>
-                    <Text className="text-sage text-[7px] uppercase font-bold tracking-wider mt-0.5">Date</Text>
-                  </View>
-
-                  {/* Seal - Bottom Right */}
-                  <View className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-clay items-center justify-center transform rotate-12 shadow-sm border-2 border-[#FFFFFF] z-10">
-                    <Text className="text-white text-[7px] font-bold text-center leading-tight">SahYogi{'\n'}Certified</Text>
-                  </View>
-                </View>
-              </ViewShot>
-
-              <View className="mt-8 items-center justify-center w-full">
-                <TouchableOpacity onPress={shareCertificate} className="bg-clay px-8 py-3.5 rounded-full flex-row items-center shadow-md">
-                  <Feather name="share" size={18} color="white" style={{ marginRight: 8 }} />
-                  <Text className="font-bold text-white tracking-wide text-sm">Share Certificate</Text>
-                </TouchableOpacity>
+                    </TouchableOpacity>
+                  ))
+                )}
               </View>
-            </View>
-          )}
+            )}
 
-          {activeTab === 'jobs' && (
-            <View className="mt-4">
-              <View className="mb-6 flex-row justify-between items-center">
-                <View>
-                  <Text className="text-2xl font-bold text-charcoal">Your Shifts</Text>
-                  <Text className="text-muted mt-1">Accept and manage your jobs.</Text>
-                </View>
-                <TouchableOpacity onPress={fetchJobs} className="bg-sage/10 p-2.5 rounded-full shadow-sm">
-                  <Feather name="refresh-cw" size={16} color="#666666" />
-                </TouchableOpacity>
-              </View>
-
-              <View className="flex-row bg-sage/20 rounded-full p-1 mb-6">
-                <Pressable
-                  style={{ flex: 1, paddingVertical: 10, borderRadius: 9999, alignItems: 'center', backgroundColor: jobsTab === 'available' ? '#ffffff' : 'transparent', shadowOpacity: jobsTab === 'available' ? 0.05 : 0 }}
-                  onPress={() => setJobsTab('available')}
-                >
-                  <Text style={{ fontWeight: 'bold', color: jobsTab === 'available' ? '#0B5B31' : '#6B7280' }}>Available</Text>
-                </Pressable>
-                <Pressable
-                  style={{ flex: 1, paddingVertical: 10, borderRadius: 9999, alignItems: 'center', backgroundColor: jobsTab === 'accepted' ? '#ffffff' : 'transparent', shadowOpacity: jobsTab === 'accepted' ? 0.05 : 0 }}
-                  onPress={() => setJobsTab('accepted')}
-                >
-                  <Text style={{ fontWeight: 'bold', color: jobsTab === 'accepted' ? '#0B5B31' : '#6B7280' }}>Accepted</Text>
-                </Pressable>
-              </View>
-
-              {jobsLoading ? (
-                <ActivityIndicator size="large" color="#0B5B31" className="mt-10" />
-              ) : jobsTab === 'available' ? (
-                availableJobs.length === 0 ? (
-                  <View className="bg-cream rounded-3xl p-8 shadow-sm border border-sage/10 items-center justify-center py-20 mt-4">
-                    {/* <Text className="text-6xl mb-6">🔍</Text> */}
-                    <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Jobs Available</Text>
-                    <Text className="text-muted text-center leading-relaxed">
-                      Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
-                    </Text>
-                  </View>
-                ) : (
-                  availableJobs.map((job) => (
-                    <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
-                      <View className="flex-row justify-between items-start mb-4">
-                        <View className="flex-1 pr-4">
-                          <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-moss/20">
-                            <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
-                            <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
-                          </View>
-                          <Text className="font-bold text-charcoal text-lg leading-tight mb-1.5">{job.store_name}</Text>
-                          <View className="flex-row items-start">
-                            <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
-                            <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
-                          </View>
-                          {job.google_map_link && (
-                            <TouchableOpacity
-                              onPress={() => Linking.openURL(job.google_map_link)}
-                              className="mt-1 flex-row items-center bg-sage/10 self-start px-2 py-1 rounded"
-                            >
-                              <Feather name="navigation" size={10} color="#0B5B31" style={{ marginRight: 4 }} />
-                              <Text className="text-sage text-[10px] font-bold">See Distance</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                        <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
-                          <Text className="text-white font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
-                          <Text className="text-white text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
-                        </View>
-                      </View>
-
-                      <View className="flex-row bg-sand rounded-2xl p-3.5 mb-5 border border-sage/10 justify-around shadow-sm">
-                        <View className="items-center">
-                          <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
-                          <View className="flex-row items-center">
-                            <Feather name="calendar" size={12} color="#666666" style={{ marginRight: 5 }} />
-                            <Text className="text-slate font-semibold text-xs">{job.shift_date}</Text>
-                          </View>
-                        </View>
-                        <View className="w-[1px] bg-sage/20 h-full" />
-                        <View className="items-center">
-                          <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
-                          <View className="flex-row items-center">
-                            <Feather name="clock" size={12} color="#666666" style={{ marginRight: 5 }} />
-                            <Text className="text-slate font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
-                          </View>
-                        </View>
-                        <View className="w-[1px] bg-sage/20 h-full" />
-                        <View className="items-center">
-                          <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Duration</Text>
-                          <Text className="text-slate font-semibold text-xs">{job.hours_duration} hrs</Text>
-                        </View>
-                      </View>
-
-                      <Button
-                        title="Accept Job"
-                        onPress={() => handleAcceptJob(job.request_id)}
-                        loading={acceptingJobId === job.request_id}
-                        disabled={acceptingJobId !== null && acceptingJobId !== job.request_id}
+            {activeTab === 'certificate' && (
+              <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
+                {/* Certificate Template */}
+                <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
+                  <View className="w-full bg-cream border-8 border-moss rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden" style={{ aspectRatio: 1.414 }}>
+                    {/* Branding Logo - Top Left */}
+                    <View className="absolute top-0 left-0 z-20">
+                      <Image
+                        source={require('../assets/images/icon_sahyogi.png')}
+                        style={{ width: 80, height: 45, resizeMode: 'contain' }}
                       />
                     </View>
-                  ))
-                )
-              ) : (
-                acceptedJobs.length === 0 ? (
-                  <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
-                    <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Accepted Jobs</Text>
-                    <Text className="text-muted text-center leading-relaxed">
-                      You haven't accepted any jobs yet. Check the Available tab for opportunities.
-                    </Text>
+
+                    {/* Certificate ID - Top Right */}
+                    <View className="absolute top-4 right-5 z-20">
+                      <Text className="text-moss text-[6.5px] font-bold tracking-widest uppercase">
+                        CERT. NO: {userProfile ? `SHY-${userProfile.first_name.toUpperCase().substring(0, 4)}${userProfile.last_name ? userProfile.last_name.toUpperCase().substring(0, 2) : '84'}-26` : 'SHY-CERT-0001'}
+                      </Text>
+                    </View>
+
+                    {/* Main Content Centered */}
+                    <View className="items-center z-10 w-full mt-2">
+                      <Text className="text-2xl font-serif font-bold text-moss mb-0.5">CERTIFICATE</Text>
+                      <Text className="text-[9px] text-moss tracking-widest uppercase font-bold mb-3">of completion</Text>
+                      <Text className="text-sage italic text-[10px] mb-1">This is proudly presented to</Text>
+                      <View className="px-4 w-full border-b border-sage/20 pb-1 mb-2">
+                        <Text className="text-xl font-bold text-slate w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
+                          {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'STUDENT NAME'}
+                        </Text>
+                      </View>
+                      <Text className="text-sage italic text-center text-[9px] px-6 leading-tight">
+                        For successfully completing all required training modules in the Sahyogi program.
+                      </Text>
+                    </View>
+
+                    {/* Date - Bottom Left */}
+                    <View className="absolute bottom-3 left-4 items-center w-20 z-10">
+                      <Text className="text-slate font-bold border-b border-sage/30 pb-0.5 w-full text-center text-[10px]">
+                        {(() => {
+                          const formatDate = (date: Date) => {
+                            const d = String(date.getDate()).padStart(2, '0');
+                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                            const y = date.getFullYear();
+                            return `${d}/${m}/${y}`;
+                          };
+                          const completedModules = modules.filter(m => m.status === 'quiz_passed' && m.completed_at);
+                          if (completedModules.length > 0) {
+                            const maxDate = new Date(Math.max(...completedModules.map(m => new Date(m.completed_at as string).getTime())));
+                            return formatDate(maxDate);
+                          }
+                          return formatDate(new Date());
+                        })()}
+                      </Text>
+                      <Text className="text-sage text-[7px] uppercase font-bold tracking-wider mt-0.5">Date</Text>
+                    </View>
+
+                    {/* Seal - Bottom Right */}
+                    <View className="absolute bottom-7 right-4 z-10 opacity-85" style={{ transform: [{ scale: 0.5 }, { rotate: '-12deg' }], transformOrigin: 'bottom right' }}>
+                      <View className="border-[3px] border-[#991b1b] rounded-lg p-[2px]">
+                        <View className="border border-[#991b1b] rounded-[4px] px-3 py-1 items-center justify-center bg-white/50">
+                          <Text className="text-[#991b1b] text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ fontFamily: 'serif' }}>Sahyogi</Text>
+                          <Text className="text-[#991b1b] text-[11px] font-black uppercase tracking-[0.15em]" style={{ fontFamily: 'serif' }}>Verified</Text>
+                        </View>
+                      </View>
+                    </View>
                   </View>
+                </ViewShot>
+
+                <View className="mt-8 items-center justify-center w-full">
+                  <TouchableOpacity onPress={shareCertificate} className="bg-clay px-8 py-3.5 rounded-full flex-row items-center shadow-md">
+                    <Feather name="share" size={18} color="white" style={{ marginRight: 8 }} />
+                    <Text className="font-bold text-white tracking-wide text-sm">Share Certificate</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {activeTab === 'jobs' && (
+              <View className="mt-4">
+                <View className="mb-6 flex-row justify-between items-center">
+                  <View>
+                    <Text className="text-2xl font-bold text-charcoal">Your Shifts</Text>
+                    <Text className="text-muted mt-1">Accept and manage your jobs.</Text>
+                  </View>
+                  <TouchableOpacity onPress={fetchJobs} className="bg-sage/10 p-2.5 rounded-full shadow-sm">
+                    <Feather name="refresh-cw" size={16} color="#666666" />
+                  </TouchableOpacity>
+                </View>
+
+                <View className="flex-row bg-sage/20 rounded-full p-1 mb-6">
+                  <Pressable
+                    style={{ flex: 1, paddingVertical: 10, borderRadius: 9999, alignItems: 'center', backgroundColor: jobsTab === 'available' ? '#ffffff' : 'transparent', shadowOpacity: jobsTab === 'available' ? 0.05 : 0 }}
+                    onPress={() => setJobsTab('available')}
+                  >
+                    <Text style={{ fontWeight: 'bold', color: jobsTab === 'available' ? '#0B5B31' : '#6B7280' }}>Available</Text>
+                  </Pressable>
+                  <Pressable
+                    style={{ flex: 1, paddingVertical: 10, borderRadius: 9999, alignItems: 'center', backgroundColor: jobsTab === 'accepted' ? '#ffffff' : 'transparent', shadowOpacity: jobsTab === 'accepted' ? 0.05 : 0 }}
+                    onPress={() => setJobsTab('accepted')}
+                  >
+                    <Text style={{ fontWeight: 'bold', color: jobsTab === 'accepted' ? '#0B5B31' : '#6B7280' }}>Accepted</Text>
+                  </Pressable>
+                </View>
+
+                {jobsLoading ? (
+                  <ActivityIndicator size="large" color="#0B5B31" className="mt-10" />
+                ) : jobsTab === 'available' ? (
+                  availableJobs.length === 0 ? (
+                    <View className="bg-cream rounded-3xl p-8 shadow-sm border border-sage/10 items-center justify-center py-20 mt-4">
+                      {/* <Text className="text-6xl mb-6">🔍</Text> */}
+                      <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Jobs Available</Text>
+                      <Text className="text-muted text-center leading-relaxed">
+                        Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
+                      </Text>
+                    </View>
+                  ) : (
+                    availableJobs.map((job) => (
+                      <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
+                        <View className="flex-row justify-between items-start mb-4">
+                          <View className="flex-1 pr-4">
+                            <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-moss/20">
+                              <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
+                              <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
+                            </View>
+                            <Text className="font-bold text-charcoal text-lg leading-tight mb-1.5">{job.store_name}</Text>
+                            <View className="flex-row items-start">
+                              <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
+                              <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
+                            </View>
+                            {job.google_map_link && (
+                              <TouchableOpacity
+                                onPress={() => Linking.openURL(job.google_map_link)}
+                                className="mt-1 flex-row items-center bg-sage/10 self-start px-2 py-1 rounded"
+                              >
+                                <Feather name="navigation" size={10} color="#0B5B31" style={{ marginRight: 4 }} />
+                                <Text className="text-sage text-[10px] font-bold">See Distance</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                          <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
+                            <Text className="text-white font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
+                            <Text className="text-white text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
+                          </View>
+                        </View>
+
+                        <View className="flex-row bg-sand rounded-2xl p-3.5 mb-5 border border-sage/10 justify-around shadow-sm">
+                          <View className="items-center">
+                            <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
+                            <View className="flex-row items-center">
+                              <Feather name="calendar" size={12} color="#666666" style={{ marginRight: 5 }} />
+                              <Text className="text-slate font-semibold text-xs">{job.shift_date}</Text>
+                            </View>
+                          </View>
+                          <View className="w-[1px] bg-sage/20 h-full" />
+                          <View className="items-center">
+                            <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
+                            <View className="flex-row items-center">
+                              <Feather name="clock" size={12} color="#666666" style={{ marginRight: 5 }} />
+                              <Text className="text-slate font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
+                            </View>
+                          </View>
+                          <View className="w-[1px] bg-sage/20 h-full" />
+                          <View className="items-center">
+                            <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Duration</Text>
+                            <Text className="text-slate font-semibold text-xs">{job.hours_duration} hrs</Text>
+                          </View>
+                        </View>
+
+                        <Button
+                          title="Accept Job"
+                          onPress={() => handleAcceptJob(job.request_id)}
+                          loading={acceptingJobId === job.request_id}
+                          disabled={acceptingJobId !== null && acceptingJobId !== job.request_id}
+                        />
+                      </View>
+                    ))
+                  )
                 ) : (
-                  <>
-                    {/* Today Accordion */}
-                    <TouchableOpacity
-                      onPress={() => toggleSection('today')}
-                      className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
-                    >
-                      <View className="flex-row items-center">
-                        <Text className="text-base font-bold text-charcoal">Jobs Today</Text>
-                        <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                          <Text className="text-primary-700 text-xs font-bold">{todayAcceptedJobs.length}</Text>
-                        </View>
-                      </View>
-                      <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
-                    </TouchableOpacity>
-
-                    {expandedSections.today && (
-                      <View className="mb-4">
-                        {todayAcceptedJobs.length === 0 ? (
-                          <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-                            <Text className="text-muted text-sm">No job scheduled for today</Text>
+                  acceptedJobs.length === 0 ? (
+                    <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
+                      <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Accepted Jobs</Text>
+                      <Text className="text-muted text-center leading-relaxed">
+                        You haven't accepted any jobs yet. Check the Available tab for opportunities.
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      {/* Today Accordion */}
+                      <TouchableOpacity
+                        onPress={() => toggleSection('today')}
+                        className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
+                      >
+                        <View className="flex-row items-center">
+                          <Text className="text-base font-bold text-charcoal">Jobs Today</Text>
+                          <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
+                            <Text className="text-primary-700 text-xs font-bold">{todayAcceptedJobs.length}</Text>
                           </View>
-                        ) : (
-                          todayAcceptedJobs.map(renderAcceptedJobCard)
-                        )}
-                      </View>
-                    )}
-
-                    {/* Upcoming Accordion */}
-                    <TouchableOpacity
-                      onPress={() => toggleSection('upcoming')}
-                      className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
-                    >
-                      <View className="flex-row items-center">
-                        <Text className="text-base font-bold text-charcoal">Upcoming Jobs</Text>
-                        <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                          <Text className="text-primary-700 text-xs font-bold">{upcomingAcceptedJobs.length}</Text>
                         </View>
-                      </View>
-                      <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
-                    </TouchableOpacity>
+                        <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
+                      </TouchableOpacity>
 
-                    {expandedSections.upcoming && (
-                      <View className="mb-4">
-                        {upcomingAcceptedJobs.length === 0 ? (
-                          <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-                            <Text className="text-muted text-sm">No upcoming jobs</Text>
-                          </View>
-                        ) : (
-                          upcomingAcceptedJobs.map(renderAcceptedJobCard)
-                        )}
-                      </View>
-                    )}
-
-                    {/* Past Accordion */}
-                    <TouchableOpacity
-                      onPress={() => toggleSection('past')}
-                      className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
-                    >
-                      <View className="flex-row items-center">
-                        <Text className="text-base font-bold text-charcoal">Past Jobs</Text>
-                        <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                          <Text className="text-primary-700 text-xs font-bold">{pastAcceptedJobs.length}</Text>
+                      {expandedSections.today && (
+                        <View className="mb-4">
+                          {todayAcceptedJobs.length === 0 ? (
+                            <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
+                              <Text className="text-muted text-sm">No job scheduled for today</Text>
+                            </View>
+                          ) : (
+                            todayAcceptedJobs.map(renderAcceptedJobCard)
+                          )}
                         </View>
-                      </View>
-                      <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
-                    </TouchableOpacity>
+                      )}
 
-                    {expandedSections.past && (
-                      <View className="mb-4">
-                        {pastAcceptedJobs.length === 0 ? (
-                          <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
-                            <Text className="text-muted text-sm">No past jobs</Text>
+                      {/* Upcoming Accordion */}
+                      <TouchableOpacity
+                        onPress={() => toggleSection('upcoming')}
+                        className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
+                      >
+                        <View className="flex-row items-center">
+                          <Text className="text-base font-bold text-charcoal">Upcoming Jobs</Text>
+                          <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
+                            <Text className="text-primary-700 text-xs font-bold">{upcomingAcceptedJobs.length}</Text>
                           </View>
-                        ) : (
-                          pastAcceptedJobs.map(renderAcceptedJobCard)
-                        )}
-                      </View>
-                    )}
-                  </>
-                )
-              )}
+                        </View>
+                        <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
+                      </TouchableOpacity>
+
+                      {expandedSections.upcoming && (
+                        <View className="mb-4">
+                          {upcomingAcceptedJobs.length === 0 ? (
+                            <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
+                              <Text className="text-muted text-sm">No upcoming jobs</Text>
+                            </View>
+                          ) : (
+                            upcomingAcceptedJobs.map(renderAcceptedJobCard)
+                          )}
+                        </View>
+                      )}
+
+                      {/* Past Accordion */}
+                      <TouchableOpacity
+                        onPress={() => toggleSection('past')}
+                        className="flex-row justify-between items-center bg-cream p-4 rounded-xl shadow-sm border border-sage/10 mb-3"
+                      >
+                        <View className="flex-row items-center">
+                          <Text className="text-base font-bold text-charcoal">Past Jobs</Text>
+                          <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
+                            <Text className="text-primary-700 text-xs font-bold">{pastAcceptedJobs.length}</Text>
+                          </View>
+                        </View>
+                        <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
+                      </TouchableOpacity>
+
+                      {expandedSections.past && (
+                        <View className="mb-4">
+                          {pastAcceptedJobs.length === 0 ? (
+                            <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
+                              <Text className="text-muted text-sm">No past jobs</Text>
+                            </View>
+                          ) : (
+                            pastAcceptedJobs.map(renderAcceptedJobCard)
+                          )}
+                        </View>
+                      )}
+                    </>
+                  )
+                )}
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* Toast Popup */}
+        {toastMessage ? (
+          <View className="absolute bottom-24 self-center bg-gray-900/90 px-5 py-3 rounded-full z-50 shadow-md">
+            <Text className="text-white text-xs font-medium text-center">{toastMessage}</Text>
+          </View>
+        ) : null}
+
+        {/* Bottom Navigation */}
+        <View
+          className="flex-row justify-around items-center bg-cream border-t border-sage/10 pt-3 px-2"
+          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+        >
+          <TouchableOpacity
+            onPress={() => setActiveTab('modules')}
+            className="items-center flex-1"
+          >
+            <Feather name="book-open" size={22} color={activeTab === 'modules' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4 }} />
+            <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'modules' ? 'text-charcoal' : 'text-gray-400'}`}>Modules</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => isAllCompleted ? setActiveTab('certificate') : showToast('Complete all training modules to unlock Certificate')}
+            className="items-center flex-1"
+          >
+            <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
+            <View className="flex-row items-center">
+              <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-charcoal' : 'text-gray-400'}`}>Certificate</Text>
+              {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
             </View>
-          )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => isAllCompleted ? setActiveTab('jobs') : showToast('Complete all training modules to unlock Jobs')}
+            className="items-center flex-1"
+          >
+            <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
+            <View className="flex-row items-center">
+              <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-charcoal' : 'text-gray-400'}`}>Jobs</Text>
+              {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
+            </View>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
 
-      {/* Toast Popup */}
-      {toastMessage ? (
-        <View className="absolute bottom-24 self-center bg-gray-900/90 px-5 py-3 rounded-full z-50 shadow-md">
-          <Text className="text-white text-xs font-medium text-center">{toastMessage}</Text>
-        </View>
-      ) : null}
-
-      {/* Bottom Navigation */}
-      <View
-        className="flex-row justify-around items-center bg-cream border-t border-sage/10 pt-3 px-2"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-      >
-        <TouchableOpacity
-          onPress={() => setActiveTab('modules')}
-          className="items-center flex-1"
-        >
-          <Feather name="book-open" size={22} color={activeTab === 'modules' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4 }} />
-          <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'modules' ? 'text-charcoal' : 'text-gray-400'}`}>Modules</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => isAllCompleted ? setActiveTab('certificate') : showToast('Complete all training modules to unlock Certificate')}
-          className="items-center flex-1"
-        >
-          <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
-          <View className="flex-row items-center">
-            <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-charcoal' : 'text-gray-400'}`}>Certificate</Text>
-            {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
+        {/* Congrats Popup */}
+        <Modal visible={showCongrats} animationType="slide" transparent={true}>
+          <View className="flex-1 bg-black/60 justify-center items-center p-6">
+            <View className="bg-cream w-full rounded-3xl p-8 items-center shadow-xl">
+              <Text className="text-6xl mb-6">🎓</Text>
+              <Text className="text-2xl font-bold text-charcoal mb-2 text-center">Congratulations!</Text>
+              <Text className="text-muted text-center mb-8">
+                You have successfully completed all the training modules. You are now certified and eligible for jobs!
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCongrats(false);
+                  setActiveTab('certificate');
+                }}
+                className="bg-moss w-full py-4 rounded-xl items-center shadow-md shadow-primary-600/30"
+              >
+                <Text className="text-white font-bold text-lg">View Certificate</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => isAllCompleted ? setActiveTab('jobs') : showToast('Complete all training modules to unlock Jobs')}
-          className="items-center flex-1"
-        >
-          <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
-          <View className="flex-row items-center">
-            <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-charcoal' : 'text-gray-400'}`}>Jobs</Text>
-            {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Congrats Popup */}
-      <Modal visible={showCongrats} animationType="slide" transparent={true}>
-        <View className="flex-1 bg-black/60 justify-center items-center p-6">
-          <View className="bg-cream w-full rounded-3xl p-8 items-center shadow-xl">
-            <Text className="text-6xl mb-6">🎓</Text>
-            <Text className="text-2xl font-bold text-charcoal mb-2 text-center">Congratulations!</Text>
-            <Text className="text-muted text-center mb-8">
-              You have successfully completed all the training modules. You are now certified and eligible for jobs!
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                setShowCongrats(false);
-                setActiveTab('certificate');
-              }}
-              className="bg-moss w-full py-4 rounded-xl items-center shadow-md shadow-primary-600/30"
-            >
-              <Text className="text-white font-bold text-lg">View Certificate</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </Watermark>
   );
 }

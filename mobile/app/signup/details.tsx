@@ -21,7 +21,7 @@ const signupSchema = z.object({
   pincode: z.string().length(6, "Pincode must be 6 digits"),
   dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD").min(1, "Date of birth is required"),
   gender: z.string().min(1, "Gender is required"),
-  upi_id: z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, "Invalid UPI ID").min(1, "UPI ID is required"),
+  upi_id: z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@(okicici|ybl|upi|okaxis|okhdfcbank|oksbi|paytm|apl|axl|ibl|amazonpay|kotak|fam|postbank|icici)$/i, "Invalid UPI ID. Must end with a valid handle (e.g., @okicici, @ybl, @paytm)").min(1, "UPI ID is required"),
   alternate_number: z.string().regex(/^\d{10}$/, "Must be exactly 10 digits").or(z.literal('')),
 });
 
@@ -46,11 +46,44 @@ export default function SignupDetailsScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [date, setDate] = useState(new Date(2000, 0, 1)); // Default to Jan 1 2000
 
-  const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm<SignupFormData>({
+  const { control, handleSubmit, setValue, watch, setError, clearErrors, formState: { errors } } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
   });
 
   const selectedState = watch('state');
+  const pincode = watch('pincode');
+
+  React.useEffect(() => {
+    if (pincode?.length === 6 && selectedState) {
+      const verifyPincode = async () => {
+        try {
+          const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+          const data = await res.json();
+          
+          if (data && data[0] && data[0].Status === "Success") {
+            const postOffices = data[0].PostOffice;
+            // API sometimes returns state name slightly different, so partial match can be safer, but let's try exact first
+            const isValidState = postOffices.some((po: any) => 
+              po.State.toLowerCase() === selectedState.toLowerCase() || 
+              selectedState.toLowerCase().includes(po.State.toLowerCase()) ||
+              po.State.toLowerCase().includes(selectedState.toLowerCase())
+            );
+            
+            if (!isValidState) {
+              setError('pincode', { type: 'manual', message: 'Pincode does not match selected State' });
+            } else {
+              clearErrors('pincode');
+            }
+          } else {
+            setError('pincode', { type: 'manual', message: 'Invalid Pincode' });
+          }
+        } catch (error) {
+          console.log("Error verifying pincode:", error);
+        }
+      };
+      verifyPincode();
+    }
+  }, [pincode, selectedState, setError, clearErrors]);
 
   const onSubmit = async (data: SignupFormData) => {
     router.push({ 
@@ -85,8 +118,11 @@ export default function SignupDetailsScreen() {
     setShowDatePicker(Platform.OS === 'ios');
     setDate(currentDate);
     
-    // Format YYYY-MM-DD
-    const formatted = currentDate.toISOString().split('T')[0];
+    // Format YYYY-MM-DD using local time to avoid UTC offset issues
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const formatted = `${year}-${month}-${day}`;
     setValue('dob', formatted, { shouldValidate: true });
   };
 

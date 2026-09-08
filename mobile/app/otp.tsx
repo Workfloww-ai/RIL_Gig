@@ -5,6 +5,7 @@ import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { apiClient } from '../src/api/client';
 import { useAuthStore } from '../src/store/authStore';
+import { Watermark } from '../src/components/Watermark';
 
 export default function OTPScreen() {
   const router = useRouter();
@@ -116,7 +117,8 @@ export default function OTPScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream pt-8">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center px-8">
+      <Watermark>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center px-8">
         <View className="mb-12">
           <Text className="text-4xl font-bold text-slate mb-3 tracking-tight">Verify OTP</Text>
           <Text className="text-sage text-lg font-medium leading-relaxed">
@@ -151,6 +153,7 @@ export default function OTPScreen() {
         />
         </View>
       </KeyboardAvoidingView>
+      </Watermark>
     </SafeAreaView>
   );
 }
