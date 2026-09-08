@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable, Linking } from 'react-native';
+import { View, Text, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { Button } from '../src/components/Button';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { Watermark } from '../src/components/Watermark';
@@ -304,7 +304,7 @@ export default function LibraryScreen() {
             <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
             <View className="flex-row items-center">
               <Feather name="calendar" size={12} color="#666666" style={{ marginRight: 5 }} />
-              <Text className="text-slate font-semibold text-xs">{job.shift_date}</Text>
+              <Text className="text-slate font-semibold text-xs">{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''}</Text>
             </View>
           </View>
           <View className="w-[1px] bg-sage/20 h-full" />
@@ -833,7 +833,7 @@ export default function LibraryScreen() {
                             <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
                             <View className="flex-row items-center">
                               <Feather name="calendar" size={12} color="#666666" style={{ marginRight: 5 }} />
-                              <Text className="text-slate font-semibold text-xs">{job.shift_date}</Text>
+                              <Text className="text-slate font-semibold text-xs">{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''}</Text>
                             </View>
                           </View>
                           <View className="w-[1px] bg-sage/20 h-full" />

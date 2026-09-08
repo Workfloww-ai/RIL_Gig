@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, Alert, Image, ScrollView } from 'react-native';
+import { View, Text, StatusBar, KeyboardAvoidingView, Platform, Alert, Image, ScrollView, Modal, TouchableOpacity, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
@@ -51,31 +52,62 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream pt-8">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center px-8">
-        <View className="mb-12">
-          <Text className="text-5xl font-bold text-[#D32F2F] mb-3 tracking-tight">Sah<Text className="text-moss/80">Yogi</Text></Text>
-          <Text className="text-sage text-lg font-medium">Enter your mobile number to get started.</Text>
-
+      {/* Decorative Brand Line - Top Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+        <View style={{ width: 16, height: 6, backgroundColor: '#0B5B31', zIndex: 2 }}>
+          <View style={{ position: 'absolute', left: 4, width: 40, height: 6, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+          <View style={{ position: 'absolute', left: 4, width: 4, height: 6, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
         </View>
+        <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+      </View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20} className="flex-1 px-8">
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        <Input
-          label="Mobile Number"
-          placeholder="e.g. 9876543210"
-          keyboardType="numeric"
-          value={mobile}
-          onChangeText={setMobile}
-          error={error}
-          maxLength={10}
-        />
+          {/* Top Spacer to push everything down and center it visually */}
+          <View className="flex-1 min-h-[20px]" />
 
-        <View className="mt-4">
-          <Button title="Continue" onPress={handleContinue} loading={loading} />
-        </View>
+          <View className="mb-10 items-center">
+            <Image
+              source={require('../assets/images/logo.png')}
+              style={{ width: 150, height: 150, resizeMode: 'contain', marginBottom: 16 }}
+            />
+            <Text className="text-5xl font-bold text-[#D32F2F] mb-3 tracking-tight text-center leading-[65px]">Sah<Text className="text-moss/80">Yogi</Text></Text>
+            <Text className="text-sage text-lg font-medium text-center">Enter your mobile number to get started.</Text>
+          </View>
 
-        <View className="absolute bottom-8 left-0 right-0 items-center">
-          <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
-        </View>
+          <Input
+            label="Mobile Number"
+            placeholder="e.g. 9876543210"
+            keyboardType="numeric"
+            value={mobile}
+            onChangeText={setMobile}
+            error={error}
+            maxLength={10}
+          />
+
+          <View className="mt-4">
+            <Button title="Continue" onPress={handleContinue} loading={loading} />
+          </View>
+
+          {/* Bottom Spacer to push the footer to the bottom */}
+          <View className="flex-1 min-h-[40px]" />
+
+          <View className="items-center pb-4">
+            <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Decorative Brand Line - Bottom Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+        <View style={{ width: 16, height: 6, backgroundColor: '#0B5B31', zIndex: 2 }}>
+          <View style={{ position: 'absolute', left: 4, width: 40, height: 6, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+          <View style={{ position: 'absolute', left: 4, width: 4, height: 6, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+        </View>
+        <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+      </View>
 
       <Modal visible={showFinanceModal} transparent animationType="fade">
         <View className="flex-1 justify-center items-center bg-black/50 px-6">
@@ -101,27 +133,9 @@ export default function LoginScreen() {
                 <Text className="text-moss font-bold text-base">Open Portal</Text>
               </TouchableOpacity>
             </View>
-
-            <Input
-              label="Mobile Number"
-              placeholder="e.g. 9876543210"
-              keyboardType="numeric"
-              value={mobile}
-              onChangeText={setMobile}
-              error={error}
-              maxLength={10}
-            />
-
-            <View className="mt-4">
-              <Button title="Continue" onPress={handleContinue} loading={loading} />
-            </View>
-
-            <View className="items-center mt-16 mb-4">
-              <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Watermark>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

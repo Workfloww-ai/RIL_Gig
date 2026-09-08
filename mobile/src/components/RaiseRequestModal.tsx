@@ -125,19 +125,19 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
       {/* RAISE REQUEST MODAL */}
       <Modal visible={visible} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Raise Manpower Request</Text>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 20, paddingHorizontal: 20, paddingBottom: 16, overflow: 'hidden' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>Raise Manpower Request</Text>
               <TouchableOpacity onPress={onClose}>
-                <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
+                <Ionicons name="close-circle-outline" size={26} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
-              <View style={{ marginBottom: 14 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Store</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }} style={{ maxHeight: 380 }}>
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 4 }}>Store</Text>
                 <View
-                  style={{ backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  style={{ backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                 >
                   <Text style={{ fontSize: 14, color: '#1A1A1A' }} numberOfLines={1}>
                     {managerStoreName}
@@ -145,12 +145,12 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', marginBottom: 12 }}>
                 <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Date</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 4 }}>Date</Text>
                   <TouchableOpacity
                     onPress={() => setShowDatePicker(true)}
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                   >
                     <Text style={{ fontSize: 14, color: requestDate ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
                       {requestDate || 'dd/mm/yyyy'}
@@ -160,10 +160,10 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
                 </View>
 
                 <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Role</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 4 }}>Role</Text>
                   <TouchableOpacity
                     onPress={() => setIsJobModalOpen(true)}
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                   >
                     <Text style={{ fontSize: 14, color: selectedJob ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
                       {selectedJob ? selectedJob.job_name : 'Select a role...'}
@@ -173,12 +173,12 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', marginBottom: 12 }}>
                 <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Start Time</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 4 }}>Start Time</Text>
                   <TouchableOpacity
                     onPress={() => setShowTimePicker(true)}
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                   >
                     <Text style={{ fontSize: 14, color: requestStartTime ? '#1A1A1A' : '#9CA3AF' }} numberOfLines={1}>
                       {requestStartTime || '--:-- --'}
@@ -188,46 +188,56 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
                 </View>
 
                 <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>How many hours (per SahYogi)?</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 4 }}>Hours per SahYogi</Text>
                   <TextInput
                     value={requestHours}
                     onChangeText={(val) => setRequestHours(val.replace(/[^0-9.]/g, ''))}
                     keyboardType="numeric"
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#1A1A1A' }}
                   />
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', marginBottom: 24 }}>
+              <View style={{ flexDirection: 'row', marginBottom: 20 }}>
                 <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Number of SahYogi</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 4 }}>Number of SahYogi</Text>
                   <TextInput
                     value={requestNumWorkers}
                     onChangeText={(val) => setRequestNumWorkers(val.replace(/[^0-9]/g, ''))}
                     keyboardType="numeric"
-                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A' }}
+                    style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#1A1A1A' }}
                   />
                 </View>
 
                 <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Pay per SahYogi</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 4 }}>Pay per SahYogi</Text>
                   <TextInput
                     value={requestCompensation}
                     editable={false}
                     placeholder="Auto-calculated"
-                    style={{ backgroundColor: '#F7F8F9', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: '#1A1A1A', fontWeight: '700' }}
+                    style={{ backgroundColor: '#F7F8F9', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#1A1A1A', fontWeight: '700' }}
                   />
                 </View>
               </View>
 
               <TouchableOpacity
                 onPress={handlePublishRequest}
-                style={{ backgroundColor: '#D32F2F', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
+                style={{ backgroundColor: '#D32F2F', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 0 }}
                 activeOpacity={0.85}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Send Request For Approval</Text>
               </TouchableOpacity>
             </ScrollView>
+
+            {/* Decorative Brand Line - Absolute Bottom Edge */}
+            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
+              <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+              <View style={{ width: 16, height: 6, backgroundColor: '#0B5B31', zIndex: 2 }}>
+                <View style={{ position: 'absolute', left: 4, width: 40, height: 6, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+                <View style={{ position: 'absolute', left: 4, width: 4, height: 6, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+            </View>
           </View>
         </View>
       </Modal>

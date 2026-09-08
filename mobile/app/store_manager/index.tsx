@@ -149,7 +149,7 @@ export default function StoreManagerDashboard() {
   };
 
   // Sort State
-  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_desc');
+  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_asc');
   const [isSortModalOpen, setIsSortModalOpen] = useState(false);
 
   // Available Jobs and Stores for Modal
@@ -175,7 +175,7 @@ export default function StoreManagerDashboard() {
         if (isAOpen !== isBOpen) return isBOpen - isAOpen;
         const dateA = new Date(a.shift_date || 0).getTime();
         const dateB = new Date(b.shift_date || 0).getTime();
-        return dateB - dateA; // secondary sort by date
+        return dateA - dateB; // secondary sort by date (ascending)
       }
       if (sortOption === 'closed_first') {
         const isAClosed = a.request_status?.toLowerCase() === 'closed' ? 1 : 0;
@@ -183,7 +183,7 @@ export default function StoreManagerDashboard() {
         if (isAClosed !== isBClosed) return isBClosed - isAClosed;
         const dateA = new Date(a.shift_date || 0).getTime();
         const dateB = new Date(b.shift_date || 0).getTime();
-        return dateB - dateA; // secondary sort by date
+        return dateA - dateB; // secondary sort by date (ascending)
       }
       return 0;
     });
@@ -197,7 +197,7 @@ export default function StoreManagerDashboard() {
           const sortedJobs = [...res.data.requests].sort((a: any, b: any) => {
             const dateA = new Date(a.shift_date || 0).getTime();
             const dateB = new Date(b.shift_date || 0).getTime();
-            return dateB - dateA;
+            return dateA - dateB;
           });
           setJobsList(sortedJobs);
         }
@@ -341,7 +341,7 @@ export default function StoreManagerDashboard() {
         </View>
       </View>
 
-      <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shift_date} • {job.start_time}</Text>
+      <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''} • {job.start_time}</Text>
 
       <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
         <View>
@@ -401,7 +401,7 @@ export default function StoreManagerDashboard() {
                 </View>
               </View>
 
-              <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
+              <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''} • {job.start_time}</Text>
 
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
