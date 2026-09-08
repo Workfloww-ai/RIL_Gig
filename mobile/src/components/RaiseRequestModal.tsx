@@ -111,12 +111,12 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
     try {
       await apiClient.post('/jobs/', payload);
       setSelectedJob(null);
-      Alert.alert('Request Published', 'Your manpower request has been successfully published to the Sahyogi pool!');
+      Alert.alert('Request Sent!');
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error creating request", error);
-      Alert.alert('Error', 'Failed to publish request.');
+      Alert.alert('Error', 'Failed to send request.');
     }
   };
 
@@ -188,7 +188,7 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
                 </View>
 
                 <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>How many hours (per Sahyogi)?</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>How many hours (per SahYogi)?</Text>
                   <TextInput
                     value={requestHours}
                     onChangeText={(val) => setRequestHours(val.replace(/[^0-9.]/g, ''))}
@@ -200,7 +200,7 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
 
               <View style={{ flexDirection: 'row', marginBottom: 24 }}>
                 <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Number of Sahyogi</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Number of SahYogi</Text>
                   <TextInput
                     value={requestNumWorkers}
                     onChangeText={(val) => setRequestNumWorkers(val.replace(/[^0-9]/g, ''))}
@@ -210,7 +210,7 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
                 </View>
 
                 <View style={{ flex: 1, marginLeft: 6 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Compensation (Fixed ₹)</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#666666', marginBottom: 6 }}>Pay per SahYogi</Text>
                   <TextInput
                     value={requestCompensation}
                     editable={false}
@@ -225,7 +225,7 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
                 style={{ backgroundColor: '#D32F2F', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}
                 activeOpacity={0.85}
               >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Publish to Sahyogi Pool</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Send Request For Approval</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

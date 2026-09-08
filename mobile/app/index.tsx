@@ -52,12 +52,12 @@ export default function LoginScreen() {
     <SafeAreaView className="flex-1 bg-cream pt-8">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center px-8">
         <View className="mb-12">
-          <Text className="text-5xl font-bold text-slate mb-3 tracking-tight">SAH<Text className="text-moss/80">YOGI</Text></Text>
+          <Text className="text-5xl font-bold text-[#D32F2F] mb-3 tracking-tight">Sah<Text className="text-moss/80">Yogi</Text></Text>
           <Text className="text-sage text-lg font-medium">Enter your mobile number to get started.</Text>
-          
+
         </View>
-        
-        <Input 
+
+        <Input
           label="Mobile Number"
           placeholder="e.g. 9876543210"
           keyboardType="numeric"
@@ -66,11 +66,11 @@ export default function LoginScreen() {
           error={error}
           maxLength={10}
         />
-        
+
         <View className="mt-4">
           <Button title="Continue" onPress={handleContinue} loading={loading} />
         </View>
-        
+
         <View className="absolute bottom-8 left-0 right-0 items-center">
           <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
         </View>
@@ -84,17 +84,17 @@ export default function LoginScreen() {
               Finance users should log in via the web dashboard.
             </Text>
             <View className="flex-row justify-end">
-              <TouchableOpacity 
-                onPress={() => setShowFinanceModal(false)} 
+              <TouchableOpacity
+                onPress={() => setShowFinanceModal(false)}
                 className="px-5 py-2.5 mr-2 rounded-xl"
               >
                 <Text className="text-moss font-bold text-base">Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   setShowFinanceModal(false);
                   Linking.openURL('http://financedashboard.sahyogi.net.in/');
-                }} 
+                }}
                 className="px-5 py-2.5 rounded-xl"
               >
                 <Text className="text-moss font-bold text-base">Open Portal</Text>

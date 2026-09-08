@@ -8,7 +8,7 @@ import { useAuthStore } from '../src/store/authStore';
 export default function ProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore(state => state.logout);
-  const [userProfile, setUserProfile] = useState<{first_name: string, last_name: string, ratings?: number, shifts_completed?: number, recent_activity?: any[]} | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name: string, last_name: string, ratings?: number, shifts_completed?: number, recent_activity?: any[] } | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -58,10 +58,10 @@ export default function ProfileScreen() {
           <View className="h-24 w-24 rounded-full bg-moss/10 items-center justify-center border-4 border-moss/10 mb-4 shadow-sm">
             <Text className="text-moss text-4xl font-bold">{initial}</Text>
           </View>
-          
+
           <Text className="text-2xl font-bold text-slate mb-1">{fullName.toUpperCase()}</Text>
-          <Text className="text-muted text-sm font-medium mb-3">Sahyogi</Text>
-          
+          <Text className="text-muted text-sm font-medium mb-3">SahYogi</Text>
+
           {/* Dynamic Rating */}
           {userProfile?.shifts_completed ? (
             <>
@@ -89,7 +89,7 @@ export default function ProfileScreen() {
             <Text className="text-sage text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Earnings</Text>
             <Text className="text-2xl font-bold text-slate text-center">₹ {totalEarnings.toLocaleString()}</Text>
           </View>
-          
+
           <View className="bg-cream flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-sage/10 items-center justify-center">
             <View className="w-10 h-10 rounded-full bg-moss/10 items-center justify-center mb-3">
               <Text className="text-moss/80 text-xl">📋</Text>
