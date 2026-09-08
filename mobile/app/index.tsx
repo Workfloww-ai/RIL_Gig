@@ -11,6 +11,7 @@ export default function LoginScreen() {
   const [mobile, setMobile] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showFinanceModal, setShowFinanceModal] = useState(false);
 
   const handleContinue = async () => {
     if (mobile.length < 10) {
@@ -28,7 +29,9 @@ export default function LoginScreen() {
       console.log('Backend response:', response.data);
 
       const { status } = response.data;
-      if (status === 'existing_user') {
+      if (status === 'redirect_finance') {
+        setShowFinanceModal(true);
+      } else if (status === 'existing_user') {
         // Send OTP directly for existing user before redirecting
         console.log('User exists, sending OTP...');
         await apiClient.post('/auth/send-otp', {

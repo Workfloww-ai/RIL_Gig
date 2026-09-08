@@ -82,7 +82,8 @@ async def process_t90_voice_calls():
                     if isinstance(job_data, list) and len(job_data) > 0:
                         job_data = job_data[0]
                     job_title = job_data.get("job_name", "Gig Worker")
-                    payout_rate = str(job_data.get("base_compensation", "₹500"))
+                    payout_rate_val = job_data.get("base_compensation", 500)
+                    payout_rate = f"₹{float(payout_rate_val):.0f}"
                     
                     if not mobile_number:
                         logger.warning(f"[T90VoiceWorker] No mobile number found for assignment {assignment_id}")
@@ -123,11 +124,20 @@ def run_t90_worker_sync():
 
 if __name__ == "__main__":
     import time
+    from dotenv import load_dotenv
     POLL_INTERVAL = 30 # seconds
     logger.info(f"Starting T-90 Voice Worker Daemon (Polling DB every {POLL_INTERVAL} seconds). Press Ctrl+C to stop.\n")
     try:
         while True:
-            run_t90_worker_sync()
+            # Reload .env on each tick so the flag can be toggled without restarting the script
+            load_dotenv(override=True)
+            is_worker_on = os.getenv("IS_WORKER_ON", "false").lower() in ("true", "1", "t", "yes")
+            
+            if is_worker_on:
+                run_t90_worker_sync()
+            else:
+                logger.info("[T90VoiceWorker] IS_WORKER_ON is not set to true. Skipping this cycle.")
+                
             time.sleep(POLL_INTERVAL)
     except KeyboardInterrupt:
         logger.info("\n[T90VoiceWorker] Daemon stopped by user.")
