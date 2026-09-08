@@ -7,6 +7,7 @@ import { Button } from '../src/components/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { Watermark } from '../src/components/Watermark';
 
 interface Module {
  id: string;
@@ -522,7 +523,8 @@ export default function LibraryScreen() {
  };
 
  return (
- <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-sand">
+ <Watermark>
+ <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-transparent">
  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
 
  {/* Header Area */}
@@ -540,6 +542,12 @@ export default function LibraryScreen() {
  <Text className="text-sand text-xs">Sahyogi</Text>
  </View>
  </View>
+
+ {/* Top Right Logo */}
+ <Image 
+ source={require('../assets/images/logo-sahyogi.png')} 
+ style={{ width: 50, height: 28, resizeMode: 'contain' }}
+ />
  </View>
 
 
@@ -679,14 +687,21 @@ export default function LibraryScreen() {
  <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
  {/* Certificate Template */}
  <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
- <View className="w-full aspect-[1.4] bg-cream border-8 border-moss rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden">
+ <View className="w-full bg-cream border-8 border-moss rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden" style={{ aspectRatio: 1.414 }}>
  {/* Branding Logo - Top Left */}
- <View className="absolute top-3 left-3 z-20">
+ <View className="absolute top-0 left-0 z-20">
  <Image
  source={require('../assets/images/icon_sahyogi.png')}
- style={{ width: 55, height: 25, resizeMode: 'contain' }}
+ style={{ width: 80, height: 45, resizeMode: 'contain' }}
  />
  </View>
+
+  {/* Certificate ID - Top Right */}
+  <View className="absolute top-4 right-5 z-20">
+    <Text className="text-moss text-[6.5px] font-bold tracking-widest uppercase">
+      CERT. NO: {userProfile ? `SHY-${userProfile.first_name.toUpperCase().substring(0,4)}${userProfile.last_name ? userProfile.last_name.toUpperCase().substring(0,2) : '84'}-26` : 'SHY-CERT-0001'}
+    </Text>
+  </View>
 
  {/* Main Content Centered */}
  <View className="items-center z-10 w-full mt-2">
@@ -725,9 +740,14 @@ export default function LibraryScreen() {
  </View>
 
  {/* Seal - Bottom Right */}
- <View className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-clay items-center justify-center transform rotate-12 shadow-sm border-2 border-[#FFFFFF] z-10">
- <Text className="text-white text-[7px] font-bold text-center leading-tight">Sahyogi{'\n'}Certified</Text>
- </View>
+ <View className="absolute bottom-7 right-4 z-10 opacity-85" style={{ transform: [{ scale: 0.5 }, { rotate: '-12deg' }], transformOrigin: 'bottom right' }}>
+   <View className="border-[3px] border-[#991b1b] rounded-lg p-[2px]">
+     <View className="border border-[#991b1b] rounded-[4px] px-3 py-1 items-center justify-center bg-white/50">
+       <Text className="text-[#991b1b] text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ fontFamily: 'serif' }}>Sahyogi</Text>
+       <Text className="text-[#991b1b] text-[11px] font-black uppercase tracking-[0.15em]" style={{ fontFamily: 'serif' }}>Verified</Text>
+     </View>
+   </View>
+ </View> 
  </View>
  </ViewShot>
 
@@ -1000,5 +1020,6 @@ export default function LibraryScreen() {
  </View>
  </Modal>
  </SafeAreaView>
+ </Watermark>
  );
 }

@@ -2,6 +2,7 @@ import json
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Path, Request
 from typing import List
 import random
+import os
 
 from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest
 from utils.sms import send_otp_sms
@@ -172,7 +173,15 @@ async def upload_documents(
 
     uploaded_docs = []
     
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+    
     for file in files:
+        if file.content_type not in ALLOWED_MIME_TYPES:
+            raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed types: JPEG, PNG, PDF.")
+        if file.size and file.size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail=f"File {file.filename} is too large. Maximum size is 10MB.")
+            
         meta = next((m for m in parsed_metadata if m.filename == file.filename), None)
         if meta:
             doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", meta.doc_name).execute()
@@ -228,15 +237,16 @@ async def upload_documents(
 async def send_otp(request: Request, payload: SendOTPRequest):
     clean_mobile, with_plus = get_mobile_variations(payload.mobile_number)
     
-    pass
-
-    
-    # Check DB limit: max 3 OTPs per phone per 15 minutes
-    fifteen_mins_ago = (datetime.now(timezone.utc) - timedelta(minutes=15)).isoformat()
-    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", fifteen_mins_ago).execute()
+    # --- BYPASS FOR SPECIFIC USER FROM ENV ---
+    test_mobile = os.getenv("TEST_MOBILE_NUMBER")
+    if test_mobile and clean_mobile == test_mobile:
+        return {"status": "otp_sent"}
+    # Check DB limit: max 3 OTPs per phone per 1 second (for testing)
+    one_sec_ago = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", one_sec_ago).execute()
     
     if len(recent_otps.data) >= 3:
-        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 15 minutes. Please try again later.")
+        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 1 second. Please try again later.")
         
     # otp_code = "000000" 
     otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
@@ -274,44 +284,43 @@ async def verify_otp(request: Request, payload: VerifyOTPRequest):
     clean, with_plus = get_mobile_variations(payload.mobile_number)
     response = supabase.table("otp_codes").select("id, mobile_number, otp_hash, expires_at, failed_attempts, locked_until").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
-    if not response.data:
-        raise HTTPException(status_code=400, detail="No OTP found for this number.")
-        
-    otp_record = response.data[0]
+    # --- BYPASS FOR SPECIFIC USER FROM ENV ---
+    test_mobile = os.getenv("TEST_MOBILE_NUMBER")
+    test_otp = os.getenv("TEST_OTP")
     
-    # Check if locked
-    locked_until = otp_record.get("locked_until")
-    if locked_until:
-        if locked_until.endswith("Z"):
-            locked_until = locked_until[:-1] + "+00:00"
-        locked_dt = datetime.fromisoformat(locked_until)
-        if datetime.now(timezone.utc) < locked_dt:
-            raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 30 minutes.")
-    
-    # 2. Check if OTP matches
-    if str(otp_record["otp_hash"]) != hash_otp(payload.otp):
-        failed_attempts = otp_record.get("failed_attempts", 0) + 1
-        update_data = {"failed_attempts": failed_attempts}
-        if failed_attempts >= 5:
-            update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
-        supabase.table("otp_codes").update(update_data).eq("id", otp_record["id"]).execute()
+    if test_mobile and clean == test_mobile:
+        if test_otp and payload.otp == test_otp:
+            pass # Skip all OTP DB checks and expiration logic
+        else:
+            raise HTTPException(status_code=400, detail="Incorrect OTP.")
+    else:
+        response = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
         
-        if failed_attempts >= 5:
-            raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 30 minutes.")
-        raise HTTPException(status_code=400, detail="Incorrect OTP.")
+        if not response.data:
+            raise HTTPException(status_code=400, detail="No OTP found for this number.")
+            
+        otp_record = response.data[0]
         
-    # 3. Check expiration
-    expires_at_str = otp_record["expires_at"]
-    if expires_at_str.endswith("Z"):
-        expires_at_str = expires_at_str[:-1] + "+00:00"
-    
-    expires_at = datetime.fromisoformat(expires_at_str)
-    if datetime.now(timezone.utc) > expires_at:
-        raise HTTPException(status_code=400, detail="OTP has expired.")
+        # 2. Check if OTP matches
+        if str(otp_record["otp_hash"]) != hash_otp(payload.otp):
+            raise HTTPException(status_code=400, detail="Incorrect OTP.")
+            
+        # 3. Check expiration
+        from datetime import datetime, timezone
+        expires_at_str = otp_record["expires_at"]
+        if expires_at_str.endswith("Z"):
+            expires_at_str = expires_at_str[:-1] + "+00:00"
+        
+        expires_at = datetime.fromisoformat(expires_at_str)
+        if datetime.now(timezone.utc) > expires_at:
+            raise HTTPException(status_code=400, detail="OTP has expired.")
+            
+        # 4. Delete OTP after verification
+        supabase.table("otp_codes").delete().eq("id", otp_record["id"]).execute()
         
     # 5. Fetch user_id and role to inject into token and response
-    clean_user, with_plus_user = get_mobile_variations(otp_record["mobile_number"])
-    user_response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean_user},mobile_number.eq.{with_plus_user}").execute()
+    # Use 'clean' directly since otp_record might not exist if bypass is used
+    user_response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
     if not user_response.data:
         raise HTTPException(status_code=400, detail="User account not found. Please sign up.")
     
@@ -346,41 +355,51 @@ async def verify_and_signup(
     clean, with_plus = get_mobile_variations(mobile_number)
     otp_resp = supabase.table("otp_codes").select("id, mobile_number, otp_hash, expires_at, failed_attempts, locked_until").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
-    if not otp_resp.data:
-        raise HTTPException(status_code=400, detail="No OTP found for this number.")
-        
-    otp_record = otp_resp.data[0]
+    # --- BYPASS FOR SPECIFIC USER FROM ENV ---
+    test_mobile = os.getenv("TEST_MOBILE_NUMBER")
+    test_otp = os.getenv("TEST_OTP")
     
-    # Check if locked
-    locked_until = otp_record.get("locked_until")
-    if locked_until:
-        if locked_until.endswith("Z"):
-            locked_until = locked_until[:-1] + "+00:00"
-        locked_dt = datetime.fromisoformat(locked_until)
-        if datetime.now(timezone.utc) < locked_dt:
-            raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 30 minutes.")
-    
-    if str(otp_record["otp_hash"]) != hash_otp(otp):
-        failed_attempts = otp_record.get("failed_attempts", 0) + 1
-        update_data = {"failed_attempts": failed_attempts}
-        if failed_attempts >= 5:
-            update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
-        supabase.table("otp_codes").update(update_data).eq("id", otp_record["id"]).execute()
+    if test_mobile and clean == test_mobile:
+        if test_otp and otp == test_otp:
+            pass # Skip all OTP DB checks and expiration logic
+        else:
+            raise HTTPException(status_code=400, detail="Incorrect OTP.")
+    else:
+        if not otp_resp.data:
+            raise HTTPException(status_code=400, detail="No OTP found for this number.")
+            
+        otp_record = otp_resp.data[0]
         
-        if failed_attempts >= 5:
-            raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 30 minutes.")
-        raise HTTPException(status_code=400, detail="Incorrect OTP.")
+        # Check if locked
+        locked_until = otp_record.get("locked_until")
+        if locked_until:
+            if locked_until.endswith("Z"):
+                locked_until = locked_until[:-1] + "+00:00"
+            locked_dt = datetime.fromisoformat(locked_until)
+            if datetime.now(timezone.utc) < locked_dt:
+                raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 1 second.")
         
-    expires_at_str = otp_record["expires_at"]
-    if expires_at_str.endswith("Z"):
-        expires_at_str = expires_at_str[:-1] + "+00:00"
-    
-    expires_at = datetime.fromisoformat(expires_at_str)
-    if datetime.now(timezone.utc) > expires_at:
-        raise HTTPException(status_code=400, detail="OTP has expired.")
+        if str(otp_record["otp_hash"]) != hash_otp(otp):
+            failed_attempts = otp_record.get("failed_attempts", 0) + 1
+            update_data = {"failed_attempts": failed_attempts}
+            if failed_attempts >= 5:
+                update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(seconds=1)).isoformat()
+            supabase.table("otp_codes").update(update_data).eq("id", otp_record["id"]).execute()
+            
+            if failed_attempts >= 5:
+                raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 1 second.")
+            raise HTTPException(status_code=400, detail="Incorrect OTP.")
+            
+        expires_at_str = otp_record["expires_at"]
+        if expires_at_str.endswith("Z"):
+            expires_at_str = expires_at_str[:-1] + "+00:00"
         
-    # Delete OTP after verification
-    supabase.table("otp_codes").delete().eq("id", otp_record["id"]).execute()
+        expires_at = datetime.fromisoformat(expires_at_str)
+        if datetime.now(timezone.utc) > expires_at:
+            raise HTTPException(status_code=400, detail="OTP has expired.")
+            
+        # Delete OTP after verification
+        supabase.table("otp_codes").delete().eq("id", otp_record["id"]).execute()
     
     # 2. Parse User Details
     try:
@@ -433,7 +452,16 @@ async def verify_and_signup(
         raise HTTPException(status_code=400, detail=f"Invalid metadata JSON: {str(e)}")
 
     uploaded_docs = []
+    
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+    
     for file in files:
+        if file.content_type not in ALLOWED_MIME_TYPES:
+            raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed types: JPEG, PNG, PDF.")
+        if file.size and file.size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail=f"File {file.filename} is too large. Maximum size is 10MB.")
+            
         meta = next((m for m in parsed_metadata if m.filename == file.filename), None)
         if meta:
             doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", meta.doc_name).execute()

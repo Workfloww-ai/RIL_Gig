@@ -17,7 +17,8 @@ export default function QuizScreen() {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
+  const [currentSelection, setCurrentSelection] = useState<string | null>(null);
+  const [isIncorrect, setIsIncorrect] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -28,8 +29,6 @@ export default function QuizScreen() {
         
         if (module && module.quiz_questions && module.quiz_questions.length > 0) {
           setQuestions(module.quiz_questions);
-          // Initialize empty answers
-          setSelectedAnswers(new Array(module.quiz_questions.length).fill(null));
         } else {
           // If no questions, auto pass for now
           Alert.alert('No Quiz', 'There are no quiz questions for this module. Marking as passed!');
@@ -49,23 +48,14 @@ export default function QuizScreen() {
   const submitScore = async (score: number) => {
     setSubmitting(true);
     try {
-      const res = await apiClient.post('/content/submit-quiz', {
+      await apiClient.post('/content/submit-quiz', {
         module_id: id,
         score
       });
       
-      if (res.data.passed) {
-        Alert.alert('Congratulations! 🎉', `You passed with ${score}%.`, [
-          { text: 'Go to Dashboard', onPress: () => router.push({ pathname: '/library', params: { justCompleted: 'true' } }) }
-        ]);
-      } else {
-        Alert.alert('Keep Trying!', `You scored ${score}%. You need at least 80% to pass.`, [
-          { text: 'Retake Quiz', onPress: () => {
-            setCurrentQIndex(0);
-            setSelectedAnswers(new Array(questions.length).fill(null));
-          }}
-        ]);
-      }
+      Alert.alert('Congratulations! 🎉', 'You have successfully completed this module.', [
+        { text: 'Go to Dashboard', onPress: () => router.push({ pathname: '/library', params: { justCompleted: 'true' } }) }
+      ]);
     } catch (err) {
       console.error('Failed to submit score:', err);
       Alert.alert('Error', 'Failed to save your progress.');
@@ -74,29 +64,27 @@ export default function QuizScreen() {
     }
   };
 
-  const handleFinish = () => {
-    // Check if all answered
-    if (selectedAnswers.includes(null as any)) {
-      Alert.alert('Incomplete', 'Please answer all questions before submitting.');
-      return;
-    }
+  const handleNext = () => {
+    if (!currentSelection) return;
     
-    // Calculate score
-    let correct = 0;
-    selectedAnswers.forEach((ans, idx) => {
-      if (ans === questions[idx].answer) {
-        correct++;
+    const isCorrect = currentSelection === questions[currentQIndex].answer;
+    
+    if (isCorrect) {
+      if (currentQIndex < questions.length - 1) {
+        setCurrentQIndex(prev => prev + 1);
+        setCurrentSelection(null);
+        setIsIncorrect(false);
+      } else {
+        submitScore(100);
       }
-    });
-    
-    const scorePercentage = Math.round((correct / questions.length) * 100);
-    submitScore(scorePercentage);
+    } else {
+      setIsIncorrect(true);
+    }
   };
 
   const handleOptionSelect = (option: string) => {
-    const newAnswers = [...selectedAnswers];
-    newAnswers[currentQIndex] = option;
-    setSelectedAnswers(newAnswers);
+    setCurrentSelection(option);
+    setIsIncorrect(false);
   };
 
   if (loading) {
@@ -138,50 +126,53 @@ export default function QuizScreen() {
         </Text>
 
         {question.options.map((option, idx) => {
-          const isSelected = selectedAnswers[currentQIndex] === option;
+          const isSelected = currentSelection === option;
+          let borderClass = 'border-sage/20 bg-cream';
+          let textClass = 'text-slate';
+
+          if (isSelected) {
+            if (isIncorrect) {
+              borderClass = 'border-red-500 bg-red-50';
+              textClass = 'text-red-600 font-bold';
+            } else {
+              borderClass = 'border-moss/50 bg-blue-50';
+              textClass = 'text-moss font-bold';
+            }
+          }
+
           return (
             <TouchableOpacity
               key={idx}
               onPress={() => handleOptionSelect(option)}
-              className={`p-4 rounded-xl mb-4 border ${isSelected ? 'border-moss/50 bg-blue-50' : 'border-sage/20 bg-cream'}`}
+              className={`p-4 rounded-xl mb-4 border ${borderClass}`}
             >
-              <Text className={`font-medium ${isSelected ? 'text-moss font-bold' : 'text-slate'}`}>
+              <Text className={`font-medium ${textClass}`}>
                 {option}
               </Text>
             </TouchableOpacity>
           );
         })}
+
+        {isIncorrect && (
+          <View className="bg-red-50 p-4 rounded-xl mt-2 border border-red-200">
+            <Text className="text-red-600 font-bold text-center">
+              Incorrect answer. Please select another option.
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Footer Navigation */}
       <View className="flex-1 justify-end px-6 mb-10">
-        <View className="flex-row justify-between">
-          <TouchableOpacity 
-            disabled={currentQIndex === 0}
-            onPress={() => setCurrentQIndex(prev => prev - 1)}
-            className={`px-6 py-4 rounded-xl ${currentQIndex === 0 ? 'bg-sage/10' : 'bg-sage/20'}`}
-          >
-            <Text className={`font-bold ${currentQIndex === 0 ? 'text-sage' : 'text-slate'}`}>Previous</Text>
-          </TouchableOpacity>
-
-          {currentQIndex < questions.length - 1 ? (
-            <TouchableOpacity 
-              disabled={!selectedAnswers[currentQIndex]}
-              onPress={() => setCurrentQIndex(prev => prev + 1)}
-              className={`px-8 py-4 rounded-xl ${!selectedAnswers[currentQIndex] ? 'bg-primary-300' : 'bg-moss'}`}
-            >
-              <Text className="text-white font-bold">Next</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              disabled={submitting || !selectedAnswers[currentQIndex]}
-              onPress={handleFinish}
-              className={`px-8 py-4 rounded-xl ${(!selectedAnswers[currentQIndex] || submitting) ? 'bg-green-300' : 'bg-green-500'}`}
-            >
-              <Text className="text-white font-bold">{submitting ? 'Evaluating...' : 'Submit Quiz'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <TouchableOpacity 
+          disabled={!currentSelection || submitting}
+          onPress={handleNext}
+          className={`py-4 rounded-xl items-center w-full ${(!currentSelection || submitting) ? 'bg-primary-300' : 'bg-moss'}`}
+        >
+          <Text className="text-white font-bold text-lg">
+            {submitting ? 'Submitting...' : currentQIndex === questions.length - 1 ? 'Finish Module' : 'Check & Next'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
