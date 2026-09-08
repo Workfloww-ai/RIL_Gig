@@ -261,8 +261,11 @@ async def verify_otp(payload: VerifyOTPRequest):
     clean, with_plus = get_mobile_variations(payload.mobile_number)
     
     # --- HARDCODED BYPASS FOR SPECIFIC USER ---
-    if clean == "9211540400" and payload.otp == "123456":
-        pass # Skip all OTP DB checks and expiration logic
+    if clean == "919211540400":
+        if payload.otp == "123456":
+            pass # Skip all OTP DB checks and expiration logic
+        else:
+            raise HTTPException(status_code=400, detail="Incorrect OTP.")
     else:
         response = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
         

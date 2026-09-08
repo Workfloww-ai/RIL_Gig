@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, Alert, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
 import { apiClient } from '../src/api/client';
+import { Watermark } from '../src/components/Watermark';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -47,31 +48,38 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream pt-8">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center px-8">
-        <View className="mb-12">
-          <Text className="text-5xl font-bold text-slate mb-3 tracking-tight">SAH<Text className="text-moss/80">YOGI</Text></Text>
-          <Text className="text-sage text-lg font-medium">Enter your mobile number to get started.</Text>
-          
-        </View>
-        
-        <Input 
-          label="Mobile Number"
-          placeholder="e.g. 9876543210"
-          keyboardType="numeric"
-          value={mobile}
-          onChangeText={setMobile}
-          error={error}
-          maxLength={10}
-        />
-        
-        <View className="mt-4">
-          <Button title="Continue" onPress={handleContinue} loading={loading} />
-        </View>
-        
-        <View className="absolute bottom-8 left-0 right-0 items-center">
-          <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
-        </View>
-      </KeyboardAvoidingView>
+      <Watermark>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} className="px-8 pb-10" showsVerticalScrollIndicator={false} bounces={false}>
+            <View className="mb-12 mt-10">
+              <Image 
+                source={require('../assets/images/logo-sahyogi.png')} 
+                style={{ width: 160, height: 160, resizeMode: 'contain', marginBottom: 16 }}
+              />
+              <Text className="text-5xl font-bold text-red-600 mb-3 tracking-tight">Sah<Text className="text-moss/80">Yogi</Text></Text>
+              <Text className="text-sage text-lg font-medium">Enter your mobile number to get started.</Text>
+            </View>
+            
+            <Input 
+              label="Mobile Number"
+              placeholder="e.g. 9876543210"
+              keyboardType="numeric"
+              value={mobile}
+              onChangeText={setMobile}
+              error={error}
+              maxLength={10}
+            />
+            
+            <View className="mt-4">
+              <Button title="Continue" onPress={handleContinue} loading={loading} />
+            </View>
+            
+            <View className="items-center mt-16 mb-4">
+              <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Watermark>
     </SafeAreaView>
   );
 }

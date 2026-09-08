@@ -7,6 +7,7 @@ import { Button } from '../src/components/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { Watermark } from '../src/components/Watermark';
 
 interface Module {
  id: string;
@@ -522,7 +523,8 @@ export default function LibraryScreen() {
  };
 
  return (
- <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-sand">
+ <Watermark>
+ <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-transparent">
  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
 
  {/* Header Area */}
@@ -540,6 +542,12 @@ export default function LibraryScreen() {
  <Text className="text-sand text-xs">Sahyogi</Text>
  </View>
  </View>
+
+ {/* Top Right Logo */}
+ <Image 
+ source={require('../assets/images/logo-sahyogi.png')} 
+ style={{ width: 50, height: 28, resizeMode: 'contain' }}
+ />
  </View>
 
 
@@ -1000,5 +1008,6 @@ export default function LibraryScreen() {
  </View>
  </Modal>
  </SafeAreaView>
+ </Watermark>
  );
 }
