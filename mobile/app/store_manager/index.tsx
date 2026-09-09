@@ -562,7 +562,15 @@ export default function StoreManagerDashboard() {
               minimumFontScale={0.8}
               style={{ fontSize: 12, color: '#666666', fontWeight: '600', marginTop: 2 }}
             >
-              {managerStoreName} {userProfile?.role_name ? ` • ${userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` : ' • Store Manager'}
+              {managerStoreName} •{' '}
+              {(!userProfile?.role_name || userProfile.role_name === 'store_manager') ? (
+                <>
+                  <Text style={{ color: '#0B5B31' }}>Store</Text>{' '}
+                  <Text style={{ color: '#D32F2F' }}>Manager</Text>
+                </>
+              ) : (
+                userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+              )}
             </Text>
           </View>
           <Image

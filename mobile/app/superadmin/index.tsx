@@ -23,6 +23,8 @@ export default function SuperadminDashboard() {
   const [jobToDecline, setJobToDecline] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [declineReasonsList, setDeclineReasonsList] = useState<{ id: string, reason_text: string }[]>([]);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
 
   const toggleSection = (section: 'pending' | 'approved' | 'declined') => {
     setExpandedSections(prev => ({
@@ -67,10 +69,12 @@ export default function SuperadminDashboard() {
     try {
       const payload = action === 'reject' ? { decline_reason: reason || 'No reason provided' } : undefined;
       await apiClient.post(`/superadmin/requests/${requestId}/${action}`, payload);
-      Alert.alert(
-        action === 'approve' ? 'Published live' : 'Job Rejected',
-        action === 'approve' ? 'The job request has been approved and is now visible to workers.' : 'The job request has been rejected.'
-      );
+      setStatusModalContent({
+        title: action === 'approve' ? 'Published' : 'Job Rejected',
+        message: action === 'approve' ? 'The job request has been approved and is now visible to workers.' : 'The job request has been rejected.',
+        type: action === 'approve' ? 'success' : 'error'
+      });
+      setShowStatusModal(true);
       if (action === 'reject') {
         setIsDeclineModalOpen(false);
         setIsDropdownOpen(false);
@@ -80,7 +84,12 @@ export default function SuperadminDashboard() {
       await fetchRequests();
     } catch (error: any) {
       console.error(`Failed to ${action} request`, error);
-      Alert.alert('Error', error.response?.data?.detail || `Failed to ${action} job.`);
+      setStatusModalContent({
+        title: 'Error',
+        message: error.response?.data?.detail || `Failed to ${action} job.`,
+        type: 'error'
+      });
+      setShowStatusModal(true);
     } finally {
       setProcessingId(null);
     }
@@ -317,7 +326,8 @@ export default function SuperadminDashboard() {
               <TouchableOpacity
                 onPress={() => {
                   if (!declineReason.trim()) {
-                    Alert.alert('Required', 'Please enter a decline reason.');
+                    setStatusModalContent({ title: 'Required', message: 'Please enter a decline reason.', type: 'error' });
+                    setShowStatusModal(true);
                     return;
                   }
                   if (jobToDecline) {
@@ -331,6 +341,29 @@ export default function SuperadminDashboard() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
     </View>
