@@ -235,11 +235,10 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
             {/* Decorative Brand Line - Absolute Bottom Edge */}
             <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
               <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-              <View style={{ width: 16, height: 6, backgroundColor: '#0B5B31', zIndex: 2 }}>
-                <View style={{ position: 'absolute', left: 4, width: 40, height: 6, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-                <View style={{ position: 'absolute', left: 4, width: 4, height: 6, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-              </View>
-              <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
             </View>
           </View>
         </View>

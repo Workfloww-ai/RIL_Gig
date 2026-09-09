@@ -4,7 +4,7 @@ from typing import List
 import random
 import os
 
-from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest
+from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest
 from utils.sms import send_otp_sms
 from utils.supabase_client import supabase
 from utils.jwt_auth import create_access_token, get_current_user, SECRET_KEY
@@ -323,11 +323,14 @@ async def verify_otp(request: Request, payload: VerifyOTPRequest):
         
     # 5. Fetch user_id and role to inject into token and response
     # Use 'clean' directly since otp_record might not exist if bypass is used
-    user_response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
+    user_response = supabase.table("users").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
     if not user_response.data:
         raise HTTPException(status_code=400, detail="User account not found. Please sign up.")
     
     user_data = user_response.data[0]
+    if user_data.get("is_deactivated"):
+        raise HTTPException(status_code=403, detail="Account has been deactivated. Please contact support.")
+        
     user_id = user_data["user_id"]
     
     role_name = "worker"
@@ -511,3 +514,21 @@ async def verify_and_signup(
                 
     access_token = create_access_token({"sub": user_id})
     return {"status": "login_success", "token": access_token, "user_id": user_id, "uploaded_documents": len(uploaded_docs), "role": "worker"}
+
+
+@router.post("/delete-account")
+async def request_account_deletion(payload: DeleteAccountRequest, user_id: str = Depends(get_current_user)):
+    try:
+        # Mark user as deactivated
+        supabase.table("users").update({"is_deactivated": True}).eq("user_id", user_id).execute()
+        
+        # Insert deletion request
+        supabase.table("account_deletion_requests").insert({
+            "user_id": user_id,
+            "reason": payload.reason,
+            "status": "pending"
+        }).execute()
+        
+        return {"status": "success", "message": "Account deletion requested successfully. Account deactivated."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process deletion request: {str(e)}")

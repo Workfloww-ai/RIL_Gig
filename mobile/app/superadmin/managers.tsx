@@ -203,16 +203,10 @@ export default function SuperadminManagers() {
             {/* Decorative Brand Line - Absolute Top */}
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row', zIndex: 10 }}>
               <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-              
-              {/* Slant Container */}
-              <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-                 {/* Red slant bleeding to the right */}
-                 <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-                 {/* White slanted divider perfectly aligned */}
-                 <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-              </View>
-              
-              <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Add New Store Manager</Text>

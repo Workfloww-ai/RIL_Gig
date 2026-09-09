@@ -317,4 +317,59 @@ async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(v
         print(f"Error creating manager: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/deletion-requests")
+async def get_deletion_requests(user_id: str = Depends(verify_superadmin)):
+    try:
+        # We need to join account_deletion_requests with users table to get first_name, last_name, mobile_number
+        res = supabase.table("account_deletion_requests").select(
+            "id, user_id, reason, requested_at, status, "
+            "users (first_name, last_name, mobile_number)"
+        ).eq("status", "pending").execute()
+        
+        requests = []
+        for row in res.data:
+            user_info = row.get("users") or {}
+            if isinstance(user_info, list) and len(user_info) > 0:
+                user_info = user_info[0]
+            
+            requests.append({
+                "id": row.get("id"),
+                "user_id": row.get("user_id"),
+                "reason": row.get("reason"),
+                "requested_at": row.get("requested_at"),
+                "first_name": user_info.get("first_name", "Unknown"),
+                "last_name": user_info.get("last_name", ""),
+                "mobile_number": user_info.get("mobile_number", "Unknown")
+            })
+            
+        return {"status": "success", "data": requests}
+    except Exception as e:
+        print(f"Error fetching deletion requests: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch deletion requests")
 
+@router.post("/deletion-requests/{user_id}/permanent-delete")
+async def permanent_delete_user(user_id: str, admin_id: str = Depends(verify_superadmin)):
+    try:
+        # Verify request exists and is older than 30 days
+        req_res = supabase.table("account_deletion_requests").select("requested_at").eq("user_id", user_id).eq("status", "pending").execute()
+        if not req_res.data:
+            raise HTTPException(status_code=404, detail="Deletion request not found")
+            
+        requested_at = datetime.datetime.fromisoformat(req_res.data[0]["requested_at"].replace("Z", "+00:00"))
+        if (datetime.datetime.now(datetime.timezone.utc) - requested_at).days < 30:
+            raise HTTPException(status_code=400, detail="Cannot permanently delete before 30 days")
+            
+        # Hard delete from users table (cascades to requests)
+        # Note: True permanent deletion from Auth requires admin API, but deleting from public.users is sufficient for application level
+        del_res = supabase.table("users").delete().eq("user_id", user_id).execute()
+        
+        if not del_res.data:
+             # Just in case users delete failed, update request status to deleted
+             supabase.table("account_deletion_requests").update({"status": "deleted"}).eq("user_id", user_id).execute()
+
+        return {"status": "success", "message": "User permanently deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error permanently deleting user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to permanently delete user")

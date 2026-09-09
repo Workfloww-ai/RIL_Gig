@@ -581,7 +581,7 @@ export default function StoreManagerDashboard() {
             </Text>
           </View>
           <Image
-            source={require('../../assets/images/logo.png')}
+            source={require('../../assets/images/newlogo.png')}
             style={{ width: 85, height: 85, resizeMode: 'contain', marginLeft: 12 }}
           />
         </View>
@@ -589,16 +589,10 @@ export default function StoreManagerDashboard() {
         {/* Decorative Brand Line - Absolute Bottom */}
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
           <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-
-          {/* Slant Container */}
-          <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-            {/* Red slant bleeding to the right */}
-            <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-            {/* White slanted divider perfectly aligned */}
-            <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-          </View>
-
-          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
       </View>
 
@@ -883,16 +877,10 @@ export default function StoreManagerDashboard() {
         {/* Decorative Brand Line - Absolute Top */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
           <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-
-          {/* Slant Container */}
-          <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-            {/* Red slant bleeding to the right */}
-            <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-            {/* White slanted divider perfectly aligned */}
-            <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-          </View>
-
-          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
 
         <TouchableOpacity onPress={() => setActiveTab('home')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
