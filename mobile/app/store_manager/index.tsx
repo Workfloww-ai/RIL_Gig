@@ -132,6 +132,10 @@ export default function StoreManagerDashboard() {
 
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [counts, setCounts] = useState({ today: 0, upcoming: 0, past: 0, pending: 0, approved: 0, declined: 0 });
 
   // Accordion State
   const [expandedSections, setExpandedSections] = useState({
@@ -190,23 +194,49 @@ export default function StoreManagerDashboard() {
     });
   }, [jobsList, sortOption]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (loadMore = false) => {
+    if (loadMore && (!hasMore || loadingMore)) return;
     try {
-      const res = await apiClient.get('/jobs/manager/requests');
+      if (loadMore) setLoadingMore(true);
+
+      const currentOffset = loadMore ? offset + 20 : 0;
+      const res = await apiClient.get(`/jobs/manager/requests?limit=20&offset=${currentOffset}`);
       if (res.data) {
         if (res.data.requests) {
-          const sortedJobs = [...res.data.requests].sort((a: any, b: any) => {
-            const dateA = new Date(a.shift_date || 0).getTime();
-            const dateB = new Date(b.shift_date || 0).getTime();
-            return dateA - dateB;
-          });
-          setJobsList(sortedJobs);
+          const newRequests = res.data.requests;
+          setHasMore(res.data.has_more ?? newRequests.length >= 20);
+          
+          if (res.data.counts) {
+            setCounts(res.data.counts);
+          }
+
+          if (loadMore) {
+            setJobsList(prev => {
+              const combined = [...prev, ...newRequests];
+              return combined.sort((a: any, b: any) => {
+                const dateA = new Date(a.shift_date || 0).getTime();
+                const dateB = new Date(b.shift_date || 0).getTime();
+                return dateA - dateB;
+              });
+            });
+            setOffset(currentOffset);
+          } else {
+            const sortedJobs = [...newRequests].sort((a: any, b: any) => {
+              const dateA = new Date(a.shift_date || 0).getTime();
+              const dateB = new Date(b.shift_date || 0).getTime();
+              return dateA - dateB;
+            });
+            setJobsList(sortedJobs);
+            setOffset(0);
+          }
         }
         if (res.data.store_name) setManagerStoreName(res.data.store_name);
         else setManagerStoreName('Unassigned Store');
       }
     } catch (error) {
       console.error('Failed to fetch manager requests', error);
+    } finally {
+      if (loadMore) setLoadingMore(false);
     }
   };
 
@@ -538,6 +568,11 @@ export default function StoreManagerDashboard() {
     );
   };
 
+  const isCloseToBottom = ({ layoutMeasurement, contentOffset, contentSize }: any) => {
+    const paddingToBottom = 20;
+    return layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
       {/* ==================== 1. TOP HEADER ==================== */}
@@ -588,7 +623,17 @@ export default function StoreManagerDashboard() {
       </View>
 
       {/* ==================== 2. MAIN SCROLLABLE BODY CONTENT ==================== */}
-      <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        onScroll={({ nativeEvent }) => {
+          if (isCloseToBottom(nativeEvent)) {
+            fetchRequests(true);
+          }
+        }}
+        scrollEventThrottle={400}
+      >
 
         {/* ==================== HOME TAB (JOBS IN PROCESS & EXPANDABLE ASSIGNED WORKERS) ==================== */}
         {activeTab === 'home' && (
@@ -598,7 +643,7 @@ export default function StoreManagerDashboard() {
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Jobs in Process</Text>
               <View style={{ flexDirection: 'row' }}>
                 <TouchableOpacity
-                  onPress={fetchRequests}
+                  onPress={() => fetchRequests(false)}
                   style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, marginRight: 10 }}
                   activeOpacity={0.8}
                 >
@@ -622,7 +667,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Jobs Today</Text>
                 <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{todayJobs.length}</Text>
+                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{counts.today}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -648,7 +693,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Upcoming Jobs</Text>
                 <View style={{ backgroundColor: '#DBEAFE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#1D4ED8', fontSize: 12, fontWeight: '700' }}>{upcomingJobs.length}</Text>
+                  <Text style={{ color: '#1D4ED8', fontSize: 12, fontWeight: '700' }}>{counts.upcoming}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -674,7 +719,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Past Jobs</Text>
                 <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#4B5563', fontSize: 12, fontWeight: '700' }}>{pastJobs.length}</Text>
+                  <Text style={{ color: '#4B5563', fontSize: 12, fontWeight: '700' }}>{counts.past}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -722,7 +767,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Pending Requests</Text>
                 <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>{pendingJobs.length}</Text>
+                  <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>{counts.pending}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.pending ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -748,7 +793,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Approved Requests</Text>
                 <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{approvedJobs.length}</Text>
+                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{counts.approved}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.req_approved ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -774,7 +819,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Declined Requests</Text>
                 <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{declinedJobs.length}</Text>
+                  <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{counts.declined}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.req_declined ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -840,6 +885,13 @@ export default function StoreManagerDashboard() {
             >
               <Text style={{ color: '#D32F2F', fontWeight: '700', fontSize: 16 }}>Logout</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {loadingMore && (
+          <View style={{ paddingVertical: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
+            <ActivityIndicator size="small" color="#10472B" />
+            <Text style={{ marginLeft: 10, color: '#10472B', fontWeight: '600' }}>Loading more...</Text>
           </View>
         )}
       </ScrollView>

@@ -63,8 +63,27 @@ export default function LibraryScreen() {
   };
 
   const [jobsTab, setJobsTab] = useState<'available' | 'accepted'>('available');
+  
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
-  const [acceptedJobs, setAcceptedJobs] = useState<any[]>([]);
+  const [availableOffset, setAvailableOffset] = useState(0);
+  const [hasMoreAvailable, setHasMoreAvailable] = useState(true);
+  const [loadingMoreAvailable, setLoadingMoreAvailable] = useState(false);
+
+  const [acceptedToday, setAcceptedToday] = useState<any[]>([]);
+  const [todayOffset, setTodayOffset] = useState(0);
+  const [hasMoreToday, setHasMoreToday] = useState(true);
+  const [loadingToday, setLoadingToday] = useState(false);
+
+  const [acceptedUpcoming, setAcceptedUpcoming] = useState<any[]>([]);
+  const [upcomingOffset, setUpcomingOffset] = useState(0);
+  const [hasMoreUpcoming, setHasMoreUpcoming] = useState(true);
+  const [loadingUpcoming, setLoadingUpcoming] = useState(false);
+
+  const [acceptedPast, setAcceptedPast] = useState<any[]>([]);
+  const [pastOffset, setPastOffset] = useState(0);
+  const [hasMorePast, setHasMorePast] = useState(true);
+  const [loadingPast, setLoadingPast] = useState(false);
+
   const [jobsLoading, setJobsLoading] = useState(false);
   const [acceptingJobId, setAcceptingJobId] = useState<string | null>(null);
 
@@ -244,20 +263,88 @@ export default function LibraryScreen() {
   const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isAllCompleted = totalCount > 0 && completedCount === totalCount;
 
-  const fetchJobs = async () => {
-    setJobsLoading(true);
+  const fetchAvailableJobs = async (loadMore = false) => {
+    if (loadMore && (!hasMoreAvailable || loadingMoreAvailable)) return;
     try {
-      if (jobsTab === 'available') {
-        const res = await apiClient.get('/jobs/available');
-        setAvailableJobs(res.data.jobs || []);
+      if (loadMore) setLoadingMoreAvailable(true);
+      else { setJobsLoading(true); setAvailableOffset(0); }
+      
+      const currentOffset = loadMore ? availableOffset + 20 : 0;
+      const res = await apiClient.get(`/jobs/available?limit=20&offset=${currentOffset}`);
+      const newJobs = res.data.jobs || [];
+      setHasMoreAvailable(newJobs.length === 20);
+      
+      if (loadMore) {
+        setAvailableJobs(prev => [...prev, ...newJobs]);
+        setAvailableOffset(currentOffset);
       } else {
-        const res = await apiClient.get('/jobs/accepted');
-        setAcceptedJobs(res.data.jobs || []);
+        setAvailableJobs(newJobs);
+        setAvailableOffset(0);
       }
     } catch (err) {
-      console.error("Failed to fetch jobs:", err);
+      console.error(err);
+    } finally {
+      if (loadMore) setLoadingMoreAvailable(false);
+      else setJobsLoading(false);
+    }
+  };
+
+  const fetchAcceptedCategory = async (category: 'today'|'upcoming'|'past', loadMore = false) => {
+    let currentOffset = 0;
+    let hasMore = true;
+    let loadingMore = false;
+    if (category === 'today') { hasMore = hasMoreToday; loadingMore = loadingToday; currentOffset = loadMore ? todayOffset + 20 : 0; }
+    if (category === 'upcoming') { hasMore = hasMoreUpcoming; loadingMore = loadingUpcoming; currentOffset = loadMore ? upcomingOffset + 20 : 0; }
+    if (category === 'past') { hasMore = hasMorePast; loadingMore = loadingPast; currentOffset = loadMore ? pastOffset + 20 : 0; }
+    
+    if (loadMore && (!hasMore || loadingMore)) return;
+    
+    try {
+      if (loadMore) {
+        if (category === 'today') setLoadingToday(true);
+        if (category === 'upcoming') setLoadingUpcoming(true);
+        if (category === 'past') setLoadingPast(true);
+      } else {
+        setJobsLoading(true);
+      }
+      
+      const res = await apiClient.get(`/jobs/accepted?time_filter=${category}&limit=20&offset=${currentOffset}`);
+      const newJobs = res.data.jobs || [];
+      const isFull = newJobs.length === 20;
+      
+      if (category === 'today') {
+        setHasMoreToday(isFull);
+        setAcceptedToday(prev => loadMore ? [...prev, ...newJobs] : newJobs);
+        setTodayOffset(currentOffset);
+      } else if (category === 'upcoming') {
+        setHasMoreUpcoming(isFull);
+        setAcceptedUpcoming(prev => loadMore ? [...prev, ...newJobs] : newJobs);
+        setUpcomingOffset(currentOffset);
+      } else if (category === 'past') {
+        setHasMorePast(isFull);
+        setAcceptedPast(prev => loadMore ? [...prev, ...newJobs] : newJobs);
+        setPastOffset(currentOffset);
+      }
+    } catch (err) {
+      console.error(err);
     } finally {
       setJobsLoading(false);
+      setLoadingToday(false);
+      setLoadingUpcoming(false);
+      setLoadingPast(false);
+    }
+  };
+
+  const fetchJobs = () => {
+    if (jobsTab === 'available') {
+      fetchAvailableJobs();
+    } else {
+      setJobsLoading(true);
+      Promise.all([
+        fetchAcceptedCategory('today'),
+        fetchAcceptedCategory('upcoming'),
+        fetchAcceptedCategory('past')
+      ]).finally(() => setJobsLoading(false));
     }
   };
 
@@ -273,10 +360,7 @@ export default function LibraryScreen() {
     }
   }, [justCompleted, isAllCompleted]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayAcceptedJobs = acceptedJobs.filter(job => job.shift_date === todayStr);
-  const upcomingAcceptedJobs = acceptedJobs.filter(job => job.shift_date > todayStr);
-  const pastAcceptedJobs = acceptedJobs.filter(job => job.shift_date < todayStr);
+  const totalAcceptedCount = acceptedToday.length + acceptedUpcoming.length + acceptedPast.length;
 
   const renderAcceptedJobCard = (job: any) => {
     return (
@@ -529,10 +613,25 @@ export default function LibraryScreen() {
     );
   };
 
+  const isCloseToBottom = ({ layoutMeasurement, contentOffset, contentSize }: any) => {
+    const paddingToBottom = 20;
+    return layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+  };
+
   return (
     <Watermark>
-      <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-transparent">
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 100 }} 
+        showsVerticalScrollIndicator={false}
+        onScroll={({ nativeEvent }) => {
+          if (activeTab === 'jobs' && jobsTab === 'available' && isCloseToBottom(nativeEvent)) {
+            fetchAvailableJobs(true);
+          }
+        }}
+        scrollEventThrottle={400}
+      >
 
           {/* Header Area */}
           <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 16, paddingHorizontal: 24 }}>
@@ -806,10 +905,11 @@ export default function LibraryScreen() {
                       </Text>
                     </View>
                   ) : (
-                    availableJobs.map((job) => (
-                      <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
-                        <View className="flex-row justify-between items-start mb-4">
-                          <View className="flex-1 pr-4">
+                    <>
+                      {availableJobs.map((job) => (
+                        <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
+                          <View className="flex-row justify-between items-start mb-4">
+                            <View className="flex-1 pr-4">
                             <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-moss/20">
                               <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
                               <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
@@ -865,10 +965,14 @@ export default function LibraryScreen() {
                           disabled={acceptingJobId !== null && acceptingJobId !== job.request_id}
                         />
                       </View>
-                    ))
+                    ))}
+                    {loadingMoreAvailable && (
+                      <ActivityIndicator size="small" color="#0B5B31" style={{ marginVertical: 10 }} />
+                    )}
+                  </>
                   )
                 ) : (
-                  acceptedJobs.length === 0 ? (
+                  totalAcceptedCount === 0 ? (
                     <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
                       <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Accepted Jobs</Text>
                       <Text className="text-muted text-center leading-relaxed">
@@ -885,7 +989,7 @@ export default function LibraryScreen() {
                         <View className="flex-row items-center">
                           <Text className="text-base font-bold text-charcoal">Jobs Today</Text>
                           <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                            <Text className="text-primary-700 text-xs font-bold">{todayAcceptedJobs.length}</Text>
+                            <Text className="text-primary-700 text-xs font-bold">{acceptedToday.length}</Text>
                           </View>
                         </View>
                         <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
@@ -893,12 +997,19 @@ export default function LibraryScreen() {
 
                       {expandedSections.today && (
                         <View className="mb-4">
-                          {todayAcceptedJobs.length === 0 ? (
+                          {acceptedToday.length === 0 ? (
                             <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
                               <Text className="text-muted text-sm">No job scheduled for today</Text>
                             </View>
                           ) : (
-                            todayAcceptedJobs.map(renderAcceptedJobCard)
+                            <>
+                              {acceptedToday.map(renderAcceptedJobCard)}
+                              {hasMoreToday && (
+                                <TouchableOpacity onPress={() => fetchAcceptedCategory('today', true)} disabled={loadingToday} className="py-3 items-center">
+                                  {loadingToday ? <ActivityIndicator size="small" color="#0B5B31" /> : <Text className="text-primary-700 font-bold">Load More</Text>}
+                                </TouchableOpacity>
+                              )}
+                            </>
                           )}
                         </View>
                       )}
@@ -911,7 +1022,7 @@ export default function LibraryScreen() {
                         <View className="flex-row items-center">
                           <Text className="text-base font-bold text-charcoal">Upcoming Jobs</Text>
                           <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                            <Text className="text-primary-700 text-xs font-bold">{upcomingAcceptedJobs.length}</Text>
+                            <Text className="text-primary-700 text-xs font-bold">{acceptedUpcoming.length}</Text>
                           </View>
                         </View>
                         <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
@@ -919,12 +1030,19 @@ export default function LibraryScreen() {
 
                       {expandedSections.upcoming && (
                         <View className="mb-4">
-                          {upcomingAcceptedJobs.length === 0 ? (
+                          {acceptedUpcoming.length === 0 ? (
                             <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
                               <Text className="text-muted text-sm">No upcoming jobs</Text>
                             </View>
                           ) : (
-                            upcomingAcceptedJobs.map(renderAcceptedJobCard)
+                            <>
+                              {acceptedUpcoming.map(renderAcceptedJobCard)}
+                              {hasMoreUpcoming && (
+                                <TouchableOpacity onPress={() => fetchAcceptedCategory('upcoming', true)} disabled={loadingUpcoming} className="py-3 items-center">
+                                  {loadingUpcoming ? <ActivityIndicator size="small" color="#0B5B31" /> : <Text className="text-primary-700 font-bold">Load More</Text>}
+                                </TouchableOpacity>
+                              )}
+                            </>
                           )}
                         </View>
                       )}
@@ -937,7 +1055,7 @@ export default function LibraryScreen() {
                         <View className="flex-row items-center">
                           <Text className="text-base font-bold text-charcoal">Past Jobs</Text>
                           <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                            <Text className="text-primary-700 text-xs font-bold">{pastAcceptedJobs.length}</Text>
+                            <Text className="text-primary-700 text-xs font-bold">{acceptedPast.length}</Text>
                           </View>
                         </View>
                         <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
@@ -945,12 +1063,19 @@ export default function LibraryScreen() {
 
                       {expandedSections.past && (
                         <View className="mb-4">
-                          {pastAcceptedJobs.length === 0 ? (
+                          {acceptedPast.length === 0 ? (
                             <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
                               <Text className="text-muted text-sm">No past jobs</Text>
                             </View>
                           ) : (
-                            pastAcceptedJobs.map(renderAcceptedJobCard)
+                            <>
+                              {acceptedPast.map(renderAcceptedJobCard)}
+                              {hasMorePast && (
+                                <TouchableOpacity onPress={() => fetchAcceptedCategory('past', true)} disabled={loadingPast} className="py-3 items-center">
+                                  {loadingPast ? <ActivityIndicator size="small" color="#0B5B31" /> : <Text className="text-primary-700 font-bold">Load More</Text>}
+                                </TouchableOpacity>
+                              )}
+                            </>
                           )}
                         </View>
                       )}

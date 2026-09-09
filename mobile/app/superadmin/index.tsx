@@ -11,6 +11,11 @@ export default function SuperadminDashboard() {
   const [requestsList, setRequestsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0 });
 
   const [expandedSections, setExpandedSections] = useState({
     pending: true,
@@ -31,18 +36,37 @@ export default function SuperadminDashboard() {
     }));
   };
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (loadMore = false) => {
+    if (loadMore && (!hasMore || loadingMore)) return;
     try {
-      setLoading(true);
-      const res = await apiClient.get('/superadmin/requests');
+      if (loadMore) setLoadingMore(true);
+      else setLoading(true);
+
+      const currentOffset = loadMore ? offset + 20 : 0;
+      const res = await apiClient.get(`/superadmin/requests?limit=20&offset=${currentOffset}`);
+      
       if (res.data && res.data.requests) {
-        setRequestsList(res.data.requests);
+        const newRequests = res.data.requests;
+        setHasMore(res.data.has_more ?? newRequests.length >= 20);
+        
+        if (res.data.counts) {
+          setCounts(res.data.counts);
+        }
+
+        if (loadMore) {
+          setRequestsList(prev => [...prev, ...newRequests]);
+          setOffset(currentOffset);
+        } else {
+          setRequestsList(newRequests);
+          setOffset(0);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch superadmin requests', error);
       Alert.alert('Error', 'Failed to load requests');
     } finally {
-      setLoading(false);
+      if (loadMore) setLoadingMore(false);
+      else setLoading(false);
     }
   };
 
@@ -165,6 +189,11 @@ export default function SuperadminDashboard() {
     </View>
   );
 
+  const isCloseToBottom = ({ layoutMeasurement, contentOffset, contentSize }: any) => {
+    const paddingToBottom = 20;
+    return layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       {loading ? (
@@ -172,13 +201,23 @@ export default function SuperadminDashboard() {
           <ActivityIndicator size="large" color="#10472B" />
         </View>
       ) : (
-        <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} 
+          contentContainerStyle={{ paddingBottom: 100 + insets.bottom }} 
+          showsVerticalScrollIndicator={false}
+          onScroll={({ nativeEvent }) => {
+            if (isCloseToBottom(nativeEvent)) {
+              fetchRequests(true);
+            }
+          }}
+          scrollEventThrottle={400}
+        >
 
           <TouchableOpacity onPress={() => toggleSection('pending')} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Pending Approval</Text>
               <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>{pendingJobs.length}</Text>
+                <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>{counts.pending}</Text>
               </View>
             </View>
             <Feather name={expandedSections.pending ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -200,7 +239,7 @@ export default function SuperadminDashboard() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Approved Jobs</Text>
               <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{approvedJobs.length}</Text>
+                <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{counts.approved}</Text>
               </View>
             </View>
             <Feather name={expandedSections.approved ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -222,7 +261,7 @@ export default function SuperadminDashboard() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Declined Jobs</Text>
               <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{declinedJobs.length}</Text>
+                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{counts.declined}</Text>
               </View>
             </View>
             <Feather name={expandedSections.declined ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -240,6 +279,12 @@ export default function SuperadminDashboard() {
             </View>
           )}
 
+          {loadingMore && (
+            <View style={{ paddingVertical: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
+              <ActivityIndicator size="small" color="#10472B" />
+              <Text style={{ marginLeft: 10, color: '#10472B', fontWeight: '600' }}>Loading more...</Text>
+            </View>
+          )}
         </ScrollView>
       )}
 

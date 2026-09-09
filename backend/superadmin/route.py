@@ -41,19 +41,49 @@ async def get_decline_reasons(user_id: str = Depends(verify_superadmin)):
         raise HTTPException(status_code=500, detail="Failed to fetch decline reasons")
 
 @router.get("/requests", response_model=SuperadminRequestsResponse)
-async def get_pending_requests(limit: int = 100, offset: int = 0, user_id: str = Depends(verify_superadmin)):
+async def get_pending_requests(limit: int = 20, offset: int = 0, user_id: str = Depends(verify_superadmin)):
     """
     Fetch all manpower requests for superadmin across all stores.
     """
     try:
-        response = supabase.table("manpower_requests").select(
+        base_select = (
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city)"
-        ).order("shift_date", desc=False).order("start_time", desc=False).range(offset, offset + limit - 1).execute()
+        )
+        
+        pending_resp = supabase.table("manpower_requests").select(base_select)\
+            .eq("approval_status", "pending")\
+            .order("shift_date", desc=False).order("start_time", desc=False)\
+            .range(offset, offset + limit - 1).execute()
+            
+        approved_resp = supabase.table("manpower_requests").select(base_select)\
+            .in_("approval_status", ["approved", "confirmed"])\
+            .order("shift_date", desc=False).order("start_time", desc=False)\
+            .range(offset, offset + limit - 1).execute()
+            
+        declined_resp = supabase.table("manpower_requests").select(base_select)\
+            .in_("approval_status", ["declined", "rejected"])\
+            .order("shift_date", desc=False).order("start_time", desc=False)\
+            .range(offset, offset + limit - 1).execute()
+            
+        all_data = []
+        has_more = False
+        
+        if pending_resp.data:
+            all_data.extend(pending_resp.data)
+            if len(pending_resp.data) == limit: has_more = True
+            
+        if approved_resp.data:
+            all_data.extend(approved_resp.data)
+            if len(approved_resp.data) == limit: has_more = True
+            
+        if declined_resp.data:
+            all_data.extend(declined_resp.data)
+            if len(declined_resp.data) == limit: has_more = True
         
         requests = []
-        for r in response.data:
+        for r in all_data:
             job_info = r.get("jobs") or {}
             if isinstance(job_info, list) and len(job_info) > 0:
                 job_info = job_info[0]
@@ -75,13 +105,22 @@ async def get_pending_requests(limit: int = 100, offset: int = 0, user_id: str =
                 start_time=r.get("start_time", ""),
                 workers_needed=r.get("workers_needed", 1),
                 hours_duration=hours,
-                # compensation=hours * base_comp,
                 compensation=hours * base_comp * r.get("workers_needed", 1),
                 approval_status=r.get("approval_status", ""),
                 decline_reason=r.get("decline_reason")
             ))
+        # Get accurate counts by fetching ids (safer than relying on .count attribute in some supabase-py versions)
+        pending_res = supabase.table("manpower_requests").select("request_id").eq("approval_status", "pending").execute()
+        approved_res = supabase.table("manpower_requests").select("request_id").in_("approval_status", ["approved", "confirmed"]).execute()
+        declined_res = supabase.table("manpower_requests").select("request_id").in_("approval_status", ["declined", "rejected"]).execute()
+        
+        counts = {
+            "pending": len(pending_res.data) if pending_res.data else 0,
+            "approved": len(approved_res.data) if approved_res.data else 0,
+            "declined": len(declined_res.data) if declined_res.data else 0
+        }
             
-        return SuperadminRequestsResponse(status="success", requests=requests)
+        return SuperadminRequestsResponse(status="success", requests=requests, counts=counts, has_more=has_more)
     except Exception as e:
         print(f"Error fetching superadmin requests: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
