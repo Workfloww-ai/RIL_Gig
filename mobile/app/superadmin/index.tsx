@@ -67,7 +67,10 @@ export default function SuperadminDashboard() {
     try {
       const payload = action === 'reject' ? { decline_reason: reason || 'No reason provided' } : undefined;
       await apiClient.post(`/superadmin/requests/${requestId}/${action}`, payload);
-      Alert.alert('Success', action === 'approve' ? 'Job has been published live.' : 'Job has been rejected.');
+      Alert.alert(
+        action === 'approve' ? 'Published live' : 'Job Rejected',
+        action === 'approve' ? 'The job request has been approved and is now visible to workers.' : 'The job request has been rejected.'
+      );
       if (action === 'reject') {
         setIsDeclineModalOpen(false);
         setIsDropdownOpen(false);

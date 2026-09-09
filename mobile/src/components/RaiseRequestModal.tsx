@@ -111,7 +111,7 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
     try {
       await apiClient.post('/jobs/', payload);
       setSelectedJob(null);
-      Alert.alert('Request Sent!');
+      Alert.alert('Request Sent!', 'The request has been sent to the superadmin for approval.');
       onSuccess();
       onClose();
     } catch (error) {
