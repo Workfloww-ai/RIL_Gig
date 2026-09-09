@@ -349,8 +349,8 @@ export default function StoreManagerDashboard() {
           <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workers_needed} Needed</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Compensation</Text>
-          <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.base_compensation * job.hours_duration}</Text>
+          <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}> Total Compensation</Text>
+          <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.base_compensation * job.hours_duration * job.workers_needed}</Text>
         </View>
       </View>
 
@@ -858,15 +858,15 @@ export default function StoreManagerDashboard() {
         {/* Decorative Brand Line - Absolute Top */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
           <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-          
+
           {/* Slant Container */}
           <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-             {/* Red slant bleeding to the right */}
-             <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-             {/* White slanted divider perfectly aligned */}
-             <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+            {/* Red slant bleeding to the right */}
+            <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+            {/* White slanted divider perfectly aligned */}
+            <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
           </View>
-          
+
           <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
         </View>
 

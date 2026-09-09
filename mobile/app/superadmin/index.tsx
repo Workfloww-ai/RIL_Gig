@@ -106,11 +106,11 @@ export default function SuperadminDashboard() {
       <View style={{ backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, marginBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Date</Text>
-            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.shift_date}</Text>
+            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}> Job Date</Text>
+            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Timing</Text>
+            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Time</Text>
             <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.start_time}</Text>
           </View>
         </View>
@@ -120,8 +120,8 @@ export default function SuperadminDashboard() {
             <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.workers_needed}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Compensation</Text>
-            <Text style={{ color: '#10B981', fontWeight: '700', fontSize: 15 }}>₹{job.compensation}</Text>
+            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}> Total Compensation</Text>
+            <Text style={{ color: '#0b5b31', fontWeight: '700', fontSize: 15 }}>₹{job.compensation}</Text>
           </View>
         </View>
       </View>
@@ -138,12 +138,12 @@ export default function SuperadminDashboard() {
           <TouchableOpacity
             onPress={() => handleAction(job.request_id, 'approve')}
             disabled={processingId === job.request_id}
-            style={{ flex: 1, backgroundColor: '#059669', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginRight: 8, opacity: processingId === job.request_id ? 0.7 : 1 }}
+            style={{ flex: 1, backgroundColor: '#0b5b31', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginRight: 8, opacity: processingId === job.request_id ? 0.7 : 1 }}
           >
             {processingId === job.request_id ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Publish Live</Text>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Publish</Text>
             )}
           </TouchableOpacity>
 
