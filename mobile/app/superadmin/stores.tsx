@@ -16,6 +16,7 @@ import { Button } from '../../src/components/Button';
 const storeSchema = z.object({
   store_name: z.string().min(2, "Store name is required"),
   address: z.string().min(5, "Street address is required"),
+  contact_number: z.string().optional().or(z.literal('')),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
   pincode: z.string().length(6, "PIN Code must be 6 digits"),
@@ -51,6 +52,7 @@ export default function SuperadminStores() {
     defaultValues: {
       store_name: '',
       address: '',
+      contact_number: '',
       city: '',
       state: '',
       pincode: '',
@@ -162,6 +164,12 @@ export default function SuperadminStores() {
                         <Text style={{ fontSize: 14, color: '#3B82F6' }}>{store.google_map_link}</Text>
                       </View>
                     ) : null}
+                    {store.contact_number ? (
+                      <View style={{ marginBottom: 4 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 }}>Contact Number</Text>
+                        <Text style={{ fontSize: 14, color: '#1F2937' }}>{store.contact_number}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 )}
               </View>
@@ -194,6 +202,13 @@ export default function SuperadminStores() {
                 name="address"
                 render={({ field: { onChange, value } }) => (
                   <Input label="Street Address" placeholder="Main Street" value={value} onChangeText={onChange} error={errors.address?.message} />
+                )}
+              />
+              <Controller
+                control={control}
+                name="contact_number"
+                render={({ field: { onChange, value } }) => (
+                  <Input label="Contact Number" placeholder="Store Contact Number" keyboardType="phone-pad" value={value} onChangeText={onChange} error={errors.contact_number?.message} />
                 )}
               />
 

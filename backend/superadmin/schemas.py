@@ -32,6 +32,7 @@ class StoreCreateRequest(BaseModel):
     state: str
     pincode: str
     google_map_link: Optional[str] = None
+    contact_number: Optional[str] = None
     store_type: str
 
 class StoreResponse(BaseModel):
@@ -42,6 +43,7 @@ class StoreResponse(BaseModel):
     state: Optional[str] = None
     pincode: Optional[str] = None
     google_map_link: Optional[str] = None
+    contact_number: Optional[str] = None
     manager_name: Optional[str] = None
     store_type: Optional[str] = None
 

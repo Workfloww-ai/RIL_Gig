@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
@@ -459,7 +460,16 @@ export default function StoreManagerDashboard() {
                           )}
                         </View>
                         <View>
-                          <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15, marginRight: 6 }}>
+                              {worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}
+                            </Text>
+                            {worker.mobile_number && (
+                              <TouchableOpacity onPress={() => Linking.openURL(`tel:${worker.mobile_number}`)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
+                                <Feather name="phone" size={12} color="#0B5B31" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
                           <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
                         </View>
                       </View>

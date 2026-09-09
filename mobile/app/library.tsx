@@ -287,7 +287,14 @@ export default function LibraryScreen() {
               <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
               <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
             </View>
-            <Text className="font-bold text-charcoal text-lg leading-tight mb-1.5">{job.store_name}</Text>
+            <View className="flex-row items-center mb-1.5">
+              <Text className="font-bold text-charcoal text-lg leading-tight mr-2">{job.store_name}</Text>
+              {job.contact_number && (
+                <TouchableOpacity onPress={() => Linking.openURL(`tel:${job.contact_number}`)} className="bg-moss/10 p-1.5 rounded-full">
+                  <Feather name="phone" size={14} color="#0B5B31" />
+                </TouchableOpacity>
+              )}
+            </View>
             <View className="flex-row items-start">
               <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
               <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>

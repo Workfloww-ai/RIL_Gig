@@ -125,7 +125,7 @@ async def get_all_stores(user_id: str = Depends(verify_superadmin)):
     """
     try:
         # Fetch stores
-        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, store_type").order("created_at", desc=True).execute()
+        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, contact_number, store_type").order("created_at", desc=True).execute()
                 
         stores = []
         for s in stores_res.data:
@@ -137,6 +137,7 @@ async def get_all_stores(user_id: str = Depends(verify_superadmin)):
                 state=s.get("state"),
                 pincode=s.get("pincode"),
                 google_map_link=s.get("google_map_link"),
+                contact_number=s.get("contact_number"),
                 store_type=s.get("store_type")
             ))
             

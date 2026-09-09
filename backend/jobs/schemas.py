@@ -74,6 +74,7 @@ class AcceptedJobResponse(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     google_map_link: Optional[str] = None
+    contact_number: Optional[str] = None
     t90_status: str
     t60_status: str
     arrival_status: str
