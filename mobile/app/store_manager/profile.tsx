@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { apiClient } from '../../src/api/client';
@@ -62,12 +62,25 @@ export default function StoreManagerProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 pt-8">
-      {/* Header - Identical structure & styling to Worker Profile */}
-      <View className="bg-white px-6 py-4 flex-row items-center border-b border-gray-100 shadow-sm z-10">
+      {/* Header - Styled with Brand Logo and Slanted Line */}
+      <View className="bg-white px-6 py-4 flex-row items-center shadow-sm z-10 pb-6" style={{ position: 'relative' }}>
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-gray-100 rounded-full mr-3">
           <Feather name="arrow-left" size={20} color="#4B5563" />
         </TouchableOpacity>
-        <Text className="font-bold text-gray-900 text-lg flex-1 text-center pr-13">My Profile</Text>
+        <Text className="font-bold text-gray-900 text-lg flex-1 text-center">My Profile</Text>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={{ width: 60, height: 60, resizeMode: 'contain' }}
+        />
+        {/* Decorative Brand Line - Absolute Bottom */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 12, height: 6, backgroundColor: '#0B5B31', zIndex: 2 }}>
+            <View style={{ position: 'absolute', left: 3, width: 30, height: 6, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+            <View style={{ position: 'absolute', left: 3, width: 3, height: 6, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+          </View>
+          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -88,59 +101,59 @@ export default function StoreManagerProfileScreen() {
           <Text className="text-gray-400 text-xs mt-2">Rated by Sahyogis & Operations</Text> */}
         </View>
 
-          {/* Month Selector */}
-          <View className="mx-5 mt-6 flex-row items-center justify-between bg-white px-4 py-3 rounded-2xl shadow-sm border border-gray-100">
-            <TouchableOpacity
-              onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}
-              className="w-10 h-10 items-center justify-center bg-gray-50 rounded-full"
-            >
-              <Feather name="chevron-left" size={20} color="#4B5563" />
-            </TouchableOpacity>
-            <Text className="font-bold text-gray-800 text-base">{monthDisplay}</Text>
-            <TouchableOpacity
-              onPress={() => {
-                if (!isCurrentMonth) {
-                  setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
-                }
-              }}
-              disabled={isCurrentMonth}
-              className={`w-10 h-10 items-center justify-center rounded-full ${isCurrentMonth ? 'bg-gray-50/50' : 'bg-gray-50'}`}
-            >
-              <Feather name="chevron-right" size={20} color={isCurrentMonth ? "#D1D5DB" : "#4B5563"} />
-            </TouchableOpacity>
-          </View>
+        {/* Month Selector */}
+        <View className="mx-5 mt-6 flex-row items-center justify-between bg-white px-4 py-3 rounded-2xl shadow-sm border border-gray-100">
+          <TouchableOpacity
+            onPress={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}
+            className="w-10 h-10 items-center justify-center bg-gray-50 rounded-full"
+          >
+            <Feather name="chevron-left" size={20} color="#4B5563" />
+          </TouchableOpacity>
+          <Text className="font-bold text-gray-800 text-base">{monthDisplay}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              if (!isCurrentMonth) {
+                setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
+              }
+            }}
+            disabled={isCurrentMonth}
+            className={`w-10 h-10 items-center justify-center rounded-full ${isCurrentMonth ? 'bg-gray-50/50' : 'bg-gray-50'}`}
+          >
+            <Feather name="chevron-right" size={20} color={isCurrentMonth ? "#D1D5DB" : "#4B5563"} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Stats Grid - Identical card styling to Worker Profile */}
-          <View className="mx-5 mt-6 flex-row justify-between">
-            <View className="bg-white flex-1 mr-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
-              <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mb-3">
-                <Text className="text-green-500 text-xl">📋</Text>
-              </View>
-              <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Requests</Text>
-              <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.total_requests || 0}</Text>
+        {/* Stats Grid - Identical card styling to Worker Profile */}
+        <View className="mx-5 mt-6 flex-row justify-between">
+          <View className="bg-white flex-1 mr-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+            <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mb-3">
+              <Text className="text-green-500 text-xl">📋</Text>
             </View>
+            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Requests</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.total_requests || 0}</Text>
+          </View>
 
-            <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
-              <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
-                <Text className="text-blue-500 text-xl">👥</Text>
-              </View>
-              <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-1 text-center">Hours</Text>
-              <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.hours_completed || 0}</Text>
+          <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+            <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
+              <Text className="text-blue-500 text-xl">👥</Text>
             </View>
+            <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-1 text-center">Hours</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.hours_completed || 0}</Text>
           </View>
+        </View>
 
 
 
-          {/* Logout Button - Identical styling to Worker Profile */}
-          <View className="mx-5 mb-10 mt-6">
-            <TouchableOpacity
-              onPress={handleLogout}
-              className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
-              activeOpacity={0.85}
-            >
-              <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Logout Button - Identical styling to Worker Profile */}
+        <View className="mx-5 mb-10 mt-6">
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
+            activeOpacity={0.85}
+          >
+            <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

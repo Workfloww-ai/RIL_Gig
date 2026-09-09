@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { sendOtp, verifyOtp } from '@/lib/api';
+import { sendOtp, verifyOtp, checkMobile } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,6 +23,16 @@ export default function LoginPage() {
     setError('');
 
     try {
+      // First check if the user is a finance user
+      const checkRes = await checkMobile(`+91${mobile}`);
+
+      // If the backend doesn't explicitly return 'redirect_finance', they aren't a finance user
+      if (checkRes.data?.status !== 'redirect_finance') {
+        setError('Access denied. This portal is only for Finance users.');
+        setLoading(false);
+        return;
+      }
+
       await sendOtp(`+91${mobile}`);
       setStep(2);
     } catch (err: any) {
@@ -64,8 +74,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-sand p-4">
       <div className="w-full max-w-md rounded-2xl bg-cream p-8 shadow-sm border border-gray-100">
         <div className="mb-8 text-center flex flex-col items-center">
-          <img src="/images/logowithoutbg.png" alt="SahYogi Logo" className="h-16 w-16 object-contain rounded-xl shadow-sm mb-4 bg-white" />
-          <h1 className="text-3xl font-bold text-moss">SahYogi Finance</h1>
+          <img src="/images/logowithoutbg.png" alt="SahYogi Logo" className="h-24 w-24 object-contain rounded-xl shadow-sm mb-4 bg-white" />
+          <h1 className="text-3xl font-bold"><span style={{ color: '#0B5B31' }}>SahYogi</span> <span style={{ color: '#D32F2F' }}>Finance</span></h1>
           <p className="mt-2 text-sm text-sage">Secure access to payment processing</p>
         </div>
 

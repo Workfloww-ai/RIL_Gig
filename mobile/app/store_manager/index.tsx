@@ -85,6 +85,8 @@ export default function StoreManagerDashboard() {
   const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, boolean>>({});
 
   // Modal States
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<AcceptedWorker | null>(null);
@@ -105,7 +107,8 @@ export default function StoreManagerDashboard() {
 
   const handleVerifyOtp = async () => {
     if (otpInput.length !== 4) {
-      Alert.alert('Invalid', 'OTP must be 4 digits');
+      setStatusModalContent({ title: 'Invalid', message: 'OTP must be 4 digits', type: 'error' });
+      setShowStatusModal(true);
       return;
     }
     setVerifyingOtp(true);
@@ -114,11 +117,13 @@ export default function StoreManagerDashboard() {
         otp_code: otpInput,
         worker_id: otpWorkerId
       });
-      Alert.alert('Success', 'Job started successfully');
+      setStatusModalContent({ title: 'Success', message: 'Job started successfully', type: 'success' });
+      setShowStatusModal(true);
       setIsOtpModalOpen(false);
       fetchRequests();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to verify OTP');
+      setStatusModalContent({ title: 'Error', message: err.response?.data?.detail || 'Failed to verify OTP', type: 'error' });
+      setShowStatusModal(true);
     } finally {
       setVerifyingOtp(false);
     }
@@ -245,10 +250,12 @@ export default function StoreManagerDashboard() {
 
       setIsRatingModalOpen(false);
       setSelectedWorker(null);
-      Alert.alert('Success', 'Thank you! The SahYogi performance has been rated and shift is completed.');
+      setStatusModalContent({ title: 'Success', message: 'Thank you! The SahYogi performance has been rated and shift is completed.', type: 'success' });
+      setShowStatusModal(true);
       fetchRequests();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to submit rating');
+      setStatusModalContent({ title: 'Error', message: err.response?.data?.detail || 'Failed to submit rating', type: 'error' });
+      setShowStatusModal(true);
     } finally {
       setSubmittingRating(false);
     }
@@ -1117,6 +1124,30 @@ export default function StoreManagerDashboard() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </SafeAreaView>
   );
 }

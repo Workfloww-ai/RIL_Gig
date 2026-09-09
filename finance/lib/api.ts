@@ -32,6 +32,10 @@ api.interceptors.response.use(
   }
 );
 
+export const checkMobile = (mobile_number: string) => {
+  return api.post('/api/auth/check-mobile', { mobile_number });
+};
+
 export const sendOtp = (mobile_number: string) => {
   return api.post('/api/auth/send-otp', { mobile_number });
 };

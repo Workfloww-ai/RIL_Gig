@@ -70,7 +70,7 @@ export default function LoginScreen() {
           <View className="mb-10 items-center">
             <Image
               source={require('../assets/images/logo.png')}
-              style={{ width: 150, height: 150, resizeMode: 'contain', marginBottom: 16 }}
+              style={{ width: 250, height: 250, resizeMode: 'contain', marginBottom: 16 }}
             />
             <Text className="text-5xl font-bold text-[#D32F2F] mb-3 tracking-tight text-center leading-[65px]">Sah<Text className="text-moss/80">Yogi</Text></Text>
             <Text className="text-sage text-lg font-medium text-center">Enter your mobile number to get started.</Text>
@@ -94,7 +94,7 @@ export default function LoginScreen() {
           <View className="flex-1 min-h-[40px]" />
 
           <View className="items-center pb-4">
-            <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
+            <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY WORKFLOWW.AI</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
