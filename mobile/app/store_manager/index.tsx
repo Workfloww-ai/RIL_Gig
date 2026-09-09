@@ -548,7 +548,7 @@ export default function StoreManagerDashboard() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
       {/* ==================== 1. TOP HEADER ==================== */}
-      <View style={{ backgroundColor: '#FFFFFF', paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
+      <View style={{ backgroundColor: '#FFFFFF', paddingTop: 16, paddingBottom: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => router.push('/store_manager/profile')}
