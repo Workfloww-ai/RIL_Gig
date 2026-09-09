@@ -153,7 +153,7 @@ export default function HistoryPage() {
           <table className="w-full text-left text-sm text-slate">
             <thead className="bg-sand text-xs uppercase text-sage">
               <tr>
-                <th className="px-6 py-3">Sahyogi Details</th>
+                <th className="px-6 py-3">SahYogi Details</th>
                 <th className="px-6 py-3">UPI ID</th>
                 <th className="px-6 py-3">Jobs Summary</th>
                 <th className="px-6 py-3">Total Amount Paid</th>

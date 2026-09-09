@@ -7,43 +7,51 @@ def create_job_request(user_id: str, request_data: Dict[str, Any]):
     Creates a new job request (manpower request) for a store manager.
     Validates that the user is an active store manager and extracts store_id.
     """
-    # 1. Verify the user is an active store manager and get their store assignment
-    assignment_response = supabase.table("user_store_assignment").select(
-        "assignment_id, store_id"
-    ).eq("user_id", user_id).single().execute()
-    
-    if not assignment_response.data:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User does not have an active store manager assignment."
-        )
+    try:
+        # 1. Verify the user is an active store manager and get their store assignment
+        assignment_response = supabase.table("user_store_assignment").select(
+            "assignment_id, store_id"
+        ).eq("user_id", user_id).limit(1).execute()
         
-    store_assignment_id = assignment_response.data["assignment_id"]
-    store_id = assignment_response.data["store_id"]
-    
-    # 2. Prepare the payload for manpower_requests
-    payload = {
-        "job_id": request_data["job_id"],
-        "store_assignment_id": store_assignment_id,
-        "store_id": store_id,
-        "workers_needed": request_data["workers_needed"],
-        # Ensure date and time are stringified (Pydantic model_dump handles this at router level usually)
-        "shift_date": request_data["shift_date"],
-        "start_time": request_data["start_time"],
-        "hours_duration": request_data["hours_duration"],
-        "approval_status": "pending"
-    }
-    
-    # 3. Insert into manpower_requests table
-    insert_response = supabase.table("manpower_requests").insert(payload).execute()
-    
-    if not insert_response.data:
+        if not assignment_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User does not have an active store manager assignment."
+            )
+            
+        store_assignment_id = assignment_response.data[0]["assignment_id"]
+        store_id = assignment_response.data[0]["store_id"]
+        
+        # 2. Prepare the payload for manpower_requests
+        payload = {
+            "job_id": request_data["job_id"],
+            "store_assignment_id": store_assignment_id,
+            "store_id": store_id,
+            "workers_needed": request_data["workers_needed"],
+            "shift_date": request_data["shift_date"],
+            "start_time": request_data["start_time"],
+            "hours_duration": request_data["hours_duration"],
+            "approval_status": "pending"
+        }
+        
+        # 3. Insert into manpower_requests table
+        insert_response = supabase.table("manpower_requests").insert(payload).execute()
+        
+        if not insert_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create job request: No data returned."
+            )
+            
+        return insert_response.data[0]
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        print(f"Error in create_job_request: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create job request."
+            detail=f"Database error: {str(e)}"
         )
-        
-    return insert_response.data[0]
 
 def get_all_jobs(limit: int = None, offset: int = None):
     """

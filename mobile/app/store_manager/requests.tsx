@@ -125,7 +125,7 @@ export default function StoreManagerRequestsScreen() {
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 4 }}>Replacement in progress</Text>
                   <Text style={{ fontSize: 12, fontWeight: '500', color: '#B45309', lineHeight: 18 }}>A worker missed their check-in. We are automatically assigning a new replacement ASAP.</Text>
                 </View>
-                <TouchableOpacity onPress={() => setDismissedAlerts(prev => ({...prev, [job.request_id || job.id]: true}))} style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 2 }}>
+                <TouchableOpacity onPress={() => setDismissedAlerts(prev => ({ ...prev, [job.request_id || job.id]: true }))} style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 2 }}>
                   <Text style={{ color: '#D97706', fontWeight: '700', fontSize: 11 }}>Got it</Text>
                 </TouchableOpacity>
               </View>
@@ -133,7 +133,7 @@ export default function StoreManagerRequestsScreen() {
 
             <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
               <View>
-                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Sahyogis</Text>
+                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>SahYogi(s)</Text>
                 <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workers_needed || job.workersNeeded} Needed</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
@@ -14,6 +14,16 @@ export default function OTPScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const setToken = useAuthStore(state => state.setToken);
+
+  const formatMobileNumber = (num: string | string[]) => {
+    if (!num) return '';
+    const numStr = Array.isArray(num) ? num[0] : num.toString();
+    const cleaned = numStr.replace(/\D/g, '');
+    if (cleaned.startsWith('91') && cleaned.length >= 12) {
+      return `+91 ${cleaned.slice(2, 7)} ${cleaned.slice(7, 12)}`;
+    }
+    return numStr;
+  };
 
   const handleVerify = async () => {
     if (otp.length < 6) {
@@ -79,7 +89,7 @@ export default function OTPScreen() {
       const { token, status, role } = response.data;
       if (status === 'login_success') {
         setToken(token);
-        
+
         if (role === 'superadmin') {
           router.replace('/superadmin');
         } else if (role === 'store_manager' || role === 'supervisor') {
@@ -117,43 +127,63 @@ export default function OTPScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream pt-8">
-      <Watermark>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-center px-8">
-        <View className="mb-12">
-          <Text className="text-4xl font-bold text-slate mb-3 tracking-tight">Verify OTP</Text>
-          <Text className="text-sage text-lg font-medium leading-relaxed">
-            We've sent a verification code to {"\n"}
-            <Text className="font-bold text-moss/80">{mobile}</Text>
-          </Text>
+      {/* Decorative Brand Line - Top Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+        <View style={{ width: 16, height: 6, backgroundColor: '#0B5B31', zIndex: 2 }}>
+          <View style={{ position: 'absolute', left: 4, width: 40, height: 6, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+          <View style={{ position: 'absolute', left: 4, width: 4, height: 6, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
         </View>
+        <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+      </View>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20} className="flex-1 px-8">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        <Input
-          label="6-Digit OTP"
-          placeholder="------"
-          keyboardType="numeric"
-          value={otp}
-          onChangeText={setOtp}
-          error={error}
-          maxLength={6}
-          textAlign="center"
-          style={{ fontSize: 24, letterSpacing: 10, fontWeight: 'bold' }}
-        />
+          <View className="mb-12 items-center">
+            <Text className="text-4xl font-bold text-slate mb-3 tracking-tight">Verify OTP</Text>
+            <Text className="text-sage text-lg font-medium leading-relaxed text-center">
+              We've sent a verification code to {"\n"}
+              <Text className="font-bold text-moss/80">{formatMobileNumber(mobile)}</Text>
+            </Text>
+          </View>
 
-        <View className="mt-5">
-          <Button title="Verify & Login" onPress={handleVerify} loading={loading} />
-        </View>
-        <View style={{ marginTop: 8 }}>
-        <Button
-          title="Resend Code"
-          variant="ghost"
-          onPress={() => apiClient.post('/auth/send-otp', { mobile_number: mobile })}
-          disabled={loading}
-          style={{ color: '#0B5B31' }}
-          
-        />
-        </View>
+          <Input
+            label="6-Digit OTP"
+            placeholder="------"
+            keyboardType="numeric"
+            value={otp}
+            onChangeText={setOtp}
+            error={error}
+            maxLength={6}
+            textAlign="center"
+            style={{ fontSize: 24, letterSpacing: 10, fontWeight: 'bold' }}
+          />
+
+          <View className="mt-5">
+            <Button title="Login" onPress={handleVerify} loading={loading} />
+          </View>
+          <View style={{ marginTop: 8 }}>
+            <Button
+              title="Resend Code"
+              variant="ghost"
+              onPress={() => apiClient.post('/auth/send-otp', { mobile_number: mobile })}
+              disabled={loading}
+              style={{ color: '#0B5B31' }}
+            />
+          </View>
+
+        </ScrollView>
       </KeyboardAvoidingView>
-      </Watermark>
+
+      {/* Decorative Brand Line - Bottom Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+        <View style={{ width: 16, height: 6, backgroundColor: '#0B5B31', zIndex: 2 }}>
+          <View style={{ position: 'absolute', left: 4, width: 40, height: 6, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+          <View style={{ position: 'absolute', left: 4, width: 4, height: 6, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+        </View>
+        <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+      </View>
     </SafeAreaView>
   );
 }

@@ -149,7 +149,7 @@ export default function StoreManagerDashboard() {
   };
 
   // Sort State
-  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_desc');
+  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_asc');
   const [isSortModalOpen, setIsSortModalOpen] = useState(false);
 
   // Available Jobs and Stores for Modal
@@ -175,7 +175,7 @@ export default function StoreManagerDashboard() {
         if (isAOpen !== isBOpen) return isBOpen - isAOpen;
         const dateA = new Date(a.shift_date || 0).getTime();
         const dateB = new Date(b.shift_date || 0).getTime();
-        return dateB - dateA; // secondary sort by date
+        return dateA - dateB; // secondary sort by date (ascending)
       }
       if (sortOption === 'closed_first') {
         const isAClosed = a.request_status?.toLowerCase() === 'closed' ? 1 : 0;
@@ -183,7 +183,7 @@ export default function StoreManagerDashboard() {
         if (isAClosed !== isBClosed) return isBClosed - isAClosed;
         const dateA = new Date(a.shift_date || 0).getTime();
         const dateB = new Date(b.shift_date || 0).getTime();
-        return dateB - dateA; // secondary sort by date
+        return dateA - dateB; // secondary sort by date (ascending)
       }
       return 0;
     });
@@ -197,7 +197,7 @@ export default function StoreManagerDashboard() {
           const sortedJobs = [...res.data.requests].sort((a: any, b: any) => {
             const dateA = new Date(a.shift_date || 0).getTime();
             const dateB = new Date(b.shift_date || 0).getTime();
-            return dateB - dateA;
+            return dateA - dateB;
           });
           setJobsList(sortedJobs);
         }
@@ -244,7 +244,7 @@ export default function StoreManagerDashboard() {
 
       setIsRatingModalOpen(false);
       setSelectedWorker(null);
-      Alert.alert('Success', 'Thank you! The sahyogi performance has been rated and shift is completed.');
+      Alert.alert('Success', 'Thank you! The SahYogi performance has been rated and shift is completed.');
       fetchRequests();
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to submit rating');
@@ -341,11 +341,11 @@ export default function StoreManagerDashboard() {
         </View>
       </View>
 
-      <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shift_date} • {job.start_time}</Text>
+      <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''} • {job.start_time}</Text>
 
       <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
         <View>
-          <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>No. of Sahyogis</Text>
+          <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>No. of SahYogi(s)</Text>
           <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workers_needed} Needed</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
@@ -401,7 +401,7 @@ export default function StoreManagerDashboard() {
                 </View>
               </View>
 
-              <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
+              <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''} • {job.start_time}</Text>
 
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
@@ -435,11 +435,11 @@ export default function StoreManagerDashboard() {
         {isExpanded && (
           <View style={{ padding: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#FFFFFF' }}>
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
-              Assigned Sahyogis & Check-in Status
+              Assigned SahYogi(s) & Check-in Status
             </Text>
 
             {acceptedWorkers.length === 0 ? (
-              <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No Sahyogis assigned yet for this job.</Text>
+              <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No SahYogi(s) assigned yet for this job.</Text>
             ) : (
               acceptedWorkers.map((worker: any) => {
                 const statusInfo = getWorkerStatusDisplay(worker, job);
@@ -505,7 +505,7 @@ export default function StoreManagerDashboard() {
                         activeOpacity={0.85}
                       >
                         <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
-                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Sahyogi & Approve Shift</Text>
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate SahYogi & Approve Shift</Text>
                       </TouchableOpacity>
                     )}
 
@@ -531,25 +531,49 @@ export default function StoreManagerDashboard() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
       {/* ==================== 1. TOP HEADER ==================== */}
-      <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 24, paddingHorizontal: 20 }}>
+      <View style={{ backgroundColor: '#FFFFFF', paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => router.push('/store_manager/profile')}
-            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)', marginRight: 12 }}
+            style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F9F9F9', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E5E7EB', marginRight: 16 }}
             activeOpacity={0.8}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>
+            <Text style={{ color: '#0B5B31', fontSize: 20, fontWeight: '800' }}>
               {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'R'}
             </Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#3C3C3B', letterSpacing: -0.5 }}>
               Hi, {userProfile ? `${userProfile.first_name}` : 'Rajesh'}
             </Text>
-            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>
-              {managerStoreName} {userProfile?.role_name ? `. ${userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` : '. Store Manager'}
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.8}
+              style={{ fontSize: 12, color: '#666666', fontWeight: '600', marginTop: 2 }}
+            >
+              {managerStoreName} {userProfile?.role_name ? ` • ${userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` : ' • Store Manager'}
             </Text>
           </View>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={{ width: 85, height: 85, resizeMode: 'contain', marginLeft: 12 }}
+          />
+        </View>
+
+        {/* Decorative Brand Line - Absolute Bottom */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+
+          {/* Slant Container */}
+          <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
+            {/* Red slant bleeding to the right */}
+            <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+            {/* White slanted divider perfectly aligned */}
+            <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+          </View>
+
+          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
         </View>
       </View>
 
@@ -777,7 +801,7 @@ export default function StoreManagerDashboard() {
                 <Text style={{ color: '#F59E0B', marginRight: 6, fontSize: 14 }}>⭐⭐⭐⭐⭐</Text>
                 <Text style={{ color: '#B45309', fontWeight: '700', fontSize: 13 }}>5.0</Text>
               </View> */}
-              <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6 }}>Rated by Sahyogis & Operations</Text>
+              <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6 }}>Rated by SahYogi(s) & Operations</Text>
             </View>
 
             {/* Settings Options */}
@@ -788,7 +812,7 @@ export default function StoreManagerDashboard() {
               </TouchableOpacity>
 
               <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Sahyogi Escalations</Text>
+                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>SahYogi Escalations</Text>
                 <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
               </TouchableOpacity>
 
@@ -818,11 +842,10 @@ export default function StoreManagerDashboard() {
           left: 0,
           right: 0,
           backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
           flexDirection: 'row',
           justifyContent: 'space-around',
           paddingVertical: 12,
+          paddingTop: 16,
           paddingBottom: Platform.OS === 'ios' ? Math.max(24, insets.bottom) : Math.max(12, insets.bottom),
           elevation: 10,
           shadowColor: '#000',
@@ -832,6 +855,21 @@ export default function StoreManagerDashboard() {
           zIndex: 999,
         }}
       >
+        {/* Decorative Brand Line - Absolute Top */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          
+          {/* Slant Container */}
+          <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
+             {/* Red slant bleeding to the right */}
+             <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+             {/* White slanted divider perfectly aligned */}
+             <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+          </View>
+          
+          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+        </View>
+
         <TouchableOpacity onPress={() => setActiveTab('home')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons
             name={activeTab === 'home' ? 'home' : 'home-outline'}
@@ -877,7 +915,7 @@ export default function StoreManagerDashboard() {
               </TouchableOpacity>
             </View>
             <Text style={{ color: '#666666', fontSize: 14, marginBottom: 20 }}>
-              Ask the Sahyogi for their 4-digit start OTP to officially begin their shift.
+              Ask the SahYogi for their 4-digit start OTP to officially begin their shift.
             </Text>
 
             <TextInput
@@ -907,7 +945,7 @@ export default function StoreManagerDashboard() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Rate Sahyogi Performance</Text>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Rate SahYogi Performance</Text>
               <TouchableOpacity onPress={() => setIsRatingModalOpen(false)}>
                 <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
               </TouchableOpacity>

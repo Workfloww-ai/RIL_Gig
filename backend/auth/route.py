@@ -248,8 +248,8 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     if len(recent_otps.data) >= 3:
         raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 1 second. Please try again later.")
         
-    # otp_code = "000000" 
-    otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
+    otp_code = "000000" 
+    # otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
     
     # Calculate expiration time (e.g., 5 minutes from now)
     expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
@@ -267,8 +267,8 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     
     # 2. Send SMS (Bypassed for testing)
     # ye line uncomment krni h baad me
-    # success = True   
-    success = await send_otp_sms(payload.mobile_number, otp_code)  
+    success = True   
+    # success = await send_otp_sms(payload.mobile_number, otp_code)  
     
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send SMS. Check terminal logs for Dovesoft API errors.")

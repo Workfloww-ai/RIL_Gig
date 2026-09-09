@@ -50,7 +50,7 @@ async def get_pending_requests(limit: int = 100, offset: int = 0, user_id: str =
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city)"
-        ).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+        ).order("shift_date", desc=False).order("start_time", desc=False).range(offset, offset + limit - 1).execute()
         
         requests = []
         for r in response.data:

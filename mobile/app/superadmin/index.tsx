@@ -22,7 +22,7 @@ export default function SuperadminDashboard() {
   const [declineReason, setDeclineReason] = useState('');
   const [jobToDecline, setJobToDecline] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [declineReasonsList, setDeclineReasonsList] = useState<{id: string, reason_text: string}[]>([]);
+  const [declineReasonsList, setDeclineReasonsList] = useState<{ id: string, reason_text: string }[]>([]);
 
   const toggleSection = (section: 'pending' | 'approved' | 'declined') => {
     setExpandedSections(prev => ({
@@ -116,7 +116,7 @@ export default function SuperadminDashboard() {
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Sahyogi's Needed</Text>
+            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>SahYogi(s) Needed</Text>
             <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.workers_needed}</Text>
           </View>
           <View style={{ flex: 1 }}>
