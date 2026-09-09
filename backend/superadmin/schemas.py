@@ -10,6 +10,7 @@ class SuperadminJobResponse(BaseModel):
     shift_date: str
     start_time: str
     workers_needed: int
+    hours_duration: float
     compensation: float
     approval_status: str
     decline_reason: Optional[str] = None

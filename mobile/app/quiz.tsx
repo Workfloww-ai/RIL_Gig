@@ -19,6 +19,8 @@ export default function QuizScreen() {
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [currentSelection, setCurrentSelection] = useState<string | null>(null);
   const [isIncorrect, setIsIncorrect] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -65,24 +67,43 @@ export default function QuizScreen() {
   };
 
   const handleNext = () => {
-    if (!currentSelection) return;
+    if (!currentSelection && !showCorrectAnswer) return;
     
+    if (showCorrectAnswer) {
+      moveToNextQuestion();
+      return;
+    }
+
     const isCorrect = currentSelection === questions[currentQIndex].answer;
     
     if (isCorrect) {
-      if (currentQIndex < questions.length - 1) {
-        setCurrentQIndex(prev => prev + 1);
-        setCurrentSelection(null);
+      moveToNextQuestion();
+    } else {
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      if (newAttempts >= 2) {
+        setShowCorrectAnswer(true);
         setIsIncorrect(false);
       } else {
-        submitScore(100);
+        setIsIncorrect(true);
       }
+    }
+  };
+
+  const moveToNextQuestion = () => {
+    if (currentQIndex < questions.length - 1) {
+      setCurrentQIndex(prev => prev + 1);
+      setCurrentSelection(null);
+      setIsIncorrect(false);
+      setAttempts(0);
+      setShowCorrectAnswer(false);
     } else {
-      setIsIncorrect(true);
+      submitScore(100);
     }
   };
 
   const handleOptionSelect = (option: string) => {
+    if (showCorrectAnswer) return;
     setCurrentSelection(option);
     setIsIncorrect(false);
   };
@@ -127,10 +148,20 @@ export default function QuizScreen() {
 
         {question.options.map((option, idx) => {
           const isSelected = currentSelection === option;
+          const isActualAnswer = option === question.answer;
+          
           let borderClass = 'border-sage/20 bg-cream';
           let textClass = 'text-slate';
 
-          if (isSelected) {
+          if (showCorrectAnswer) {
+            if (isActualAnswer) {
+              borderClass = 'border-moss bg-green-50 border-2';
+              textClass = 'text-moss font-bold';
+            } else if (isSelected) {
+              borderClass = 'border-red-500 bg-red-50';
+              textClass = 'text-red-600';
+            }
+          } else if (isSelected) {
             if (isIncorrect) {
               borderClass = 'border-red-500 bg-red-50';
               textClass = 'text-red-600 font-bold';
@@ -156,7 +187,15 @@ export default function QuizScreen() {
         {isIncorrect && (
           <View className="bg-red-50 p-4 rounded-xl mt-2 border border-red-200">
             <Text className="text-red-600 font-bold text-center">
-              Incorrect answer. Please select another option.
+              Incorrect. {2 - attempts} attempt(s) left.
+            </Text>
+          </View>
+        )}
+
+        {showCorrectAnswer && (
+          <View className="bg-green-50 p-4 rounded-xl mt-2 border border-green-200">
+            <Text className="text-green-700 font-bold text-center">
+              Max attempts reached. See correct answer above.
             </Text>
           </View>
         )}
@@ -165,9 +204,9 @@ export default function QuizScreen() {
       {/* Footer Navigation */}
       <View className="flex-1 justify-end px-6 mb-10">
         <TouchableOpacity 
-          disabled={!currentSelection || submitting}
+          disabled={(!currentSelection && !showCorrectAnswer) || submitting}
           onPress={handleNext}
-          className={`py-4 rounded-xl items-center w-full ${(!currentSelection || submitting) ? 'bg-primary-300' : 'bg-moss'}`}
+          className={`py-4 rounded-xl items-center w-full ${((!currentSelection && !showCorrectAnswer) || submitting) ? 'bg-primary-300' : 'bg-moss'}`}
         >
           <Text className="text-white font-bold text-lg">
             {submitting ? 'Submitting...' : currentQIndex === questions.length - 1 ? 'Finish Module' : 'Check & Next'}

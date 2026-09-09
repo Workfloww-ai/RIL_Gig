@@ -114,7 +114,7 @@ export default function SuperadminDashboard() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Timing</Text>
-            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.start_time}</Text>
+            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.start_time} - {job.hours_duration} hrs</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
