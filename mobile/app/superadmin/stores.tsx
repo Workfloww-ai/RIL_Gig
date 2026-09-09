@@ -181,8 +181,22 @@ export default function SuperadminStores() {
       {/* Add Store Modal */}
       <Modal visible={isAddModalOpen} animationType="slide" transparent={true}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '90%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '90%', overflow: 'hidden' }}>
+            {/* Decorative Brand Line - Absolute Top */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row', zIndex: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+              
+              {/* Slant Container */}
+              <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
+                 {/* Red slant bleeding to the right */}
+                 <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+                 {/* White slanted divider perfectly aligned */}
+                 <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+              </View>
+              
+              <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Add New Store</Text>
               <TouchableOpacity onPress={() => setIsAddModalOpen(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="close" size={20} color="#4B5563" />

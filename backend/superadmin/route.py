@@ -75,7 +75,8 @@ async def get_pending_requests(limit: int = 100, offset: int = 0, user_id: str =
                 start_time=r.get("start_time", ""),
                 workers_needed=r.get("workers_needed", 1),
                 hours_duration=hours,
-                compensation=hours * base_comp,
+                # compensation=hours * base_comp,
+                compensation=hours * base_comp * r.get("workers_needed", 1),
                 approval_status=r.get("approval_status", ""),
                 decline_reason=r.get("decline_reason")
             ))

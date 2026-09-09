@@ -145,14 +145,16 @@ export default function SuperadminManagers() {
                       <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>{manager.store_name || 'Unassigned'}</Text>
                     </View>
                   </View>
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="storefront" size={20} color="#D32F2F" />
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: manager.is_verified ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="storefront" size={20} color={manager.is_verified ? '#15803D' : '#D32F2F'} />
                   </View>
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                   <Feather name="phone" size={14} color="#9CA3AF" style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 14, color: '#4B5563', fontWeight: '500' }}>{manager.mobile_number}</Text>
+                  <Text style={{ fontSize: 14, color: '#4B5563', fontWeight: '500' }}>
+                    {manager.mobile_number ? (manager.mobile_number.startsWith('91') && manager.mobile_number.length === 12 ? `+91 ${manager.mobile_number.slice(2, 7)} ${manager.mobile_number.slice(7)}` : manager.mobile_number) : 'N/A'}
+                  </Text>
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -181,8 +183,22 @@ export default function SuperadminManagers() {
       {/* Add Manager Modal */}
       <Modal visible={isAddModalOpen} animationType="slide" transparent={true}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '90%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '90%', overflow: 'hidden' }}>
+            {/* Decorative Brand Line - Absolute Top */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row', zIndex: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+              
+              {/* Slant Container */}
+              <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
+                 {/* Red slant bleeding to the right */}
+                 <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
+                 {/* White slanted divider perfectly aligned */}
+                 <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
+              </View>
+              
+              <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Add New Store Manager</Text>
               <TouchableOpacity onPress={() => setIsAddModalOpen(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="close" size={20} color="#4B5563" />
