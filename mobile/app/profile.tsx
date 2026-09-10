@@ -5,11 +5,13 @@ import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { useAuthStore } from '../src/store/authStore';
 import { Watermark } from '../src/components/Watermark';
+import IDBadge from '../src/components/IDBadge';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore(state => state.logout);
   const [userProfile, setUserProfile] = useState<{ first_name: string, last_name: string, ratings?: number, shifts_completed?: number, recent_activity?: any[] } | null>(null);
+  const [showIdCard, setShowIdCard] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -47,11 +49,14 @@ export default function ProfileScreen() {
     <Watermark>
     <SafeAreaView className="flex-1 bg-transparent pt-8">
       {/* Header */}
-      <View className="bg-cream px-6 py-4 flex-row items-center border-b border-sage/10 shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-sage/10 rounded-full mr-3">
+      <View className="bg-cream px-6 py-4 flex-row items-center justify-between border-b border-sage/10 shadow-sm z-10">
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-sage/10 rounded-full">
           <Feather name="arrow-left" size={20} color="#666666" />
         </TouchableOpacity>
-        <Text className="font-bold text-slate text-lg flex-1 text-center pr-13">My Profile</Text>
+        <Text className="font-bold text-slate text-lg text-center">My Profile</Text>
+        <TouchableOpacity onPress={() => setShowIdCard(true)} className="w-10 h-10 items-center justify-center bg-moss/10 rounded-full">
+          <Feather name="credit-card" size={20} color="#10472B" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -155,6 +160,15 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* ID Badge Modal */}
+      {userProfile && (
+        <IDBadge 
+          visible={showIdCard} 
+          onClose={() => setShowIdCard(false)} 
+          user={userProfile as any}
+        />
+      )}
     </SafeAreaView>
     </Watermark>
   );

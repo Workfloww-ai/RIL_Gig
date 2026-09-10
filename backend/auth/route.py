@@ -48,7 +48,7 @@ async def check_mobile(payload: MobileCheckRequest):
 @router.get("/me")
 async def get_my_profile(user_id: str = Depends(get_current_user)):
     from db.jobs_db import get_recent_activity
-    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id, ratings, shifts_completed").eq("user_id", user_id).execute()
+    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id, ratings, shifts_completed, address, city, state, dob, created_at").eq("user_id", user_id).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -62,7 +62,65 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
     if user_data["role_name"] == "worker":
         user_data["recent_activity"] = get_recent_activity(user_id)
         
+    # Fetch Profile Pic (Live Photo)
+    try:
+        doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", "Live Photo").execute()
+        if doc_type_resp.data:
+            doc_id = doc_type_resp.data[0]["doc_id"]
+            user_doc = supabase.table("user_documents").select("doc_url").eq("user_id", user_id).eq("doc_id", doc_id).execute()
+            if user_doc.data:
+                user_data["profile_pic_url"] = user_doc.data[0]["doc_url"]
+    except Exception as e:
+        print(f"Error fetching profile pic: {e}")
+        
     return user_data
+
+@router.post("/me/profile-pic")
+async def update_profile_pic(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
+    MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png"}
+    
+    mime_type = file.content_type.lower() if file.content_type else ""
+    ext = file.filename.lower().split('.')[-1] if file.filename else ""
+    is_valid = mime_type in ALLOWED_MIME_TYPES or ext in ["jpg", "jpeg", "png"]
+    
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename} (MIME: {mime_type}). Allowed types: JPEG, JPG, PNG.")
+    if file.size and file.size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File is too large. Maximum size is 2MB.")
+        
+    doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", "Live Photo").execute()
+    if not doc_type_resp.data:
+        raise HTTPException(status_code=400, detail="Live Photo document type not found in database.")
+    doc_id = doc_type_resp.data[0]["doc_id"]
+    
+    file_bytes = await file.read()
+    file_path = f"users/{user_id}/profile_pic_{file.filename}"
+    
+    try:
+        supabase.storage.from_("documents").upload(
+            file_path, 
+            file_bytes, 
+            file_options={"upsert": "true"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage upload failed: {str(e)}")
+    
+    doc_url = supabase.storage.from_("documents").get_public_url(file_path)
+    
+    # Update DB
+    existing = supabase.table("user_documents").select("user_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
+    if len(existing.data) > 0:
+        supabase.table("user_documents").update({"doc_url": doc_url}).eq("user_id", user_id).eq("doc_id", doc_id).execute()
+    else:
+        supabase.table("user_documents").insert({
+            "user_id": user_id,
+            "doc_id": doc_id,
+            "doc_number": "PROFILE_PIC",
+            "doc_url": doc_url
+        }).execute()
+        
+    return {"status": "success", "profile_pic_url": doc_url}
 
 @router.get("/me/stats")
 async def get_my_stats(month: str = None, user_id: str = Depends(get_current_user)):
@@ -460,11 +518,15 @@ async def verify_and_signup(
     uploaded_docs = []
     
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "application/pdf"}
     
     for file in files:
-        if file.content_type not in ALLOWED_MIME_TYPES:
-            raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed types: JPEG, PNG, PDF.")
+        mime_type = file.content_type.lower() if file.content_type else ""
+        ext = file.filename.lower().split('.')[-1] if file.filename else ""
+        is_valid = mime_type in ALLOWED_MIME_TYPES or ext in ["jpg", "jpeg", "png", "pdf"]
+        
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename} (MIME: {mime_type}). Allowed types: JPEG, JPG, PNG, PDF.")
         if file.size and file.size > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail=f"File {file.filename} is too large. Maximum size is 10MB.")
             
