@@ -122,7 +122,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
         req_details = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
         
         t90_status = "pending"
-        t60_status = "pending"
+        t45_status = "pending"
         
         if req_details.data:
             rd = req_details.data[0]
@@ -139,8 +139,8 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
                     if minutes_until_shift <= 90:
                         t90_status = "confirmed"
                     
-                    if minutes_until_shift <= 60:
-                        t60_status = "confirmed"
+                    if minutes_until_shift <= 45:
+                        t45_status = "confirmed"
                 except Exception as e:
                     print(f"Error parsing date for accept_job bypass: {e}")
         else:
@@ -153,7 +153,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
                 "p_request_id": request_id,
                 "p_worker_id": user_id,
                 "p_t90_status": t90_status,
-                "p_t60_status": t60_status
+                "p_t60_status": t45_status
             }
         ).execute()
 
@@ -239,7 +239,7 @@ async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str =
                 google_map_link=store_info.get("google_map_link"),
                 contact_number=store_info.get("contact_number"),
                 t90_status=r.get("t90_status", "pending"),
-                t60_status=r.get("t60_status", "pending"),
+                t45_status=r.get("t60_status", "pending"),
                 arrival_status=r.get("arrival_status", "pending"),
                 rating_score=r.get("rating_score"),
                 rating_tags=r.get("rating_tags"),
@@ -269,13 +269,13 @@ async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str =
 
 from pydantic import BaseModel
 class ConfirmJobRequest(BaseModel):
-    step: str # 't90', 't60', or 'arrival'
+    step: str # 't90', 't45', or 'arrival'
 
 @router.post("/confirm/{request_id}")
 async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id: str = Depends(get_current_user)):
     try:
         step = payload.step
-        if step not in ['t90', 't60', 'arrival']:
+        if step not in ['t90', 't45', 'arrival']:
             raise HTTPException(status_code=400, detail="Invalid step")
             
         # Check if the job is accepted by this user
@@ -288,7 +288,7 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
         update_data = {}
         if step == 't90':
             update_data = {"t90_status": "confirmed", "t90_accepted_at": now_iso}
-        elif step == 't60':
+        elif step == 't45':
             update_data = {"t60_status": "confirmed", "t60_accepted_at": now_iso}
         elif step == 'arrival':
             update_data = {"arrival_status": "arrived", "arrival_accepted_at": now_iso}
@@ -377,7 +377,7 @@ async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: st
                     "mobile_number": user_info.get("mobile_number"),
                     "status": w.get("assignment_status"),
                     "t90_status": w.get("t90_status", "pending") or "pending",
-                    "t60_status": w.get("t60_status", "pending") or "pending",
+                    "t45_status": w.get("t60_status", "pending") or "pending",
                     "arrival_status": w.get("arrival_status", "pending") or "pending",
                     "role": job_info.get("job_name", ""),
                     "rating": {

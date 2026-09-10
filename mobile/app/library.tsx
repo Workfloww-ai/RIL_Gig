@@ -130,11 +130,11 @@ export default function LibraryScreen() {
 
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
 
-  const handleCheckIn = async (request_id: string, step: 't90' | 't60' | 'arrival') => {
+  const handleCheckIn = async (request_id: string, step: 't90' | 't45' | 'arrival') => {
     setCheckingInId(`${request_id}-${step}`);
     try {
       await apiClient.post(`/jobs/confirm/${request_id}`, { step });
-      showToast(`Checked in for ${step === 'arrival' ? 'Arrival' : step === 't60' ? '60 mins' : '90 mins'}!`);
+      showToast(`Checked in for ${step === 'arrival' ? 'Arrival' : step === 't45' ? '45 mins' : '90 mins'}!`);
       if (step === 'arrival') {
         await handleStartOtp(request_id);
       }
@@ -164,7 +164,7 @@ export default function LibraryScreen() {
     }
   };
 
-  const getStepState = (status: string, shift_date: string, start_time: string, step: 't90' | 't60' | 'arrival') => {
+  const getStepState = (status: string, shift_date: string, start_time: string, step: 't90' | 't45' | 'arrival') => {
     if (status === 'confirmed' || status === 'arrived') return 'confirmed';
 
     // shift_date is YYYY-MM-DD
@@ -181,9 +181,9 @@ export default function LibraryScreen() {
       if (diffMins <= 100 && diffMins > 90) return 'active';
       return 'missed';
     }
-    if (step === 't60') {
-      if (diffMins > 70) return 'locked';
-      if (diffMins <= 70 && diffMins > 60) return 'active';
+    if (step === 't45') {
+      if (diffMins > 55) return 'locked';
+      if (diffMins <= 55 && diffMins > 45) return 'active';
       return 'missed';
     }
     if (step === 'arrival') {
@@ -444,7 +444,7 @@ export default function LibraryScreen() {
 
         {job.assignment_status === 'accepted' && job.arrival_status !== 'arrived' && (() => {
           const t90State = getStepState(job.t90_status, job.shift_date, job.start_time, 't90');
-          const t60State = getStepState(job.t60_status, job.shift_date, job.start_time, 't60');
+          const t45State = getStepState(job.t45_status, job.shift_date, job.start_time, 't45');
           const arrivalState = getStepState(job.arrival_status, job.shift_date, job.start_time, 'arrival');
           return (
             <View className="mb-3 border border-sage/10 rounded-2xl bg-cream p-3">
@@ -474,19 +474,19 @@ export default function LibraryScreen() {
 
                 <View className={`h-[2px] flex-1 mt-3 mx-1 ${t90State === 'confirmed' ? 'bg-moss/50' : 'bg-sage/20'}`} />
 
-                {/* T-60 */}
+                {/* T-45 */}
                 <View className="items-center w-[30%]">
-                  <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t60State === 'confirmed' ? 'bg-moss/10' : t60State === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
-                    <Feather name={t60State === 'confirmed' ? 'check' : t60State === 'missed' ? 'x' : 'navigation'} size={14} color={t60State === 'confirmed' ? '#10B981' : t60State === 'missed' ? '#D32F2F' : '#9CA3AF'} />
+                  <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t45State === 'confirmed' ? 'bg-moss/10' : t45State === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
+                    <Feather name={t45State === 'confirmed' ? 'check' : t45State === 'missed' ? 'x' : 'navigation'} size={14} color={t45State === 'confirmed' ? '#10B981' : t45State === 'missed' ? '#D32F2F' : '#9CA3AF'} />
                   </View>
-                  <Text className="text-[9px] font-bold text-slate text-center">{t60State === 'missed' ? 'Missed' : '60m Before'}</Text>
-                  {t90State !== 'locked' && t60State === 'active' && (
+                  <Text className="text-[9px] font-bold text-slate text-center">{t45State === 'missed' ? 'Missed' : '45m Before'}</Text>
+                  {t90State !== 'locked' && t45State === 'active' && (
                     <TouchableOpacity
-                      onPress={() => handleCheckIn(job.request_id, 't60')}
+                      onPress={() => handleCheckIn(job.request_id, 't45')}
                       disabled={checkingInId !== null}
                       className="bg-moss px-2 py-1.5 rounded mt-1.5 w-full items-center"
                     >
-                      {checkingInId === `${job.request_id}-t60` ? (
+                      {checkingInId === `${job.request_id}-t45` ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
                         <Text className="text-[8px] text-white font-bold uppercase">En Route</Text>
@@ -495,7 +495,7 @@ export default function LibraryScreen() {
                   )}
                 </View>
 
-                <View className={`h-[2px] flex-1 mt-3 mx-1 ${t60State === 'confirmed' ? 'bg-moss/50' : 'bg-sage/20'}`} />
+                <View className={`h-[2px] flex-1 mt-3 mx-1 ${t45State === 'confirmed' ? 'bg-moss/50' : 'bg-sage/20'}`} />
 
                 {/* Arrival */}
                 <View className="items-center w-[30%]">
@@ -503,7 +503,7 @@ export default function LibraryScreen() {
                     <Feather name={arrivalState === 'confirmed' ? 'check' : arrivalState === 'missed' ? 'x' : 'map-pin'} size={14} color={arrivalState === 'confirmed' ? '#10B981' : arrivalState === 'missed' ? '#D32F2F' : '#9CA3AF'} />
                   </View>
                   <Text className="text-[9px] font-bold text-slate text-center">{arrivalState === 'missed' ? 'Missed' : 'On Arrival'}</Text>
-                  {t60State !== 'locked' && arrivalState === 'active' && (
+                  {t45State !== 'locked' && arrivalState === 'active' && (
                     <TouchableOpacity
                       onPress={() => handleCheckIn(job.request_id, 'arrival')}
                       disabled={checkingInId !== null}

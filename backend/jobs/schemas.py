@@ -76,7 +76,7 @@ class AcceptedJobResponse(BaseModel):
     google_map_link: Optional[str] = None
     contact_number: Optional[str] = None
     t90_status: str
-    t60_status: str
+    t45_status: str
     arrival_status: str
     rating_score: Optional[int] = None
     rating_tags: Optional[List[str]] = None

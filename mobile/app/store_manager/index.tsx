@@ -11,6 +11,7 @@ import {
   Alert,
   Platform,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
@@ -35,7 +36,7 @@ interface AcceptedWorker {
   status: 'Review Pending' | 'En Route' | 'On Site' | 'Confirmed' | 'Completed';
   acceptances: {
     t90: AcceptanceStatus;
-    t60: AcceptanceStatus;
+    t45: AcceptanceStatus;
     onArrival: AcceptanceStatus;
   };
   rating?: {
@@ -323,12 +324,12 @@ export default function StoreManagerDashboard() {
     if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
       return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
     }
-    if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
+    if (minutesUntilShift <= 45 && worker.t45_status === 'pending') {
       return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
     }
 
-    // If they are not cancelled, and T-60 or T-90 is confirmed (or they bypassed it), they are Enroute.
-    if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
+    // If they are not cancelled, and T-45 or T-90 is confirmed (or they bypassed it), they are Enroute.
+    if (worker.t45_status === 'confirmed' || worker.t90_status === 'confirmed') {
       return { label: 'Enroute', bgColor: '#D1FAE5', textColor: '#059669' };
     }
 
