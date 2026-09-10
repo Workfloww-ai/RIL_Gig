@@ -35,7 +35,7 @@ export default function SuperadminLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       {/* Top Header */}
-      <View style={{ backgroundColor: '#FFFFFF', paddingTop: Platform.OS === 'ios' ? Math.max(16, insets.top) : 16 + insets.top, paddingBottom: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
+      <View style={{ backgroundColor: '#FFFFFF', paddingTop: Math.max(16, insets.top), paddingBottom: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => router.push('/superadmin/profile')}
@@ -61,7 +61,7 @@ export default function SuperadminLayout() {
             </Text>
           </View>
           <Image
-            source={require('../../assets/images/logo.png')}
+            source={require('../../assets/images/newlogo.png')}
             style={{ width: 85, height: 85, resizeMode: 'contain', marginLeft: 12 }}
           />
         </View>
@@ -69,16 +69,10 @@ export default function SuperadminLayout() {
         {/* Decorative Brand Line - Absolute Bottom */}
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
           <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-
-          {/* Slant Container */}
-          <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-            {/* Red slant bleeding to the right */}
-            <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-            {/* White slanted divider perfectly aligned */}
-            <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-          </View>
-
-          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
       </View>
 
@@ -113,16 +107,10 @@ export default function SuperadminLayout() {
         {/* Decorative Brand Line - Absolute Top */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
           <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-
-          {/* Slant Container */}
-          <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-            {/* Red slant bleeding to the right */}
-            <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-            {/* White slanted divider perfectly aligned */}
-            <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-          </View>
-
-          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
 
 
@@ -139,6 +127,11 @@ export default function SuperadminLayout() {
         <TouchableOpacity onPress={() => router.push('/superadmin/stores')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Feather name="box" size={22} color={pathname === '/superadmin/stores' ? '#D32F2F' : '#9CA3AF'} />
           <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/stores' ? '#D32F2F' : '#9CA3AF' }}>Stores</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push('/superadmin/deletions')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
+          <Feather name="trash-2" size={22} color={pathname === '/superadmin/deletions' ? '#D32F2F' : '#9CA3AF'} />
+          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/deletions' ? '#D32F2F' : '#9CA3AF' }}>Deletions</Text>
         </TouchableOpacity>
       </View>
     </View>

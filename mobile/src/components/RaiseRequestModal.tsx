@@ -15,6 +15,8 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
 
   // Form State
   const [requestDate, setRequestDate] = useState<string | undefined>();
@@ -79,7 +81,8 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
 
   const handlePublishRequest = async () => {
     if (!selectedJob || !requestStartTime || !requestDate) {
-      Alert.alert('Missing Details', 'Please fill in all required job request fields.');
+      setStatusModalContent({ title: 'Missing Details', message: 'Please fill in all required job request fields.', type: 'error' });
+      setShowStatusModal(true);
       return;
     }
 
@@ -111,12 +114,12 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
     try {
       await apiClient.post('/jobs/', payload);
       setSelectedJob(null);
-      Alert.alert('Request Sent!', 'The request has been sent to the superadmin for approval.');
-      onSuccess();
-      onClose();
+      setStatusModalContent({ title: 'Request Sent!', message: 'The request has been sent to the superadmin for approval.', type: 'success' });
+      setShowStatusModal(true);
     } catch (error) {
       console.error("Error creating request", error);
-      Alert.alert('Error', 'Failed to send request.');
+      setStatusModalContent({ title: 'Error', message: 'Failed to send request.', type: 'error' });
+      setShowStatusModal(true);
     }
   };
 
@@ -232,11 +235,10 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
             {/* Decorative Brand Line - Absolute Bottom Edge */}
             <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
               <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-              <View style={{ width: 16, height: 6, backgroundColor: '#0B5B31', zIndex: 2 }}>
-                <View style={{ position: 'absolute', left: 4, width: 40, height: 6, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-                <View style={{ position: 'absolute', left: 4, width: 4, height: 6, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-              </View>
-              <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
             </View>
           </View>
         </View>
@@ -292,6 +294,41 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
           onChange={onTimeChange}
         />
       )}
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => {
+              setShowStatusModal(false);
+              if (statusModalContent.type === 'success') {
+                onSuccess();
+                onClose();
+              }
+        }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => {
+              setShowStatusModal(false);
+              if (statusModalContent.type === 'success') {
+                onSuccess();
+                onClose();
+              }
+            }} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 }

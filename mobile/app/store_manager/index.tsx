@@ -86,6 +86,8 @@ export default function StoreManagerDashboard() {
   const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, boolean>>({});
 
   // Modal States
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<AcceptedWorker | null>(null);
@@ -106,7 +108,8 @@ export default function StoreManagerDashboard() {
 
   const handleVerifyOtp = async () => {
     if (otpInput.length !== 4) {
-      Alert.alert('Invalid', 'OTP must be 4 digits');
+      setStatusModalContent({ title: 'Invalid', message: 'OTP must be 4 digits', type: 'error' });
+      setShowStatusModal(true);
       return;
     }
     setVerifyingOtp(true);
@@ -115,11 +118,13 @@ export default function StoreManagerDashboard() {
         otp_code: otpInput,
         worker_id: otpWorkerId
       });
-      Alert.alert('Success', 'Job started successfully');
+      setStatusModalContent({ title: 'Success', message: 'Job started successfully', type: 'success' });
+      setShowStatusModal(true);
       setIsOtpModalOpen(false);
       fetchRequests();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to verify OTP');
+      setStatusModalContent({ title: 'Error', message: err.response?.data?.detail || 'Failed to verify OTP', type: 'error' });
+      setShowStatusModal(true);
     } finally {
       setVerifyingOtp(false);
     }
@@ -276,10 +281,12 @@ export default function StoreManagerDashboard() {
 
       setIsRatingModalOpen(false);
       setSelectedWorker(null);
-      Alert.alert('Success', 'Thank you! The SahYogi performance has been rated and shift is completed.');
+      setStatusModalContent({ title: 'Success', message: 'Thank you! The SahYogi performance has been rated and shift is completed.', type: 'success' });
+      setShowStatusModal(true);
       fetchRequests();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to submit rating');
+      setStatusModalContent({ title: 'Error', message: err.response?.data?.detail || 'Failed to submit rating', type: 'error' });
+      setShowStatusModal(true);
     } finally {
       setSubmittingRating(false);
     }
@@ -356,7 +363,7 @@ export default function StoreManagerDashboard() {
   const pastJobs = approvedJobs.filter(job => job.shift_date < todayStr);
 
   const renderSimpleRequestCard = (job: any) => (
-    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
+    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
         <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.job_name}</Text>
         <View
@@ -417,7 +424,7 @@ export default function StoreManagerDashboard() {
     return (
       <View
         key={job.request_id}
-        style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
+        style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
       >
         <TouchableOpacity
           onPress={() => toggleExpandJob(job.request_id)}
@@ -577,7 +584,7 @@ export default function StoreManagerDashboard() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
       {/* ==================== 1. TOP HEADER ==================== */}
-      <View style={{ backgroundColor: '#FFFFFF', paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
+      <View style={{ backgroundColor: '#FFFFFF', paddingTop: 16, paddingBottom: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => router.push('/store_manager/profile')}
@@ -598,11 +605,19 @@ export default function StoreManagerDashboard() {
               minimumFontScale={0.8}
               style={{ fontSize: 12, color: '#666666', fontWeight: '600', marginTop: 2 }}
             >
-              {managerStoreName} {userProfile?.role_name ? ` • ${userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` : ' • Store Manager'}
+              {managerStoreName} •{' '}
+              {(!userProfile?.role_name || userProfile.role_name === 'store_manager') ? (
+                <>
+                  <Text style={{ color: '#0B5B31' }}>Store</Text>{' '}
+                  <Text style={{ color: '#D32F2F' }}>Manager</Text>
+                </>
+              ) : (
+                userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+              )}
             </Text>
           </View>
           <Image
-            source={require('../../assets/images/logo.png')}
+            source={require('../../assets/images/newlogo.png')}
             style={{ width: 85, height: 85, resizeMode: 'contain', marginLeft: 12 }}
           />
         </View>
@@ -610,16 +625,10 @@ export default function StoreManagerDashboard() {
         {/* Decorative Brand Line - Absolute Bottom */}
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
           <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-
-          {/* Slant Container */}
-          <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-            {/* Red slant bleeding to the right */}
-            <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-            {/* White slanted divider perfectly aligned */}
-            <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-          </View>
-
-          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
       </View>
 
@@ -921,16 +930,10 @@ export default function StoreManagerDashboard() {
         {/* Decorative Brand Line - Absolute Top */}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
           <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-
-          {/* Slant Container */}
-          <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-            {/* Red slant bleeding to the right */}
-            <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-            {/* White slanted divider perfectly aligned */}
-            <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-          </View>
-
-          <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
 
         <TouchableOpacity onPress={() => setActiveTab('home')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
@@ -1162,6 +1165,30 @@ export default function StoreManagerDashboard() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </SafeAreaView>
   );
 }

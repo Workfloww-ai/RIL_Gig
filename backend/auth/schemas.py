@@ -29,3 +29,6 @@ class SendOTPRequest(BaseModel):
 class VerifyOTPRequest(BaseModel):
     mobile_number: str
     otp: str
+
+class DeleteAccountRequest(BaseModel):
+    reason: str

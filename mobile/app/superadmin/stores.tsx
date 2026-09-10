@@ -45,6 +45,8 @@ export default function SuperadminStores() {
   const [showStateModal, setShowStateModal] = useState(false);
   const [showCityModal, setShowCityModal] = useState(false);
   const [showStoreTypeModal, setShowStoreTypeModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   const [selectedStateCode, setSelectedStateCode] = useState('');
 
   const { control, handleSubmit, setValue, reset, formState: { errors } } = useForm<StoreFormData>({
@@ -93,13 +95,23 @@ export default function SuperadminStores() {
     setSubmitting(true);
     try {
       await apiClient.post('/superadmin/stores', data);
-      Alert.alert('Success', 'Store created successfully');
+      setStatusModalContent({
+        title: 'Success',
+        message: 'Store created successfully',
+        type: 'success'
+      });
+      setShowStatusModal(true);
       setIsAddModalOpen(false);
       reset();
       setSelectedStateCode('');
       fetchStores();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to create store');
+      setStatusModalContent({
+        title: 'Error',
+        message: err.response?.data?.detail || 'Failed to create store',
+        type: 'error'
+      });
+      setShowStatusModal(true);
     } finally {
       setSubmitting(false);
     }
@@ -185,16 +197,10 @@ export default function SuperadminStores() {
             {/* Decorative Brand Line - Absolute Top */}
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row', zIndex: 10 }}>
               <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-              
-              {/* Slant Container */}
-              <View style={{ width: 16, height: 8, backgroundColor: '#0B5B31', zIndex: 2 }}>
-                 {/* Red slant bleeding to the right */}
-                 <View style={{ position: 'absolute', left: 4, width: 40, height: 8, backgroundColor: '#D32F2F', transform: [{ skewX: '45deg' }] }} />
-                 {/* White slanted divider perfectly aligned */}
-                 <View style={{ position: 'absolute', left: 4, width: 4, height: 8, backgroundColor: '#FFFFFF', transform: [{ skewX: '45deg' }] }} />
-              </View>
-              
-              <View style={{ flex: 1, backgroundColor: '#D32F2F', zIndex: 1 }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Add New Store</Text>
@@ -398,6 +404,29 @@ export default function SuperadminStores() {
             </TouchableOpacity>
             <TouchableOpacity onPress={() => { setValue('store_type', 'hybrid store', { shouldValidate: true }); setShowStoreTypeModal(false); }} style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' }}>
               <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>Hybrid Store</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
