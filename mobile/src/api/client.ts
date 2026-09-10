@@ -1,11 +1,9 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-// Update this to your machine's local IP (e.g., 192.168.1.5) if testing on a physical device.
-// 10.0.2.2 works for Android Emulator. localhost works for iOS Simulator.
-// Using the new localtunnel address
-export const API_URL = 'https://witty-pets-pick.loca.lt/api'; // Tunneled via localtunnel for external network testing
-// export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://sahyogi-backend-540529464663.asia-south2.run.app/api';
+// Read the API URL from your mobile/.env file
+// It will fallback to localhost (for iOS simulator) if the env variable is missing
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
