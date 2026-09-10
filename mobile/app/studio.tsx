@@ -46,7 +46,7 @@ const PlayerProgress = ({ player, module, isFullscreen = false, router }: any) =
       <View className="h-2 bg-sage/10 rounded-full mb-2 overflow-hidden flex-row">
         <View className="h-full bg-moss/80" style={{ width: `${progressPercent}%` }} />
       </View>
-      
+
       <View className="flex-row justify-between items-center mb-5">
         <Text className="text-muted text-xs font-medium tracking-widest">
           {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
@@ -55,7 +55,7 @@ const PlayerProgress = ({ player, module, isFullscreen = false, router }: any) =
 
       <View className="flex-row items-center justify-end">
         {isCompleted ? (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.push({ pathname: '/quiz', params: { id: module.id } })}
             className="bg-green-500 px-5 py-3 rounded-xl shadow-sm shadow-green-500/30"
           >
@@ -74,7 +74,7 @@ const PlayerProgress = ({ player, module, isFullscreen = false, router }: any) =
 export default function StudioScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  
+
   const [activeTab, setActiveTab] = useState<'video' | 'audio'>('video');
   const [module, setModule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -109,7 +109,7 @@ export default function StudioScreen() {
 
   useEffect(() => {
     if (!player) return;
-    
+
     // Auto-hide controls logic
     if (player.playing) {
       resetControlsTimeout();
@@ -145,7 +145,7 @@ export default function StudioScreen() {
         setLoading(false);
       }
     };
-    
+
     if (id) fetchModule();
   }, [id]);
 
@@ -180,7 +180,7 @@ export default function StudioScreen() {
     }
   };
 
-  
+
 
   if (loading || !module) {
     return (
@@ -211,7 +211,7 @@ export default function StudioScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="flex-row mx-4 mt-4 bg-sage/10 rounded-full p-1">
-          <TouchableOpacity 
+          <TouchableOpacity
             className={`flex-1 py-2.5 rounded-full items-center ${activeTab === 'video' ? 'bg-cream' : ''}`}
             onPress={() => handleTabChange('video')}
           >
@@ -219,7 +219,7 @@ export default function StudioScreen() {
               📹 Video Lesson
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             className={`flex-1 py-2.5 rounded-full items-center ${activeTab === 'audio' ? 'bg-cream' : ''}`}
             onPress={() => handleTabChange('audio')}
           >
@@ -251,7 +251,7 @@ export default function StudioScreen() {
                     />
                   </View>
                 )}
-                
+
                 {/* Audio Player */}
                 {activeTab === 'audio' && !isFullscreen && (
                   <View className="absolute inset-0">
@@ -280,7 +280,7 @@ export default function StudioScreen() {
                 {showControls && (
                   <>
                     <Pressable className="absolute inset-0 z-20" onPress={resetControlsTimeout} />
-                    
+
                     <View className="absolute inset-0 flex-row items-center justify-center gap-6 z-30" pointerEvents="box-none">
                       <TouchableOpacity onPress={rewind10s} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
                         <Feather name="rotate-ccw" size={20} color="white" />
@@ -315,7 +315,7 @@ export default function StudioScreen() {
         </View>
 
         <View className="bg-white mx-4 rounded-3xl p-6 shadow-sm border border-gray-100 mb-10">
-          <Text className="text-lg font-bold text-charcoal mb-2">✨ Module Summary</Text>
+          <Text className="text-lg font-bold text-charcoal mb-2">Module Summary</Text>
           <Text className="text-muted leading-relaxed mb-6">
             {module.overview_text}
           </Text>
@@ -342,7 +342,7 @@ export default function StudioScreen() {
             contentFit="contain"
             nativeControls={false}
           />
-          
+
           {/* Invisible Overlay for Fullscreen */}
           {!showControls && (
             <Pressable className="absolute inset-0 z-10" onPress={resetControlsTimeout} />
@@ -352,14 +352,14 @@ export default function StudioScreen() {
           {showControls && (
             <>
               <Pressable className="absolute inset-0 z-20" onPress={resetControlsTimeout} />
-              
+
               <View className="absolute inset-0 flex-row items-center justify-center gap-10 z-30" pointerEvents="box-none">
                 <TouchableOpacity onPress={rewind10s} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
                   <Feather name="rotate-ccw" size={28} color="white" />
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  onPress={togglePlayPause} 
+                <TouchableOpacity
+                  onPress={togglePlayPause}
                   className="w-24 h-24 rounded-full bg-moss/90 items-center justify-center border border-white/30 shadow-2xl backdrop-blur-md"
                 >
                   {player?.playing ? (

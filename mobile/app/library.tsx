@@ -8,6 +8,7 @@ import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context'
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { Watermark } from '../src/components/Watermark';
+import StatusModal from '../src/components/StatusModal';
 
 interface Module {
   id: string;
@@ -36,7 +37,12 @@ export default function LibraryScreen() {
 
   const [activeTab, setActiveTab] = useState<'modules' | 'certificate' | 'jobs'>('modules');
   const [showCongrats, setShowCongrats] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [statusModal, setStatusModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    isError: false
+  });
 
   const certificateRef = React.useRef<any>(null);
 
@@ -195,11 +201,25 @@ export default function LibraryScreen() {
     return diffMs > 90 * 60 * 1000;
   };
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage('');
-    }, 2500);
+  const showToast = (msg: string, explicitIsError: boolean = false) => {
+    let title = 'Success';
+    let errorFlag = explicitIsError;
+
+    const lowerMsg = msg.toLowerCase();
+    if (lowerMsg.includes('failed') || lowerMsg.includes('not available') || lowerMsg.includes('error')) {
+      title = 'Action Failed';
+      errorFlag = true;
+    } else if (lowerMsg.includes('unlock')) {
+      title = 'Access Locked';
+      errorFlag = true;
+    }
+
+    setStatusModal({
+      visible: true,
+      title,
+      message: msg,
+      isError: errorFlag
+    });
   };
 
   useFocusEffect(
@@ -531,30 +551,42 @@ export default function LibraryScreen() {
 
   return (
     <Watermark>
-      <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-transparent">
+      <SafeAreaView style={{ flex: 1 }} className="flex-1 bg-transparent" edges={['top', 'left', 'right']}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} className="flex-1" showsVerticalScrollIndicator={false} bounces={false}>
 
           {/* Header Area */}
-          <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 16, paddingHorizontal: 24 }}>
-            <View className="flex-row justify-between items-center mb-6">
+          <View style={{ backgroundColor: '#FFFFFF', paddingTop: 8, paddingBottom: 8, paddingHorizontal: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
+            <View className="flex-row justify-between items-center mb-2">
               <View className="flex-row items-center">
                 <TouchableOpacity
                   onPress={() => router.push('/profile')}
-                  className="bg-cream h-10 w-10 rounded-full items-center justify-center mr-3 shadow-sm"
+                  className="bg-cream h-12 w-12 rounded-full items-center justify-center mr-3 shadow-sm border border-gray-200"
                 >
                   <Text className="text-moss font-bold text-xl">{userProfile?.first_name?.charAt(0).toUpperCase() || 'L'}</Text>
                 </TouchableOpacity>
                 <View>
-                  <Text className="text-white font-bold text-xl leading-tight">Hi, {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() + userProfile.first_name.slice(1).toLowerCase() : 'User'}</Text>
-                  <Text className="text-sand text-xs">Sahyogi</Text>
+                  <Text style={{ fontSize: 26, fontWeight: '800', color: '#3C3C3B', letterSpacing: -0.5 }}>Hi, {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() + userProfile.first_name.slice(1).toLowerCase() : 'User'}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', marginTop: 2 }}>
+                    <Text style={{ color: '#0B5B31' }}>Sah</Text>
+                    <Text style={{ color: '#D32F2F' }}>Yogi</Text>
+                  </Text>
                 </View>
               </View>
 
               {/* Top Right Logo */}
               <Image
-                source={require('../assets/images/logo-sahyogi.png')}
-                style={{ width: 50, height: 28, resizeMode: 'contain' }}
+                source={require('../assets/images/newlogo.png')}
+                style={{ width: 85, height: 85, resizeMode: 'contain' }}
               />
+            </View>
+
+            {/* Decorative Brand Line - Absolute Bottom */}
+            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row', overflow: 'hidden' }}>
+              <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+              <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+              <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+              <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+              <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
             </View>
 
 
@@ -564,28 +596,30 @@ export default function LibraryScreen() {
             {activeTab === 'modules' && (
               <View>
                 {/* Dashboard Progress Card */}
-                <View className="bg-moss rounded-3xl p-6 mb-8 shadow-sm">
+                <View
+                  className="bg-white rounded-3xl p-6 mb-8 shadow-sm border border-sage/10"
+                  style={{ borderLeftWidth: 6, borderLeftColor: '#D32F2F', borderRightWidth: 6, borderRightColor: '#0B5B31' }}
+                >
                   <View className="flex-row justify-between items-center mb-6">
                     <View className="flex-row items-center">
-                      <View className="h-12 w-12 rounded-full bg-moss/80 items-center justify-center border border-primary-400 mr-3">
-                        <Text className="text-white text-lg font-bold">{userProfile?.first_name?.charAt(0).toUpperCase() || 'U'}</Text>
+                      <View className="h-12 w-12 rounded-full bg-moss/10 items-center justify-center border border-moss/20 mr-3">
+                        <Text className="text-moss text-lg font-bold">{userProfile?.first_name?.charAt(0).toUpperCase() || 'U'}</Text>
                       </View>
                       <View>
-                        <Text className="text-primary-200 text-xs font-semibold tracking-wider">CANDIDATE DASHBOARD</Text>
-                        <Text className="text-white text-xl font-bold">{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Loading...'}</Text>
+                        <Text className="text-slate text-xl font-extrabold">{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Loading...'}</Text>
                       </View>
                     </View>
 
                   </View>
 
                   <View className="mb-2 flex-row justify-between">
-                    <Text className="text-white font-semibold"> Module Completion</Text>
-                    <Text className="text-white font-bold">{completedCount} of {totalCount} ({completionPercent}%)</Text>
+                    <Text className="text-slate font-bold"> Module Completion</Text>
+                    <Text className="text-moss font-extrabold">{completedCount} of {totalCount} ({completionPercent}%)</Text>
                   </View>
-                  <View className="h-2 bg-primary-800 rounded-full mb-4 overflow-hidden flex-row">
-                    <View className="h-full bg-blue-400 rounded-full" style={{ width: `${completionPercent}%` }} />
+                  <View className="h-2 bg-sage/20 rounded-full mb-4 overflow-hidden flex-row">
+                    <View className="h-full bg-moss rounded-full" style={{ width: `${completionPercent}%` }} />
                   </View>
-                  <Text className="text-sand text-sm">
+                  <Text className="text-muted text-sm font-medium">
                     Complete all video modules and pass each short quiz to get certified.
                   </Text>
                 </View>
@@ -750,7 +784,7 @@ export default function LibraryScreen() {
                     <View className="absolute bottom-7 right-4 z-10 opacity-85" style={{ transform: [{ scale: 0.5 }, { rotate: '-12deg' }], transformOrigin: 'bottom right' }}>
                       <View className="border-[3px] border-[#991b1b] rounded-lg p-[2px]">
                         <View className="border border-[#991b1b] rounded-[4px] px-3 py-1 items-center justify-center bg-white/50">
-                          <Text className="text-[#991b1b] text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ fontFamily: 'serif' }}>Sahyogi</Text>
+                          <Text className="text-[#991b1b] text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ fontFamily: 'serif' }}>SahYogi</Text>
                           <Text className="text-[#991b1b] text-[11px] font-black uppercase tracking-[0.15em]" style={{ fontFamily: 'serif' }}>Verified</Text>
                         </View>
                       </View>
@@ -962,23 +996,33 @@ export default function LibraryScreen() {
           </View>
         </ScrollView>
 
-        {/* Toast Popup */}
-        {toastMessage ? (
-          <View className="absolute bottom-24 self-center bg-gray-900/90 px-5 py-3 rounded-full z-50 shadow-md">
-            <Text className="text-white text-xs font-medium text-center">{toastMessage}</Text>
-          </View>
-        ) : null}
+        {/* Status Modal Popup */}
+        <StatusModal
+          visible={statusModal.visible}
+          title={statusModal.title}
+          message={statusModal.message}
+          isError={statusModal.isError}
+          onClose={() => setStatusModal(prev => ({ ...prev, visible: false }))}
+        />
 
         {/* Bottom Navigation */}
         <View
-          className="flex-row justify-around items-center bg-cream border-t border-sage/10 pt-3 px-2"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+          className="flex-row justify-around items-center bg-cream pt-3 px-2"
+          style={{ paddingBottom: Math.max(insets.bottom, 0), shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 16 }}
         >
+          {/* Decorative Brand Line - Absolute Top */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 100, overflow: 'hidden' }}>
+            <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+            <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+            <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+            <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+            <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+          </View>
           <TouchableOpacity
             onPress={() => setActiveTab('modules')}
             className="items-center flex-1"
           >
-            <Feather name="book-open" size={22} color={activeTab === 'modules' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4 }} />
+            <Feather name="book-open" size={22} color={activeTab === 'modules' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 2 }} />
             <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'modules' ? 'text-charcoal' : 'text-gray-400'}`}>Modules</Text>
           </TouchableOpacity>
 
@@ -986,7 +1030,7 @@ export default function LibraryScreen() {
             onPress={() => isAllCompleted ? setActiveTab('certificate') : showToast('Complete all training modules to unlock Certificate')}
             className="items-center flex-1"
           >
-            <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
+            <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 2, opacity: isAllCompleted ? 1 : 0.5 }} />
             <View className="flex-row items-center">
               <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-charcoal' : 'text-gray-400'}`}>Certificate</Text>
               {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
@@ -997,7 +1041,7 @@ export default function LibraryScreen() {
             onPress={() => isAllCompleted ? setActiveTab('jobs') : showToast('Complete all training modules to unlock Jobs')}
             className="items-center flex-1"
           >
-            <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 4, opacity: isAllCompleted ? 1 : 0.5 }} />
+            <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 2, opacity: isAllCompleted ? 1 : 0.5 }} />
             <View className="flex-row items-center">
               <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-charcoal' : 'text-gray-400'}`}>Jobs</Text>
               {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}

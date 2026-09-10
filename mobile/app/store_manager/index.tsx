@@ -332,7 +332,7 @@ export default function StoreManagerDashboard() {
   const pastJobs = approvedJobs.filter(job => job.shift_date < todayStr);
 
   const renderSimpleRequestCard = (job: any) => (
-    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
+    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
         <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.job_name}</Text>
         <View
@@ -393,7 +393,7 @@ export default function StoreManagerDashboard() {
     return (
       <View
         key={job.request_id}
-        style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
+        style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
       >
         <TouchableOpacity
           onPress={() => toggleExpandJob(job.request_id)}

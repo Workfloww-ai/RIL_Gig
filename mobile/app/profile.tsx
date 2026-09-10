@@ -88,10 +88,10 @@ export default function ProfileScreen() {
           {/* Decorative Brand Line - Absolute Bottom */}
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
             <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
-          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
-          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
-          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+            <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+            <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+            <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+            <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
           </View>
         </View>
 
@@ -263,7 +263,7 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
               Your account will be deactivated immediately and permanently deleted after 30 days. This action cannot be undone.
             </Text>
-            
+
             <TouchableOpacity
               onPress={handleDeleteRequest}
               disabled={isDeleting}
@@ -275,7 +275,7 @@ export default function ProfileScreen() {
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Yes, Deactivate Account</Text>
               )}
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               onPress={() => setShowDeleteConfirmModal(false)}
               disabled={isDeleting}
@@ -298,7 +298,7 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
               Your account is now deactivated. It will be permanently deleted with all data after 30 days. You can reactivate it before then by contacting support.
             </Text>
-            
+
             <TouchableOpacity
               onPress={() => {
                 setShowDeleteSuccessModal(false);

@@ -100,7 +100,7 @@ export default function SuperadminDashboard() {
   const declinedJobs = requestsList.filter(job => job.approval_status === 'declined' || job.approval_status === 'rejected');
 
   const renderJobCard = (job: any, isPending: boolean) => (
-    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
+    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <Text style={{ fontWeight: '700', color: '#111827', fontSize: 16, flex: 1, marginRight: 8 }}>{job.job_name}</Text>
         <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: job.approval_status === 'pending' ? '#FEF3C7' : job.approval_status === 'declined' ? '#FEE2E2' : '#DCFCE7' }}>
