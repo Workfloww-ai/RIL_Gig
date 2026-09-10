@@ -299,12 +299,12 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     test_mobile = os.getenv("TEST_MOBILE_NUMBER")
     if test_mobile and clean_mobile == test_mobile:
         return {"status": "otp_sent"}
-    # Check DB limit: max 3 OTPs per phone per 1 second (for testing)
-    one_sec_ago = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
-    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", one_sec_ago).execute()
+    # Check DB limit: max 3 OTPs per phone per 120 second (for testing)
+    onetwenty_sec_ago = (datetime.now(timezone.utc) - timedelta(seconds=120)).isoformat()
+    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", onetwenty_sec_ago).execute()
     
     if len(recent_otps.data) >= 3:
-        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 1 second. Please try again later.")
+        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 120 seconds. Please try again later.")
         
     otp_code = "000000" 
     # otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
@@ -444,17 +444,17 @@ async def verify_and_signup(
                 locked_until = locked_until[:-1] + "+00:00"
             locked_dt = datetime.fromisoformat(locked_until)
             if datetime.now(timezone.utc) < locked_dt:
-                raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 1 second.")
+                raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 2 minutes.")
         
         if str(otp_record["otp_hash"]) != hash_otp(otp):
             failed_attempts = otp_record.get("failed_attempts", 0) + 1
             update_data = {"failed_attempts": failed_attempts}
             if failed_attempts >= 5:
-                update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(seconds=1)).isoformat()
+                update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(seconds=120)).isoformat()
             supabase.table("otp_codes").update(update_data).eq("id", otp_record["id"]).execute()
             
             if failed_attempts >= 5:
-                raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 1 second.")
+                raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 2 minutes.")
             raise HTTPException(status_code=400, detail="Incorrect OTP.")
             
         expires_at_str = otp_record["expires_at"]
