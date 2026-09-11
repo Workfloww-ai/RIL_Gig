@@ -219,7 +219,14 @@ export default function StoreManagerDashboard() {
           if (loadMore) {
             setJobsList(prev => {
               const combined = [...prev, ...newRequests];
-              return combined.sort((a: any, b: any) => {
+              const uniqueMap = new Map();
+              combined.forEach(job => {
+                if (job.request_id) {
+                  uniqueMap.set(job.request_id, job);
+                }
+              });
+              const unique = Array.from(uniqueMap.values());
+              return unique.sort((a: any, b: any) => {
                 const dateA = new Date(a.shift_date || 0).getTime();
                 const dateB = new Date(b.shift_date || 0).getTime();
                 return dateA - dateB;
@@ -227,7 +234,14 @@ export default function StoreManagerDashboard() {
             });
             setOffset(currentOffset);
           } else {
-            const sortedJobs = [...newRequests].sort((a: any, b: any) => {
+            const uniqueMap = new Map();
+            newRequests.forEach((job: any) => {
+              if (job.request_id) {
+                uniqueMap.set(job.request_id, job);
+              }
+            });
+            const unique = Array.from(uniqueMap.values());
+            const sortedJobs = unique.sort((a: any, b: any) => {
               const dateA = new Date(a.shift_date || 0).getTime();
               const dateB = new Date(b.shift_date || 0).getTime();
               return dateA - dateB;

@@ -302,6 +302,15 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
 @router.get("/manager/requests")
 async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: str = None, user_id: str = Depends(get_current_user)):
     try:
+        # Verify store manager authorization
+        user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if not user_resp.data or not user_resp.data[0].get("role_id"):
+            raise HTTPException(status_code=403, detail="Unauthorized: No role assigned")
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized: Only store managers and supervisors can access this endpoint")
+
         # First find the store_assignment for this manager
         assignment = supabase.table("user_store_assignment").select("store_id, stores(store_name)").eq("user_id", user_id).execute()
         if not assignment.data:
@@ -457,12 +466,18 @@ async def manager_cancel_and_replace(
         
         # Verify store manager authorization
         user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
-        if user_resp.data and user_resp.data[0].get("role_id"):
-            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
-            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
-                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
-                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
-                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
+        if not user_resp.data or not user_resp.data[0].get("role_id"):
+            raise HTTPException(status_code=403, detail="Unauthorized: No role assigned")
+            
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized: Only store managers and supervisors can access this endpoint")
+            
+        store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+        if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+            raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
 
         
         # 1. Cancel the assignment
@@ -576,12 +591,18 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
         
         # Verify store manager authorization
         user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
-        if user_resp.data and user_resp.data[0].get("role_id"):
-            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
-            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
-                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
-                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
-                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
+        if not user_resp.data or not user_resp.data[0].get("role_id"):
+            raise HTTPException(status_code=403, detail="Unauthorized: No role assigned")
+            
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized: Only store managers and supervisors can access this endpoint")
+            
+        store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+        if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+            raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
         
         # Validate time limit before verifying
         req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
@@ -664,12 +685,18 @@ async def manager_complete_job(
         
         # Verify store manager authorization
         user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
-        if user_resp.data and user_resp.data[0].get("role_id"):
-            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
-            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
-                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
-                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
-                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
+        if not user_resp.data or not user_resp.data[0].get("role_id"):
+            raise HTTPException(status_code=403, detail="Unauthorized: No role assigned")
+            
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized: Only store managers and supervisors can access this endpoint")
+            
+        store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+        if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+            raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
                     
         if assignment_resp.data[0].get("assignment_status") != "started":
             raise HTTPException(status_code=400, detail="Only started shifts can be completed and rated")

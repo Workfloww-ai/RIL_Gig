@@ -59,7 +59,7 @@ def process_payment(payment_id: str, processed_by: str, transaction_reference: s
     if remarks is not None:
         update_data["remarks"] = remarks
         
-    result = supabase.table("payments").update(update_data).eq("payment_id", payment_id).execute()
+    result = supabase.table("payments").update(update_data).eq("payment_id", payment_id).eq("payment_status", "pending").execute()
     if result.data:
         return result.data[0]
     return None
