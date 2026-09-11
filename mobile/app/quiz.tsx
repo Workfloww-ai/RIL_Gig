@@ -11,7 +11,7 @@ interface Question {
 }
 
 export default function QuizScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, lang = 'english' } = useLocalSearchParams();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -29,12 +29,16 @@ export default function QuizScreen() {
         const response = await apiClient.get(`/content/modules`);
         const module = response.data.find((m: any) => m.id === id);
         
-        if (module && module.quiz_questions && module.quiz_questions.length > 0) {
-          setQuestions(module.quiz_questions);
-        } else {
-          // If no questions, auto pass for now
-          Alert.alert('No Quiz', 'There are no quiz questions for this module. Marking as passed!');
-          submitScore(100);
+        if (module) {
+          const currentQuizQuestions = lang === 'english' ? module.quiz_questions : module[`quiz_questions_${lang}`] || module.quiz_questions;
+          
+          if (currentQuizQuestions && currentQuizQuestions.length > 0) {
+            setQuestions(currentQuizQuestions);
+          } else {
+            // If no questions, auto pass for now
+            Alert.alert('No Quiz', 'There are no quiz questions for this module. Marking as passed!');
+            submitScore(100);
+          }
         }
       } catch (err) {
         console.error('Failed to load quiz:', err);
@@ -45,7 +49,7 @@ export default function QuizScreen() {
     };
     
     fetchModule();
-  }, [id]);
+  }, [id, lang]);
 
   const submitScore = async (score: number) => {
     setSubmitting(true);
