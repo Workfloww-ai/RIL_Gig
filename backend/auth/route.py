@@ -501,6 +501,8 @@ async def verify_and_signup(
         "gender": payload.gender,
         "upi_id": payload.upi_id,
         "alternate_number": payload.alternate_number,
+        "bank_account_number": payload.bank_account_number,
+        "ifsc_code": payload.ifsc_code,
         "role_id": role_id
     }
     user_dict = {k: v for k, v in user_dict.items() if v is not None and v != ""}

@@ -17,6 +17,8 @@ class SignupRequest(BaseModel):
     gender: Optional[str] = None
     upi_id: Optional[str] = None
     alternate_number: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
 
 class DocumentMetadata(BaseModel):
     filename: str

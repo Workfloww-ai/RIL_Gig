@@ -100,9 +100,13 @@ export default function ProfileScreen() {
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           {/* Profile Info Card */}
           <View className="bg-cream mx-5 mt-6 rounded-3xl p-6 shadow-sm border border-sage/10 items-center">
-            <View className="h-24 w-24 rounded-full bg-[#FEF2F2] items-center justify-center border-4 border-[#0B5B31] mb-4 shadow-sm">
+            <TouchableOpacity 
+              onPress={() => setShowIdCard(true)}
+              className="h-24 w-24 rounded-full bg-[#FEF2F2] items-center justify-center border-4 border-[#0B5B31] mb-4 shadow-sm"
+              activeOpacity={0.8}
+            >
               <Text className="text-[#D32F2F] text-4xl font-bold">{initial}</Text>
-            </View>
+            </TouchableOpacity>
 
             <Text className="text-2xl font-bold text-slate mb-1">{fullName.toUpperCase()}</Text>
             <Text className="text-muted text-sm font-medium mb-3">SahYogi</Text>
@@ -313,6 +317,13 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+      {userProfile && (
+        <IDBadge 
+          visible={showIdCard} 
+          onClose={() => setShowIdCard(false)} 
+          user={userProfile} 
+        />
+      )}
     </Watermark>
   );
 }
