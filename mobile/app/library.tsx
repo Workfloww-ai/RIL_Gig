@@ -817,7 +817,25 @@ export default function LibraryScreen() {
               <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
                 {/* Certificate Template */}
                 <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
-                  <View className="w-full bg-cream border-8 border-moss rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden" style={{ aspectRatio: 1.414 }}>
+                  <View className="w-full bg-[#FAFBFB] rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden border border-gray-200" style={{ aspectRatio: 1.414 }}>
+                    {/* Decorative Brand Line - Absolute Top */}
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 30 }}>
+                      <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+                      <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+                      <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+                      <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+                      <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+                    </View>
+
+                    {/* Decorative Brand Line - Absolute Bottom */}
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 30 }}>
+                      <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+                      <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+                      <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+                      <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+                      <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+                    </View>
+
                     {/* Branding Logo - Top Left */}
                     <View className="absolute top-0 left-0 z-20">
                       <Image
