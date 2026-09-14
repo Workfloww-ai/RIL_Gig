@@ -4,11 +4,13 @@ import { Slot, useRouter, usePathname } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../src/api/client';
+import { useAuthStore } from '../../src/store/authStore';
 
 export default function SuperadminLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const role = useAuthStore(state => state.role);
 
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
 
@@ -57,7 +59,7 @@ export default function SuperadminLayout() {
               style={{ fontSize: 12, fontWeight: '600', marginTop: 2 }}
             >
               <Text style={{ color: '#0B5B31' }}>SahYogi</Text>{' '}
-              <Text style={{ color: '#D32F2F' }}>Superadmin</Text>
+              <Text style={{ color: '#D32F2F' }}>{role === 'admin' ? 'Approver' : 'Superadmin'}</Text>
             </Text>
           </View>
           <Image
@@ -129,10 +131,12 @@ export default function SuperadminLayout() {
           <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/stores' ? '#D32F2F' : '#9CA3AF' }}>Stores</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/superadmin/deletions')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
-          <Feather name="trash-2" size={22} color={pathname === '/superadmin/deletions' ? '#D32F2F' : '#9CA3AF'} />
-          <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/deletions' ? '#D32F2F' : '#9CA3AF' }}>Deletions</Text>
-        </TouchableOpacity>
+        {role !== 'admin' && (
+          <TouchableOpacity onPress={() => router.push('/superadmin/deletions')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
+            <Feather name="trash-2" size={22} color={pathname === '/superadmin/deletions' ? '#D32F2F' : '#9CA3AF'} />
+            <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin/deletions' ? '#D32F2F' : '#9CA3AF' }}>Deletions</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

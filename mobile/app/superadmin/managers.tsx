@@ -10,6 +10,7 @@ import { State, City } from 'country-state-city';
 import { apiClient } from '../../src/api/client';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
+import { useAuthStore } from '../../src/store/authStore';
 
 // Validation Schema for Add Manager
 const managerSchema = z.object({
@@ -27,6 +28,7 @@ type ManagerFormData = z.infer<typeof managerSchema>;
 
 export default function SuperadminManagers() {
   const insets = useSafeAreaInsets();
+  const role = useAuthStore(state => state.role);
   
   const [managers, setManagers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,12 +138,14 @@ export default function SuperadminManagers() {
             >
               <Ionicons name="information-circle-outline" size={24} color="#6B7280" />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setIsAddModalOpen(true)}
-              style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-            >
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>+ Add Manager</Text>
-            </TouchableOpacity>
+            {role !== 'admin' && (
+              <TouchableOpacity
+                onPress={() => setIsAddModalOpen(true)}
+                style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>+ Add Manager</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
