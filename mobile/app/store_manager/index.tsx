@@ -424,14 +424,22 @@ export default function StoreManagerDashboard() {
     let shiftHasStarted = false;
     let isJobEnded = false;
     if (job.shift_date && job.start_time) {
-      const shiftDateTime = new Date(`${job.shift_date}T${job.start_time}`);
-      if (new Date() >= shiftDateTime) {
-        shiftHasStarted = true;
-      }
-      const hoursDuration = job.hours_duration || 0;
-      const endDateTime = new Date(shiftDateTime.getTime() + hoursDuration * 60 * 60 * 1000);
-      if (new Date() >= endDateTime) {
-        isJobEnded = true;
+      // Ensure the date is in YYYY-MM-DD format for reliable parsing
+      const formattedDate = String(job.shift_date).split('-')[0].length !== 4 
+        ? String(job.shift_date).split('-').reverse().join('-') 
+        : job.shift_date;
+        
+      const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+      
+      if (shiftDateTime instanceof Date && !isNaN(shiftDateTime.getTime())) {
+        if (new Date() >= shiftDateTime) {
+          shiftHasStarted = true;
+        }
+        const hoursDuration = Number(job.hours_duration) || 0;
+        const endDateTime = new Date(shiftDateTime.getTime() + hoursDuration * 60 * 60 * 1000);
+        if (new Date() >= endDateTime) {
+          isJobEnded = true;
+        }
       }
     }
 

@@ -100,8 +100,8 @@ export default function ProfileScreen() {
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           {/* Profile Info Card */}
           <View className="bg-cream mx-5 mt-6 rounded-3xl p-6 shadow-sm border border-sage/10 items-center">
-            <View className="h-24 w-24 rounded-full bg-moss/10 items-center justify-center border-4 border-moss/10 mb-4 shadow-sm">
-              <Text className="text-moss text-4xl font-bold">{initial}</Text>
+            <View className="h-24 w-24 rounded-full bg-[#FEF2F2] items-center justify-center border-4 border-[#0B5B31] mb-4 shadow-sm">
+              <Text className="text-[#D32F2F] text-4xl font-bold">{initial}</Text>
             </View>
 
             <Text className="text-2xl font-bold text-slate mb-1">{fullName.toUpperCase()}</Text>
@@ -191,10 +191,10 @@ export default function ProfileScreen() {
           <View className="mx-5 mb-10 mt-6">
             <TouchableOpacity
               onPress={handleLogout}
-              className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
+              className="bg-[#D32F2F] py-4 rounded-3xl items-center flex-row justify-center shadow-sm"
               activeOpacity={0.85}
             >
-              <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
+              <Text className="text-white font-bold text-lg mr-2">Logout</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
