@@ -39,7 +39,7 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
         # Fetch open requests and join jobs and stores
         response = supabase.table("manpower_requests").select(
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
-            "jobs(job_id, job_name, base_compensation), "
+            "jobs(job_id, job_name, base_compensation, description), "
             "stores(store_id, store_name, address, city, google_map_link)"
         ).eq("request_status", "open").execute()
         
@@ -99,6 +99,7 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
                 request_status=r.get("request_status", ""),
                 job_id=job_info.get("job_id", ""),
                 job_name=job_info.get("job_name", ""),
+                job_description=job_info.get("description"),
                 base_compensation=float(job_info.get("base_compensation", 0)),
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
@@ -203,7 +204,7 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
 async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
     try:
         response = supabase.table("worker_job_assignments").select(
-            "assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city, google_map_link, contact_number))"
+            "assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation, description), stores(store_id, store_name, address, city, google_map_link, contact_number))"
         ).eq("worker_id", user_id).execute()
         
         jobs = []
@@ -230,6 +231,7 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
                 hours_duration=float(req_info.get("hours_duration", 0)),
                 job_id=job_info.get("job_id", ""),
                 job_name=job_info.get("job_name", ""),
+                job_description=job_info.get("description"),
                 base_compensation=float(job_info.get("base_compensation", 0)),
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
@@ -302,7 +304,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
         # Now fetch requests for this store
         response = supabase.table("manpower_requests").select(
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
-            "jobs(job_id, job_name, base_compensation), "
+            "jobs(job_id, job_name, base_compensation, description), "
             "stores(store_id, store_name, address, city), "
             "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, users!fk_wja_worker(first_name, last_name, mobile_number))"
         ).eq("store_id", store_id).order("created_at", desc=True).execute()
@@ -355,6 +357,7 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                 "decline_reason": r.get("decline_reason", ""),
                 "job_id": job_info.get("job_id", ""),
                 "job_name": job_info.get("job_name", ""),
+                "job_description": job_info.get("description"),
                 "base_compensation": float(job_info.get("base_compensation", 0)),
                 "store_id": store_info.get("store_id", ""),
                 "store_name": store_info.get("store_name", ""),

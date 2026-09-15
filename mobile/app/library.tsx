@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable, Linking } from 'react-native';
+import { View, Text, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable, Linking, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
@@ -303,14 +303,18 @@ export default function LibraryScreen() {
       <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
         <View className="flex-row justify-between items-start mb-4">
           <View className="flex-1 pr-4">
-            <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-moss/20">
+            <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-2 flex-row items-center border border-moss/20">
               <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
-              <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
+              <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
             </View>
-            <View className="flex-row items-center mb-1.5">
-              <Text className="font-bold text-charcoal text-lg leading-tight mr-2">{job.store_name}</Text>
+            <View className="flex-row items-center mb-1.5 flex-wrap">
+              <Text className="font-bold text-charcoal text-xl leading-tight mr-1">{job.job_name}</Text>
+              <TouchableOpacity onPress={() => setStatusModal({ visible: true, title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', isError: false })} style={{ padding: 4 }}>
+                <Feather name="info" size={20} color="#6B7280" />
+              </TouchableOpacity>
+              <View className="flex-1" />
               {job.contact_number && (
-                <TouchableOpacity onPress={() => Linking.openURL(`tel:${job.contact_number}`)} className="bg-moss/10 p-1.5 rounded-full">
+                <TouchableOpacity onPress={() => Linking.openURL(`tel:${job.contact_number}`)} className="bg-moss/10 p-1.5 rounded-full ml-1">
                   <Feather name="phone" size={14} color="#0B5B31" />
                 </TouchableOpacity>
               )}
@@ -732,7 +736,7 @@ export default function LibraryScreen() {
                     {/* Branding Logo - Top Left */}
                     <View className="absolute top-0 left-0 z-20">
                       <Image
-                        source={require('../assets/images/icon_sahyogi.png')}
+                        source={require('../assets/images/newlogo.png')}
                         style={{ width: 80, height: 45, resizeMode: 'contain' }}
                       />
                     </View>
@@ -844,11 +848,16 @@ export default function LibraryScreen() {
                       <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
                         <View className="flex-row justify-between items-start mb-4">
                           <View className="flex-1 pr-4">
-                            <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-3 flex-row items-center border border-moss/20">
+                            <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-2 flex-row items-center border border-moss/20">
                               <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
-                              <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.job_name}</Text>
+                              <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
                             </View>
-                            <Text className="font-bold text-charcoal text-lg leading-tight mb-1.5">{job.store_name}</Text>
+                            <View className="flex-row items-center mb-1.5 flex-wrap">
+                              <Text className="font-bold text-charcoal text-xl leading-tight mr-1">{job.job_name}</Text>
+                              <TouchableOpacity onPress={() => setStatusModal({ visible: true, title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', isError: false })} style={{ padding: 4 }}>
+                                <Feather name="info" size={20} color="#6B7280" />
+                              </TouchableOpacity>
+                            </View>
                             <View className="flex-row items-start">
                               <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
                               <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>

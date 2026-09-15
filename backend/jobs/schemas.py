@@ -45,6 +45,7 @@ class JobResponse(BaseModel):
     request_status: str
     job_id: str
     job_name: str
+    job_description: Optional[str] = None
     base_compensation: float
     store_id: str
     store_name: str
@@ -68,6 +69,7 @@ class AcceptedJobResponse(BaseModel):
     hours_duration: float
     job_id: str
     job_name: str
+    job_description: Optional[str] = None
     base_compensation: float
     store_id: str
     store_name: str

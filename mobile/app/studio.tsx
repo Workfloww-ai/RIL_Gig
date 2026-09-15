@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable } from 'react-native';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Image } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -193,20 +193,36 @@ export default function StudioScreen() {
   // Helper to format s to mm:ss moved to PlayerProgress
 
   return (
-    <SafeAreaView className="flex-1 bg-sand pt-8">
-      <View className="bg-cream px-4 py-4 flex-row items-center border-b border-sage/10 shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-sage/10 rounded-full mr-3">
-          <Feather name="arrow-left" size={20} color="#666666" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9', paddingTop: 8 }}>
+      {/* ==================== FIXED HEADER ==================== */}
+      <View className="px-5 pt-8 pb-4 bg-white flex-row items-center relative mb-4">
+        <TouchableOpacity onPress={() => router.back()} className="mr-4">
+          <Feather name="arrow-left" size={24} color="#1A1A1A" />
         </TouchableOpacity>
+        
         <View className="flex-1">
-          <Text className="text-moss text-[10px] font-bold tracking-widest uppercase text-center mb-0.5">
+          <Text className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mb-1">
             MODULE • {module.category_name}
           </Text>
-          <Text className="font-bold text-charcoal text-center" numberOfLines={1}>
+          <Text className="text-lg font-extrabold text-gray-900 tracking-tight" numberOfLines={1}>
             {module.title}
           </Text>
         </View>
-        <View className="w-10" />
+
+        <Image
+          source={require('../assets/images/newlogo.png')}
+          className="w-12 h-12 ml-3"
+          resizeMode="contain"
+        />
+        
+        {/* Decorative Brand Line - Absolute Bottom */}
+        <View className="absolute bottom-0 left-0 right-0 h-1.5 flex-row">
+          <View className="flex-1 bg-moss" />
+          <View className="w-0 h-0 border-t-[6px] border-t-[#10472B] border-r-[6px] border-r-transparent -ml-[1px]" />
+          <View className="w-1 bg-transparent" />
+          <View className="w-0 h-0 border-b-[6px] border-b-[#D32F2F] border-l-[6px] border-l-transparent -mr-[1px]" />
+          <View className="flex-1 bg-clay" />
+        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -216,7 +232,7 @@ export default function StudioScreen() {
             onPress={() => handleTabChange('video')}
           >
             <Text className={`font-semibold ${activeTab === 'video' ? 'text-primary-600' : 'text-muted'}`}>
-              📹 Video Lesson
+              Video Lesson
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -224,7 +240,7 @@ export default function StudioScreen() {
             onPress={() => handleTabChange('audio')}
           >
             <Text className={`font-semibold ${activeTab === 'audio' ? 'text-primary-600' : 'text-muted'}`}>
-              🎙 Podcast (Audio)
+              Podcast (Audio)
             </Text>
           </TouchableOpacity>
         </View>
@@ -314,20 +330,33 @@ export default function StudioScreen() {
           <PlayerProgress player={player} module={module} router={router} />
         </View>
 
-        <View className="bg-white mx-4 rounded-3xl p-6 shadow-sm border border-gray-100 mb-10">
-          <Text className="text-lg font-bold text-charcoal mb-2">Module Summary</Text>
-          <Text className="text-muted leading-relaxed mb-6">
-            {module.overview_text}
-          </Text>
+        <View className="mx-4 mb-10 shadow-sm rounded-3xl">
+          <View className="bg-white rounded-3xl overflow-hidden border border-gray-100 relative">
+            <View className="p-6">
+              <Text className="text-lg font-bold text-charcoal mb-2">Module Summary</Text>
+              <Text className="text-muted leading-relaxed mb-6">
+                {module.overview_text}
+              </Text>
 
-          <View className="bg-sand p-4 rounded-2xl border border-sage/10">
-            <Text className="font-bold text-slate mb-3 text-sm">Key Module Topics:</Text>
-            <View className="flex-row flex-wrap gap-2">
-              {module.key_module_topics?.map((topic: string, i: number) => (
-                <View key={i} className="bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm">
-                  <Text className="text-muted text-xs font-medium">• {topic}</Text>
+              <View className="bg-sand p-4 rounded-2xl border border-sage/10 mb-2">
+                <Text className="font-bold text-slate mb-3 text-sm">Key Module Topics:</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {module.key_module_topics?.map((topic: string, i: number) => (
+                    <View key={i} className="bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm">
+                      <Text className="text-muted text-xs font-medium">• {topic}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
+              </View>
+            </View>
+            
+            {/* Decorative Brand Line - Card Bottom */}
+            <View className="absolute bottom-0 left-0 right-0 h-1.5 flex-row">
+              <View className="flex-1 bg-moss" />
+              <View className="w-0 h-0 border-t-[6px] border-t-[#10472B] border-r-[6px] border-r-transparent -ml-[1px]" />
+              <View className="w-1 bg-transparent" />
+              <View className="w-0 h-0 border-b-[6px] border-b-[#D32F2F] border-l-[6px] border-l-transparent -mr-[1px]" />
+              <View className="flex-1 bg-clay" />
             </View>
           </View>
         </View>

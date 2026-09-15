@@ -100,6 +100,12 @@ export default function StoreManagerRequestsScreen() {
           <View key={job.request_id || job.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
               <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.job_name || job.title}</Text>
+              <TouchableOpacity 
+                onPress={() => Alert.alert('Job Description', job.description || job.job_description || 'No description available for this job.')}
+                style={{ marginRight: 8, padding: 2 }}
+              >
+                <Ionicons name="information-circle-outline" size={22} color="#6B7280" />
+              </TouchableOpacity>
               <View
                 style={{
                   paddingHorizontal: 12,

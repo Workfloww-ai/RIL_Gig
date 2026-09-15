@@ -334,7 +334,17 @@ export default function StoreManagerDashboard() {
   const renderSimpleRequestCard = (job: any) => (
     <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-        <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.job_name}</Text>
+        <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, marginRight: 8 }}>{job.job_name}</Text>
+        <TouchableOpacity 
+          onPress={() => {
+            setStatusModalContent({ title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', type: 'success' });
+            setShowStatusModal(true);
+          }}
+          style={{ marginRight: 8, padding: 2 }}
+        >
+          <Ionicons name="information-circle-outline" size={22} color="#6B7280" />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
         <View
           style={{
             paddingHorizontal: 12,
@@ -403,7 +413,17 @@ export default function StoreManagerDashboard() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginRight: 8 }}>{job.job_name}</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setStatusModalContent({ title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', type: 'success' });
+                    setShowStatusModal(true);
+                  }}
+                  style={{ marginRight: 8, padding: 2 }}
+                >
+                  <Ionicons name="information-circle-outline" size={22} color="#6B7280" />
+                </TouchableOpacity>
+                <View style={{ flex: 1 }} />
                 <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
                 </View>
