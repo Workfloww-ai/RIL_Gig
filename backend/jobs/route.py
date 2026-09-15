@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, Any
-from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse, CompleteJobRequest
+from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse, CompleteJobRequest, ExtendJobRequest, RespondExtensionRequest
 from db.jobs_db import create_job_request, get_all_jobs
 from db.finance_db import create_payment_record
 from utils.jwt_auth import get_current_user
@@ -204,7 +204,7 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
 async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str = None, user_id: str = Depends(get_current_user)):
     try:
         response = supabase.table("worker_job_assignments").select(
-            "assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city, google_map_link, contact_number))"
+            "job_assignment_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, extension_status, extension_hours, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city, google_map_link, contact_number))"
         ).eq("worker_id", user_id).execute()
         
         jobs = []
@@ -224,6 +224,7 @@ async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str =
                 store_info = store_info[0]
                 
             jobs.append(AcceptedJobResponse(
+                job_assignment_id=r.get("job_assignment_id", ""),
                 assignment_status=r.get("assignment_status", ""),
                 request_id=req_info.get("request_id", ""),
                 shift_date=req_info.get("shift_date", ""),
@@ -243,7 +244,9 @@ async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str =
                 arrival_status=r.get("arrival_status", "pending"),
                 rating_score=r.get("rating_score"),
                 rating_tags=r.get("rating_tags"),
-                rating_feedback=r.get("rating_feedback")
+                rating_feedback=r.get("rating_feedback"),
+                extension_status=r.get("extension_status"),
+                extension_hours=r.get("extension_hours") or 0
             ))
             
         import datetime
@@ -332,7 +335,7 @@ async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: st
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city), "
-            "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, users!fk_wja_worker(first_name, last_name, mobile_number))"
+            "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, extension_status, extension_hours, users!fk_wja_worker(first_name, last_name, mobile_number))"
         )
         
         import datetime
@@ -393,7 +396,9 @@ async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: st
                         "score": w.get("rating_score") or 0,
                         "tags": w.get("rating_tags") or [],
                         "feedback": w.get("rating_feedback") or ""
-                    } if w.get("rating_score") else None
+                    } if w.get("rating_score") else None,
+                    "extension_status": w.get("extension_status"),
+                    "extension_hours": w.get("extension_hours") or 0
                 })
                 
             requests.append({
@@ -743,6 +748,14 @@ async def manager_complete_job(
                 
                 amount = float((hours_dec * base_comp_dec).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
                 
+                # Calculate extension premium if accepted
+                ext_hours = assignment_resp.data[0].get("extension_hours", 0)
+                ext_status = assignment_resp.data[0].get("extension_status")
+                if ext_status == "accepted" and ext_hours:
+                    ext_hours_dec = Decimal(str(ext_hours))
+                    ext_amount = float((ext_hours_dec * base_comp_dec * Decimal('1.10')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+                    amount += ext_amount
+                
                 user_res = supabase.table("users").select("upi_id").eq("user_id", worker_id).execute()
                 upi_id = user_res.data[0].get("upi_id") if user_res.data else None
                 
@@ -760,3 +773,38 @@ async def manager_complete_job(
         print(f"Error completing job assignment: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/manager/jobs/assignment/{assignment_id}/extend")
+async def request_job_extension(assignment_id: str, payload: ExtendJobRequest, user_id: str = Depends(get_current_user)):
+    try:
+        user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if not user_resp.data:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized")
+
+        supabase.table("worker_job_assignments").update({
+            "extension_hours": payload.hours,
+            "extension_status": "pending"
+        }).eq("job_assignment_id", assignment_id).execute()
+
+        return {"status": "success", "message": "Extension requested"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/worker/jobs/assignment/{assignment_id}/respond-extension")
+async def respond_job_extension(assignment_id: str, payload: RespondExtensionRequest, user_id: str = Depends(get_current_user)):
+    try:
+        if payload.status not in ["accepted", "rejected"]:
+            raise HTTPException(status_code=400, detail="Invalid status")
+
+        supabase.table("worker_job_assignments").update({
+            "extension_status": payload.status
+        }).eq("job_assignment_id", assignment_id).eq("worker_id", user_id).execute()
+
+        return {"status": "success", "message": f"Extension {payload.status}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -136,6 +136,11 @@ export default function StoreManagerDashboard() {
   const [feedbackText, setFeedbackText] = useState<string>('');
   const [submittingRating, setSubmittingRating] = useState<boolean>(false);
 
+  // Extend Job State
+  const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
+  const [extendHours, setExtendHours] = useState(1);
+  const [submittingExtension, setSubmittingExtension] = useState(false);
+
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
   const [offset, setOffset] = useState(0);
@@ -303,6 +308,23 @@ export default function StoreManagerDashboard() {
       setShowStatusModal(true);
     } finally {
       setSubmittingRating(false);
+    }
+  };
+
+  const handleExtendJob = async () => {
+    if (!selectedWorker) return;
+    setSubmittingExtension(true);
+    try {
+      await apiClient.post(`/jobs/manager/jobs/assignment/${selectedWorker.assignment_id}/extend`, { hours: extendHours });
+      setIsExtendModalOpen(false);
+      setStatusModalContent({ title: 'Success', message: 'Job extension request sent to the SahYogi.', type: 'success' });
+      setShowStatusModal(true);
+      fetchRequests();
+    } catch (err: any) {
+      setStatusModalContent({ title: 'Error', message: err.response?.data?.detail || 'Failed to request extension', type: 'error' });
+      setShowStatusModal(true);
+    } finally {
+      setSubmittingExtension(false);
     }
   };
 
@@ -504,6 +526,27 @@ export default function StoreManagerDashboard() {
             ) : (
               acceptedWorkers.map((worker: any) => {
                 const statusInfo = getWorkerStatusDisplay(worker, job);
+                
+                // Calculate worker-specific job end time including accepted extensions
+                let workerJobEnded = false;
+                if (job.shift_date && job.start_time) {
+                  const formattedDate = String(job.shift_date).split('-')[0].length !== 4 
+                    ? String(job.shift_date).split('-').reverse().join('-') 
+                    : job.shift_date;
+                  const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+                  
+                  if (shiftDateTime instanceof Date && !isNaN(shiftDateTime.getTime())) {
+                    const baseHours = Number(job.hours_duration) || 0;
+                    const extHours = worker.extension_status === 'accepted' ? (Number(worker.extension_hours) || 0) : 0;
+                    const totalHours = baseHours + extHours;
+                    
+                    const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
+                    if (new Date() >= endDateTime) {
+                      workerJobEnded = true;
+                    }
+                  }
+                }
+
                 return (
                   <View
                     key={worker.id}
@@ -555,6 +598,26 @@ export default function StoreManagerDashboard() {
                       </View>
                     </View>
 
+                    {worker.extension_status === 'accepted' && (
+                      <View style={{ backgroundColor: 'rgba(11, 91, 49, 0.05)', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(11, 91, 49, 0.2)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Feather name="clock" size={14} color="#0B5B31" style={{ marginRight: 6 }} />
+                          <Text style={{ color: '#0B5B31', fontWeight: '700', fontSize: 12 }}>Ext. Accepted (+{worker.extension_hours}h)</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ color: '#0B5B31', fontWeight: '800', fontSize: 14 }}>₹{Math.round((Number(job.hours_duration) || 0) * (Number(job.base_compensation) || 0) + (Number(worker.extension_hours) || 0) * (Number(job.base_compensation) || 0) * 1.1)}</Text>
+                          <Text style={{ color: '#0B5B31', fontSize: 10, fontWeight: '600' }}>New Shift End: {(() => {
+                            if (!job.shift_date || !job.start_time) return '';
+                            const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
+                            const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+                            const totalHours = (Number(job.hours_duration) || 0) + (Number(worker.extension_hours) || 0);
+                            const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
+                            return endDateTime.getHours().toString().padStart(2, '0') + ':' + endDateTime.getMinutes().toString().padStart(2, '0');
+                          })()}</Text>
+                        </View>
+                      </View>
+                    )}
+
                     {/* VERIFY OTP ACTION BUTTON */}
                     {worker.arrival_status === 'arrived' && worker.status === 'accepted' && !shiftHasStarted && (
                       <TouchableOpacity
@@ -568,15 +631,45 @@ export default function StoreManagerDashboard() {
                     )}
 
                     {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
-                    {worker.status === 'started' && isJobEnded && (
-                      <TouchableOpacity
-                        onPress={() => handleOpenRating(worker)}
-                        style={{ backgroundColor: '#D32F2F', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
-                        activeOpacity={0.85}
-                      >
-                        <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
-                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate SahYogi & Approve Shift</Text>
-                      </TouchableOpacity>
+                    {worker.status === 'started' && workerJobEnded && (
+                      <View style={{ marginTop: 12 }}>
+                        {worker.extension_status === 'pending' ? (
+                          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
+                            <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 13 }}>Waiting for SahYogi to accept extension</Text>
+                          </View>
+                        ) : (
+                          <>
+                            {worker.extension_status === 'rejected' && (
+                              <Text style={{ color: '#D32F2F', fontSize: 11, textAlign: 'center', marginBottom: 8, fontWeight: '600' }}>Extension Rejected by Worker</Text>
+                            )}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                              {!worker.extension_status && (
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    setSelectedWorker(worker);
+                                    setIsExtendModalOpen(true);
+                                  }}
+                                  style={{ width: 44, backgroundColor: '#F0FDF4', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 8, borderWidth: 1, borderColor: '#BBF7D0' }}
+                                  activeOpacity={0.85}
+                                >
+                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Feather name="clock" size={16} color="#0B5B31" />
+                                    <Text style={{ color: '#0B5B31', fontWeight: '900', fontSize: 12, marginLeft: 2, marginTop: -6 }}>+</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              )}
+
+                              <TouchableOpacity
+                                onPress={() => handleOpenRating(worker)}
+                                style={{ flex: 1, backgroundColor: '#D32F2F', borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 }}>RATE & END SHIFT</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </>
+                        )}
+                      </View>
                     )}
 
                     {/* RATED STATUS SUMMARY */}
@@ -1209,6 +1302,59 @@ export default function StoreManagerDashboard() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* EXTEND SHIFT MODAL */}
+      <Modal visible={isExtendModalOpen} animationType="slide" transparent={true}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, minHeight: '40%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Extend Shift</Text>
+              <TouchableOpacity onPress={() => setIsExtendModalOpen(false)}>
+                <Feather name="x" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 15, color: '#4B5563', marginBottom: 16 }}>Select the number of hours you would like to extend the shift for {selectedWorker?.name}:</Text>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
+              {[1, 2, 3].map((hours) => (
+                <TouchableOpacity
+                  key={hours}
+                  onPress={() => setExtendHours(hours)}
+                  style={{
+                    flex: 1,
+                    marginHorizontal: 4,
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: extendHours === hours ? '#0B5B31' : '#E5E7EB',
+                    backgroundColor: extendHours === hours ? '#F0FDF4' : '#FFFFFF',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: extendHours === hours ? '#0B5B31' : '#4B5563' }}>+{hours} hr</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>
+              An extension request will be sent to the SahYogi. Extended hours will be compensated at base rate + 10%.
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleExtendJob}
+              disabled={submittingExtension}
+              style={{ backgroundColor: '#D32F2F', paddingVertical: 16, borderRadius: 12, alignItems: 'center', opacity: submittingExtension ? 0.7 : 1 }}
+            >
+              {submittingExtension ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Send Extension Request</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
     </SafeAreaView>

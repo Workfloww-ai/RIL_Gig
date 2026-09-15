@@ -61,6 +61,7 @@ class AcceptJobResponse(BaseModel):
     message: str
 
 class AcceptedJobResponse(BaseModel):
+    job_assignment_id: str
     assignment_status: str
     request_id: str
     shift_date: date
@@ -81,6 +82,8 @@ class AcceptedJobResponse(BaseModel):
     rating_score: Optional[int] = None
     rating_tags: Optional[List[str]] = None
     rating_feedback: Optional[str] = None
+    extension_status: Optional[str] = None
+    extension_hours: Optional[int] = 0
 
 class MyAcceptedJobsResponse(BaseModel):
     status: str
@@ -90,3 +93,9 @@ class CompleteJobRequest(BaseModel):
     rating_score: int
     rating_tags: List[str]
     rating_feedback: str = ""
+
+class ExtendJobRequest(BaseModel):
+    hours: int
+
+class RespondExtensionRequest(BaseModel):
+    status: str
