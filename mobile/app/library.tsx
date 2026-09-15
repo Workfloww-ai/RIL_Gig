@@ -69,8 +69,27 @@ export default function LibraryScreen() {
   };
 
   const [jobsTab, setJobsTab] = useState<'available' | 'accepted'>('available');
+  
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
-  const [acceptedJobs, setAcceptedJobs] = useState<any[]>([]);
+  const [availableOffset, setAvailableOffset] = useState(0);
+  const [hasMoreAvailable, setHasMoreAvailable] = useState(true);
+  const [loadingMoreAvailable, setLoadingMoreAvailable] = useState(false);
+
+  const [acceptedToday, setAcceptedToday] = useState<any[]>([]);
+  const [todayOffset, setTodayOffset] = useState(0);
+  const [hasMoreToday, setHasMoreToday] = useState(true);
+  const [loadingToday, setLoadingToday] = useState(false);
+
+  const [acceptedUpcoming, setAcceptedUpcoming] = useState<any[]>([]);
+  const [upcomingOffset, setUpcomingOffset] = useState(0);
+  const [hasMoreUpcoming, setHasMoreUpcoming] = useState(true);
+  const [loadingUpcoming, setLoadingUpcoming] = useState(false);
+
+  const [acceptedPast, setAcceptedPast] = useState<any[]>([]);
+  const [pastOffset, setPastOffset] = useState(0);
+  const [hasMorePast, setHasMorePast] = useState(true);
+  const [loadingPast, setLoadingPast] = useState(false);
+
   const [jobsLoading, setJobsLoading] = useState(false);
   const [acceptingJobId, setAcceptingJobId] = useState<string | null>(null);
 
@@ -117,11 +136,11 @@ export default function LibraryScreen() {
 
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
 
-  const handleCheckIn = async (request_id: string, step: 't90' | 't60' | 'arrival') => {
+  const handleCheckIn = async (request_id: string, step: 't90' | 't45' | 'arrival') => {
     setCheckingInId(`${request_id}-${step}`);
     try {
       await apiClient.post(`/jobs/confirm/${request_id}`, { step });
-      showToast(`Checked in for ${step === 'arrival' ? 'Arrival' : step === 't60' ? '60 mins' : '90 mins'}!`);
+      showToast(`Checked in for ${step === 'arrival' ? 'Arrival' : step === 't45' ? '45 mins' : '90 mins'}!`);
       if (step === 'arrival') {
         await handleStartOtp(request_id);
       }
@@ -151,7 +170,7 @@ export default function LibraryScreen() {
     }
   };
 
-  const getStepState = (status: string, shift_date: string, start_time: string, step: 't90' | 't60' | 'arrival') => {
+  const getStepState = (status: string, shift_date: string, start_time: string, step: 't90' | 't45' | 'arrival') => {
     if (status === 'confirmed' || status === 'arrived') return 'confirmed';
 
     // shift_date is YYYY-MM-DD
@@ -168,9 +187,9 @@ export default function LibraryScreen() {
       if (diffMins <= 100 && diffMins > 90) return 'active';
       return 'missed';
     }
-    if (step === 't60') {
-      if (diffMins > 70) return 'locked';
-      if (diffMins <= 70 && diffMins > 60) return 'active';
+    if (step === 't45') {
+      if (diffMins > 55) return 'locked';
+      if (diffMins <= 55 && diffMins > 45) return 'active';
       return 'missed';
     }
     if (step === 'arrival') {
@@ -264,20 +283,88 @@ export default function LibraryScreen() {
   const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isAllCompleted = totalCount > 0 && completedCount === totalCount;
 
-  const fetchJobs = async () => {
-    setJobsLoading(true);
+  const fetchAvailableJobs = async (loadMore = false) => {
+    if (loadMore && (!hasMoreAvailable || loadingMoreAvailable)) return;
     try {
-      if (jobsTab === 'available') {
-        const res = await apiClient.get('/jobs/available');
-        setAvailableJobs(res.data.jobs || []);
+      if (loadMore) setLoadingMoreAvailable(true);
+      else { setJobsLoading(true); setAvailableOffset(0); }
+      
+      const currentOffset = loadMore ? availableOffset + 20 : 0;
+      const res = await apiClient.get(`/jobs/available?limit=20&offset=${currentOffset}`);
+      const newJobs = res.data.jobs || [];
+      setHasMoreAvailable(newJobs.length === 20);
+      
+      if (loadMore) {
+        setAvailableJobs(prev => [...prev, ...newJobs]);
+        setAvailableOffset(currentOffset);
       } else {
-        const res = await apiClient.get('/jobs/accepted');
-        setAcceptedJobs(res.data.jobs || []);
+        setAvailableJobs(newJobs);
+        setAvailableOffset(0);
       }
     } catch (err) {
-      console.error("Failed to fetch jobs:", err);
+      console.error(err);
+    } finally {
+      if (loadMore) setLoadingMoreAvailable(false);
+      else setJobsLoading(false);
+    }
+  };
+
+  const fetchAcceptedCategory = async (category: 'today'|'upcoming'|'past', loadMore = false) => {
+    let currentOffset = 0;
+    let hasMore = true;
+    let loadingMore = false;
+    if (category === 'today') { hasMore = hasMoreToday; loadingMore = loadingToday; currentOffset = loadMore ? todayOffset + 20 : 0; }
+    if (category === 'upcoming') { hasMore = hasMoreUpcoming; loadingMore = loadingUpcoming; currentOffset = loadMore ? upcomingOffset + 20 : 0; }
+    if (category === 'past') { hasMore = hasMorePast; loadingMore = loadingPast; currentOffset = loadMore ? pastOffset + 20 : 0; }
+    
+    if (loadMore && (!hasMore || loadingMore)) return;
+    
+    try {
+      if (loadMore) {
+        if (category === 'today') setLoadingToday(true);
+        if (category === 'upcoming') setLoadingUpcoming(true);
+        if (category === 'past') setLoadingPast(true);
+      } else {
+        setJobsLoading(true);
+      }
+      
+      const res = await apiClient.get(`/jobs/accepted?time_filter=${category}&limit=20&offset=${currentOffset}`);
+      const newJobs = res.data.jobs || [];
+      const isFull = newJobs.length === 20;
+      
+      if (category === 'today') {
+        setHasMoreToday(isFull);
+        setAcceptedToday(prev => loadMore ? [...prev, ...newJobs] : newJobs);
+        setTodayOffset(currentOffset);
+      } else if (category === 'upcoming') {
+        setHasMoreUpcoming(isFull);
+        setAcceptedUpcoming(prev => loadMore ? [...prev, ...newJobs] : newJobs);
+        setUpcomingOffset(currentOffset);
+      } else if (category === 'past') {
+        setHasMorePast(isFull);
+        setAcceptedPast(prev => loadMore ? [...prev, ...newJobs] : newJobs);
+        setPastOffset(currentOffset);
+      }
+    } catch (err) {
+      console.error(err);
     } finally {
       setJobsLoading(false);
+      setLoadingToday(false);
+      setLoadingUpcoming(false);
+      setLoadingPast(false);
+    }
+  };
+
+  const fetchJobs = () => {
+    if (jobsTab === 'available') {
+      fetchAvailableJobs();
+    } else {
+      setJobsLoading(true);
+      Promise.all([
+        fetchAcceptedCategory('today'),
+        fetchAcceptedCategory('upcoming'),
+        fetchAcceptedCategory('past')
+      ]).finally(() => setJobsLoading(false));
     }
   };
 
@@ -293,10 +380,7 @@ export default function LibraryScreen() {
     }
   }, [justCompleted, isAllCompleted]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayAcceptedJobs = acceptedJobs.filter(job => job.shift_date === todayStr);
-  const upcomingAcceptedJobs = acceptedJobs.filter(job => job.shift_date > todayStr);
-  const pastAcceptedJobs = acceptedJobs.filter(job => job.shift_date < todayStr);
+  const totalAcceptedCount = acceptedToday.length + acceptedUpcoming.length + acceptedPast.length;
 
   const renderAcceptedJobCard = (job: any) => {
     return (
@@ -384,7 +468,7 @@ export default function LibraryScreen() {
 
         {job.assignment_status === 'accepted' && job.arrival_status !== 'arrived' && (() => {
           const t90State = getStepState(job.t90_status, job.shift_date, job.start_time, 't90');
-          const t60State = getStepState(job.t60_status, job.shift_date, job.start_time, 't60');
+          const t45State = getStepState(job.t45_status, job.shift_date, job.start_time, 't45');
           const arrivalState = getStepState(job.arrival_status, job.shift_date, job.start_time, 'arrival');
           return (
             <View className="mb-3 border border-sage/10 rounded-2xl bg-cream p-3">
@@ -414,19 +498,19 @@ export default function LibraryScreen() {
 
                 <View className={`h-[2px] flex-1 mt-3 mx-1 ${t90State === 'confirmed' ? 'bg-moss/50' : 'bg-sage/20'}`} />
 
-                {/* T-60 */}
+                {/* T-45 */}
                 <View className="items-center w-[30%]">
-                  <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t60State === 'confirmed' ? 'bg-moss/10' : t60State === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
-                    <Feather name={t60State === 'confirmed' ? 'check' : t60State === 'missed' ? 'x' : 'navigation'} size={14} color={t60State === 'confirmed' ? '#10B981' : t60State === 'missed' ? '#D32F2F' : '#9CA3AF'} />
+                  <View className={`w-7 h-7 rounded-full items-center justify-center mb-1 ${t45State === 'confirmed' ? 'bg-moss/10' : t45State === 'missed' ? 'bg-clay/10' : 'bg-sage/10'}`}>
+                    <Feather name={t45State === 'confirmed' ? 'check' : t45State === 'missed' ? 'x' : 'navigation'} size={14} color={t45State === 'confirmed' ? '#10B981' : t45State === 'missed' ? '#D32F2F' : '#9CA3AF'} />
                   </View>
-                  <Text className="text-[9px] font-bold text-slate text-center">{t60State === 'missed' ? 'Missed' : '60m Before'}</Text>
-                  {t90State !== 'locked' && t60State === 'active' && (
+                  <Text className="text-[9px] font-bold text-slate text-center">{t45State === 'missed' ? 'Missed' : '45m Before'}</Text>
+                  {t90State !== 'locked' && t45State === 'active' && (
                     <TouchableOpacity
-                      onPress={() => handleCheckIn(job.request_id, 't60')}
+                      onPress={() => handleCheckIn(job.request_id, 't45')}
                       disabled={checkingInId !== null}
                       className="bg-moss px-2 py-1.5 rounded mt-1.5 w-full items-center"
                     >
-                      {checkingInId === `${job.request_id}-t60` ? (
+                      {checkingInId === `${job.request_id}-t45` ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
                         <Text className="text-[8px] text-white font-bold uppercase">En Route</Text>
@@ -435,7 +519,7 @@ export default function LibraryScreen() {
                   )}
                 </View>
 
-                <View className={`h-[2px] flex-1 mt-3 mx-1 ${t60State === 'confirmed' ? 'bg-moss/50' : 'bg-sage/20'}`} />
+                <View className={`h-[2px] flex-1 mt-3 mx-1 ${t45State === 'confirmed' ? 'bg-moss/50' : 'bg-sage/20'}`} />
 
                 {/* Arrival */}
                 <View className="items-center w-[30%]">
@@ -443,7 +527,7 @@ export default function LibraryScreen() {
                     <Feather name={arrivalState === 'confirmed' ? 'check' : arrivalState === 'missed' ? 'x' : 'map-pin'} size={14} color={arrivalState === 'confirmed' ? '#10B981' : arrivalState === 'missed' ? '#D32F2F' : '#9CA3AF'} />
                   </View>
                   <Text className="text-[9px] font-bold text-slate text-center">{arrivalState === 'missed' ? 'Missed' : 'On Arrival'}</Text>
-                  {t60State !== 'locked' && arrivalState === 'active' && (
+                  {t45State !== 'locked' && arrivalState === 'active' && (
                     <TouchableOpacity
                       onPress={() => handleCheckIn(job.request_id, 'arrival')}
                       disabled={checkingInId !== null}
@@ -551,6 +635,11 @@ export default function LibraryScreen() {
         )}
       </View>
     );
+  };
+
+  const isCloseToBottom = ({ layoutMeasurement, contentOffset, contentSize }: any) => {
+    const paddingToBottom = 20;
+    return layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
   };
 
   return (
@@ -844,11 +933,12 @@ export default function LibraryScreen() {
                       </Text>
                     </View>
                   ) : (
-                    availableJobs.map((job) => (
-                      <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
-                        <View className="flex-row justify-between items-start mb-4">
-                          <View className="flex-1 pr-4">
-                            <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-2 flex-row items-center border border-moss/20">
+                    <>
+                      {availableJobs.map((job) => (
+                        <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
+                          <View className="flex-row justify-between items-start mb-4">
+                            <View className="flex-1 pr-4">
+                              <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-2 flex-row items-center border border-moss/20">
                               <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
                               <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
                             </View>
@@ -908,10 +998,14 @@ export default function LibraryScreen() {
                           disabled={acceptingJobId !== null && acceptingJobId !== job.request_id}
                         />
                       </View>
-                    ))
+                    ))}
+                    {loadingMoreAvailable && (
+                      <ActivityIndicator size="small" color="#0B5B31" style={{ marginVertical: 10 }} />
+                    )}
+                  </>
                   )
                 ) : (
-                  acceptedJobs.length === 0 ? (
+                  totalAcceptedCount === 0 ? (
                     <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
                       <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Accepted Jobs</Text>
                       <Text className="text-muted text-center leading-relaxed">
@@ -928,7 +1022,7 @@ export default function LibraryScreen() {
                         <View className="flex-row items-center">
                           <Text className="text-base font-bold text-charcoal">Jobs Today</Text>
                           <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                            <Text className="text-primary-700 text-xs font-bold">{todayAcceptedJobs.length}</Text>
+                            <Text className="text-primary-700 text-xs font-bold">{acceptedToday.length}</Text>
                           </View>
                         </View>
                         <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
@@ -936,12 +1030,19 @@ export default function LibraryScreen() {
 
                       {expandedSections.today && (
                         <View className="mb-4">
-                          {todayAcceptedJobs.length === 0 ? (
+                          {acceptedToday.length === 0 ? (
                             <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
                               <Text className="text-muted text-sm">No job scheduled for today</Text>
                             </View>
                           ) : (
-                            todayAcceptedJobs.map(renderAcceptedJobCard)
+                            <>
+                              {acceptedToday.map(renderAcceptedJobCard)}
+                              {hasMoreToday && (
+                                <TouchableOpacity onPress={() => fetchAcceptedCategory('today', true)} disabled={loadingToday} className="py-3 items-center">
+                                  {loadingToday ? <ActivityIndicator size="small" color="#0B5B31" /> : <Text className="text-primary-700 font-bold">Load More</Text>}
+                                </TouchableOpacity>
+                              )}
+                            </>
                           )}
                         </View>
                       )}
@@ -954,7 +1055,7 @@ export default function LibraryScreen() {
                         <View className="flex-row items-center">
                           <Text className="text-base font-bold text-charcoal">Upcoming Jobs</Text>
                           <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                            <Text className="text-primary-700 text-xs font-bold">{upcomingAcceptedJobs.length}</Text>
+                            <Text className="text-primary-700 text-xs font-bold">{acceptedUpcoming.length}</Text>
                           </View>
                         </View>
                         <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
@@ -962,12 +1063,19 @@ export default function LibraryScreen() {
 
                       {expandedSections.upcoming && (
                         <View className="mb-4">
-                          {upcomingAcceptedJobs.length === 0 ? (
+                          {acceptedUpcoming.length === 0 ? (
                             <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
                               <Text className="text-muted text-sm">No upcoming jobs</Text>
                             </View>
                           ) : (
-                            upcomingAcceptedJobs.map(renderAcceptedJobCard)
+                            <>
+                              {acceptedUpcoming.map(renderAcceptedJobCard)}
+                              {hasMoreUpcoming && (
+                                <TouchableOpacity onPress={() => fetchAcceptedCategory('upcoming', true)} disabled={loadingUpcoming} className="py-3 items-center">
+                                  {loadingUpcoming ? <ActivityIndicator size="small" color="#0B5B31" /> : <Text className="text-primary-700 font-bold">Load More</Text>}
+                                </TouchableOpacity>
+                              )}
+                            </>
                           )}
                         </View>
                       )}
@@ -980,7 +1088,7 @@ export default function LibraryScreen() {
                         <View className="flex-row items-center">
                           <Text className="text-base font-bold text-charcoal">Past Jobs</Text>
                           <View className="bg-primary-100 px-2 py-0.5 rounded-full ml-3">
-                            <Text className="text-primary-700 text-xs font-bold">{pastAcceptedJobs.length}</Text>
+                            <Text className="text-primary-700 text-xs font-bold">{acceptedPast.length}</Text>
                           </View>
                         </View>
                         <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#666666" />
@@ -988,12 +1096,19 @@ export default function LibraryScreen() {
 
                       {expandedSections.past && (
                         <View className="mb-4">
-                          {pastAcceptedJobs.length === 0 ? (
+                          {acceptedPast.length === 0 ? (
                             <View className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 items-center justify-center">
                               <Text className="text-muted text-sm">No past jobs</Text>
                             </View>
                           ) : (
-                            pastAcceptedJobs.map(renderAcceptedJobCard)
+                            <>
+                              {acceptedPast.map(renderAcceptedJobCard)}
+                              {hasMorePast && (
+                                <TouchableOpacity onPress={() => fetchAcceptedCategory('past', true)} disabled={loadingPast} className="py-3 items-center">
+                                  {loadingPast ? <ActivityIndicator size="small" color="#0B5B31" /> : <Text className="text-primary-700 font-bold">Load More</Text>}
+                                </TouchableOpacity>
+                              )}
+                            </>
                           )}
                         </View>
                       )}

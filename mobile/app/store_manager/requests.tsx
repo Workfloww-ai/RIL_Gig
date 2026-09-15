@@ -30,12 +30,12 @@ export default function StoreManagerRequestsScreen() {
     if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
       return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
     }
-    if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
+    if (minutesUntilShift <= 45 && worker.t45_status === 'pending') {
       return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
     }
 
-    // If they are not cancelled, and T-60 or T-90 is confirmed, they are Enroute.
-    if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
+    // If they are not cancelled, and T-45 or T-90 is confirmed (or they bypassed it), they are Enroute.
+    if (worker.t45_status === 'confirmed' || worker.t90_status === 'confirmed') {
       return { label: '🟢 Enroute', color: '#10B981', showCancel: false };
     }
 

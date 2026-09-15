@@ -14,7 +14,7 @@ const formatTime = (inputSeconds: number) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const PlayerProgress = ({ player, module, isFullscreen = false, router }: any) => {
+const PlayerProgress = ({ player, module, language, isFullscreen = false, router }: any) => {
   const [currentTime, setCurrentTime] = useState(0);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ const PlayerProgress = ({ player, module, isFullscreen = false, router }: any) =
       <View className="flex-row items-center justify-end">
         {isCompleted ? (
           <TouchableOpacity
-            onPress={() => router.push({ pathname: '/quiz', params: { id: module.id } })}
+            onPress={() => router.push({ pathname: '/quiz', params: { id: module.id, lang: language } })}
             className="bg-green-500 px-5 py-3 rounded-xl shadow-sm shadow-green-500/30"
           >
             <Text className="text-white font-bold">Take Quiz</Text>
@@ -76,6 +76,8 @@ export default function StudioScreen() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'video' | 'audio'>('video');
+  const [language, setLanguage] = useState<'english' | 'hinglish' | 'bengali'>('english');
+  const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [module, setModule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -97,11 +99,17 @@ export default function StudioScreen() {
     }, 3000);
   };
 
-  const videoPlayer = useVideoPlayer(module?.video_url || null, (p) => {
+  const currentVideoUrl = language === 'english' ? module?.video_url : module?.[`video_url_${language}`] || module?.video_url;
+  const currentPodcastUrl = language === 'english' ? module?.podcast_url : module?.[`podcast_url_${language}`] || module?.podcast_url;
+  const currentTitle = language === 'english' ? module?.title : module?.[`title_${language}`] || module?.title;
+  const currentOverviewText = language === 'english' ? module?.overview_text : module?.[`overview_text_${language}`] || module?.overview_text;
+  const currentKeyModuleTopics = language === 'english' ? module?.key_module_topics : module?.[`key_module_topics_${language}`] || module?.key_module_topics;
+
+  const videoPlayer = useVideoPlayer(currentVideoUrl || null, (p) => {
     p.loop = false;
   });
 
-  const audioPlayer = useVideoPlayer(module?.podcast_url || null, (p) => {
+  const audioPlayer = useVideoPlayer(currentPodcastUrl || null, (p) => {
     p.loop = false;
   });
 
@@ -205,9 +213,14 @@ export default function StudioScreen() {
             MODULE • {module.category_name}
           </Text>
           <Text className="text-lg font-extrabold text-gray-900 tracking-tight" numberOfLines={1}>
-            {module.title}
+            {currentTitle}
           </Text>
         </View>
+        
+        <TouchableOpacity onPress={() => setShowLangDropdown(true)} className="flex-row items-center bg-sage/10 px-2 py-1.5 rounded-lg border border-sage/20 ml-2">
+          <Feather name="globe" size={14} color="#0B5B31" />
+          <Text className="text-moss text-xs font-semibold ml-1 capitalize">{language}</Text>
+        </TouchableOpacity>
 
         <Image
           source={require('../assets/images/newlogo.png')}
@@ -247,10 +260,10 @@ export default function StudioScreen() {
 
         <View className="bg-cream mx-4 rounded-3xl overflow-hidden shadow-sm border border-sage/10 p-1 mb-6">
           <View className="bg-black w-full aspect-video rounded-2xl overflow-hidden justify-center items-center relative">
-            {(!module?.video_url && activeTab === 'video') || (!module?.podcast_url && activeTab === 'audio') ? (
+            {(!currentVideoUrl && activeTab === 'video') || (!currentPodcastUrl && activeTab === 'audio') ? (
               <View className="items-center justify-center p-4">
                 <Text className="text-sage font-medium text-center">
-                  {activeTab === 'video' ? 'No video' : 'No podcast'} available for this module.
+                  {activeTab === 'video' ? 'No video' : 'No podcast'} available for this language.
                 </Text>
               </View>
             ) : (
@@ -327,7 +340,7 @@ export default function StudioScreen() {
             )}
           </View>
 
-          <PlayerProgress player={player} module={module} router={router} />
+          <PlayerProgress player={player} module={module} language={language} router={router} />
         </View>
 
         <View className="mx-4 mb-10 shadow-sm rounded-3xl">
@@ -335,7 +348,7 @@ export default function StudioScreen() {
             <View className="p-6">
               <Text className="text-lg font-bold text-charcoal mb-2">Module Summary</Text>
               <Text className="text-muted leading-relaxed mb-6">
-                {module.overview_text}
+                {currentOverviewText}
               </Text>
 
               <View className="bg-sand p-4 rounded-2xl border border-sage/10 mb-2">
@@ -346,6 +359,7 @@ export default function StudioScreen() {
                       <Text className="text-muted text-xs font-medium">• {topic}</Text>
                     </View>
                   ))}
+
                 </View>
               </View>
             </View>
@@ -410,8 +424,34 @@ export default function StudioScreen() {
           )}
 
           {/* Fullscreen Progress Bar */}
-          <PlayerProgress player={player} module={module} router={router} isFullscreen={true} />
+          <PlayerProgress player={player} module={module} language={language} router={router} isFullscreen={true} />
         </View>
+      </Modal>
+
+      {/* Language Selection Modal */}
+      <Modal visible={showLangDropdown} transparent animationType="fade">
+        <Pressable className="flex-1 bg-black/50 justify-center items-center" onPress={() => setShowLangDropdown(false)}>
+          <View className="bg-white w-4/5 max-w-sm rounded-3xl p-6 shadow-xl">
+            <Text className="text-lg font-bold text-charcoal mb-4 text-center">Select Language</Text>
+            
+            {(['english', 'hinglish', 'bengali'] as const).map((lang) => (
+              <TouchableOpacity
+                key={lang}
+                onPress={() => { setLanguage(lang); setShowLangDropdown(false); }}
+                className={`py-4 px-6 rounded-2xl mb-2 flex-row justify-between items-center ${language === lang ? 'bg-moss/10 border border-moss/30' : 'bg-gray-50 border border-gray-100'}`}
+              >
+                <Text className={`font-semibold text-base capitalize ${language === lang ? 'text-moss' : 'text-charcoal'}`}>
+                  {lang}
+                </Text>
+                {language === lang && <Feather name="check" size={20} color="#0B5B31" />}
+              </TouchableOpacity>
+            ))}
+            
+            <TouchableOpacity onPress={() => setShowLangDropdown(false)} className="mt-2 py-3">
+              <Text className="text-muted text-center font-semibold">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );

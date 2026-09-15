@@ -18,9 +18,16 @@ class SuperadminJobResponse(BaseModel):
 class RejectRequestPayload(BaseModel):
     decline_reason: str
 
+class CountsData(BaseModel):
+    pending: int
+    approved: int
+    declined: int
+
 class SuperadminRequestsResponse(BaseModel):
     status: str
     requests: List[SuperadminJobResponse]
+    counts: Optional[CountsData] = None
+    has_more: bool = False
 
 class ActionResponse(BaseModel):
     status: str

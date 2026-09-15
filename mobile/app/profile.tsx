@@ -5,11 +5,13 @@ import { Feather } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { useAuthStore } from '../src/store/authStore';
 import { Watermark } from '../src/components/Watermark';
+import IDBadge from '../src/components/IDBadge';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore(state => state.logout);
   const [userProfile, setUserProfile] = useState<{ first_name: string, last_name: string, ratings?: number, shifts_completed?: number, recent_activity?: any[] } | null>(null);
+  const [showIdCard, setShowIdCard] = useState(false);
 
   const handleLogout = () => {
     logout();
