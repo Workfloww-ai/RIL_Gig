@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sahyogi",
     "slug": "sahyogi",
-    "version": "1.0.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/newlogo.png",
     "splash": {
@@ -16,7 +16,7 @@
       "icon": "./assets/images/newlogo.png"
     },
     "android": {
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/newlogo.png",
