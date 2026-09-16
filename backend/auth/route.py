@@ -342,14 +342,13 @@ async def verify_otp(request: Request, payload: VerifyOTPRequest):
     clean, with_plus = get_mobile_variations(payload.mobile_number)
     response = supabase.table("otp_codes").select("id, mobile_number, otp_hash, expires_at, failed_attempts, locked_until").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
-    # --- BYPASS FOR SPECIFIC USER OR UNIVERSAL OTP FROM ENV ---
+    # --- BYPASS FOR SPECIFIC USER FROM ENV ---
     test_mobile = os.getenv("TEST_MOBILE_NUMBER", "").strip("'\"")
     test_otp = os.getenv("TEST_OTP", "").strip("'\"")
     
     is_bypass = False
-    if test_otp and payload.otp == test_otp:
-        is_bypass = True
-    elif test_mobile and clean == test_mobile:
+    # Bypass ONLY if it's the test mobile number AND they entered the test OTP
+    if test_mobile and test_otp and clean == test_mobile and payload.otp == test_otp:
         is_bypass = True
         
     if is_bypass:
