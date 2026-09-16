@@ -18,8 +18,8 @@ async def verify_superadmin(user_id: str = Depends(get_current_user)):
             raise HTTPException(status_code=403, detail="Role not found for user")
             
         role_res = supabase.table("roles").select("role_name").eq("role_id", role_id).execute()
-        if not role_res.data or role_res.data[0].get("role_name") != "superadmin":
-            raise HTTPException(status_code=403, detail="Not authorized. Superadmin access required.")
+        if not role_res.data or role_res.data[0].get("role_name") not in ["superadmin", "admin"]:
+            raise HTTPException(status_code=403, detail="Not authorized. Superadmin or Admin access required.")
             
         return user_id
     except HTTPException:

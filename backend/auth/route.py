@@ -501,6 +501,8 @@ async def verify_and_signup(
         "gender": payload.gender,
         "upi_id": payload.upi_id,
         "alternate_number": payload.alternate_number,
+        "bank_account_number": payload.bank_account_number,
+        "ifsc_code": payload.ifsc_code,
         "role_id": role_id
     }
     user_dict = {k: v for k, v in user_dict.items() if v is not None and v != ""}
@@ -581,6 +583,26 @@ async def verify_and_signup(
 @router.post("/delete-account")
 async def request_account_deletion(payload: DeleteAccountRequest, user_id: str = Depends(get_current_user)):
     try:
+        # Fetch user details first
+        user_res = supabase.table("users").select("*").eq("user_id", user_id).execute()
+        if user_res.data:
+            user = user_res.data[0]
+            
+            # Format address
+            address_parts = [user.get("address"), user.get("city"), user.get("state")]
+            full_address = ", ".join(part for part in address_parts if part)
+
+            # Insert into deactivated_users table
+            supabase.table("deactivated_users").insert({
+                "user_id": user_id,
+                "user_name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
+                "email": user.get("email"),
+                "phone_number": user.get("mobile_number"),
+                "address": full_address,
+                "date_of_joining": user.get("created_at"),
+                "avg_ratings": user.get("ratings")
+            }).execute()
+
         # Mark user as deactivated
         supabase.table("users").update({"is_deactivated": True}).eq("user_id", user_id).execute()
         

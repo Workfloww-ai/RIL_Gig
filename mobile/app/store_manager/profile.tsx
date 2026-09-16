@@ -85,8 +85,8 @@ export default function StoreManagerProfileScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Profile Info Card - Identical structure & styling to Worker Profile */}
         <View className="bg-white mx-5 mt-6 rounded-3xl p-6 shadow-sm border border-gray-100 items-center">
-          <View className="h-24 w-24 rounded-full bg-emerald-100 items-center justify-center border-4 border-emerald-50 mb-4 shadow-sm">
-            <Text className="text-emerald-800 text-4xl font-bold">{initial}</Text>
+          <View className="h-24 w-24 rounded-full bg-[#FEF2F2] items-center justify-center border-4 border-[#0B5B31] mb-4 shadow-sm">
+            <Text className="text-[#D32F2F] text-4xl font-bold">{initial}</Text>
           </View>
 
           <Text className="text-2xl font-bold text-gray-900 mb-1">{fullName.toUpperCase()}</Text>
@@ -147,10 +147,10 @@ export default function StoreManagerProfileScreen() {
         <View className="mx-5 mb-10 mt-6">
           <TouchableOpacity
             onPress={handleLogout}
-            className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
+            className="bg-[#D32F2F] py-4 rounded-3xl items-center flex-row justify-center shadow-sm"
             activeOpacity={0.85}
           >
-            <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
+            <Text className="text-white font-bold text-lg mr-2">Logout</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

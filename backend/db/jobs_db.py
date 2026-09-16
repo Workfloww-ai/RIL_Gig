@@ -98,7 +98,7 @@ def get_recent_activity(user_id: str):
     Fetches the recent completed jobs (activity) for a worker.
     """
     response = supabase.table("worker_job_assignments").select(
-        "job_assignment_id, assignment_status, updated_at, stores(store_name), manpower_requests(request_id, shift_date, hours_duration, jobs(job_name, base_compensation)), payments(payment_status)"
+        "job_assignment_id, assignment_status, updated_at, extension_status, extension_hours, stores(store_name), manpower_requests(request_id, shift_date, hours_duration, jobs(job_name, base_compensation)), payments(payment_status)"
     ).eq("worker_id", user_id).eq("assignment_status", "completed").order("updated_at", desc=True).execute()
     
     activities = []
@@ -125,7 +125,13 @@ def get_recent_activity(user_id: str):
             
         hours = float(req.get("hours_duration", 0))
         rate = float(job.get("base_compensation", 0))
-        amount = hours * rate
+        
+        # Calculate amount including extension premium
+        base_amount = hours * rate
+        ext_status = row.get("extension_status")
+        ext_hours = float(row.get("extension_hours") or 0)
+        ext_amount = (ext_hours * rate * 1.1) if ext_status == "accepted" else 0
+        amount = round(base_amount + ext_amount)
         
         payment = row.get("payments")
         payment_status = "pending"

@@ -105,7 +105,7 @@ export default function IDBadge({ visible, onClose, user }: IDBadgeProps) {
           
           {/* Header */}
           <View className="bg-moss py-5 items-center relative">
-            <Text className="text-white font-bold tracking-widest uppercase text-sm mt-1">Employee ID</Text>
+            <Text className="text-white font-bold tracking-widest uppercase text-sm mt-1">SahYogi ID</Text>
             
             {/* Close button */}
             <TouchableOpacity 
@@ -209,9 +209,9 @@ export default function IDBadge({ visible, onClose, user }: IDBadgeProps) {
 
           </View>
           
-          <View className="bg-sand py-3 items-center border-t border-sage/10">
+          {/* <View className="bg-sand py-3 items-center border-t border-sage/10">
             <Text className="text-[10px] text-sage">Powered by SahYogi Digital</Text>
-          </View>
+          </View> */}
 
         </View>
       </View>
