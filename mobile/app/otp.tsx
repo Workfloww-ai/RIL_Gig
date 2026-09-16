@@ -14,6 +14,7 @@ export default function OTPScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const setToken = useAuthStore(state => state.setToken);
+  const setRole = useAuthStore(state => state.setRole);
 
   const formatMobileNumber = (num: string | string[]) => {
     if (!num) return '';
@@ -89,8 +90,9 @@ export default function OTPScreen() {
       const { token, status, role } = response.data;
       if (status === 'login_success') {
         setToken(token);
+        setRole(role);
 
-        if (role === 'superadmin') {
+        if (role === 'superadmin' || role === 'admin') {
           router.replace('/superadmin');
         } else if (role === 'store_manager' || role === 'supervisor') {
           router.replace('/store_manager');
@@ -150,6 +152,8 @@ export default function OTPScreen() {
             label="6-Digit OTP"
             placeholder="------"
             keyboardType="numeric"
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
             value={otp}
             onChangeText={setOtp}
             error={error}

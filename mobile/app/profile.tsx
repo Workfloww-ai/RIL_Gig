@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from 'react-native';
+import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Linking, LayoutAnimation } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { useAuthStore } from '../src/store/authStore';
 import { Watermark } from '../src/components/Watermark';
@@ -23,6 +23,8 @@ export default function ProfileScreen() {
   const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [selectedDeleteReason, setSelectedDeleteReason] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -46,6 +48,19 @@ export default function ProfileScreen() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const FAQS = [
+    { question: "How do I start getting jobs?", answer: "After completing your mandatory training modules in the Library, you will start seeing available jobs posted by Store Managers in your area." },
+    { question: "What do the different job statuses mean?", answer: "'Available' means you can accept it. 'Accepted' means you are scheduled for it. 'Completed' means you finished the shift and are awaiting payment." },
+    { question: "How are ratings and feedback calculated?", answer: "After every completed shift, the Store Manager will rate your performance. Maintaining a high average rating increases your chances of getting more shifts." },
+    { question: "What happens if I miss the T45 or T90 checkpoints?", answer: "T45 and T90 are mandatory check-ins during your shift. Missing them cancels your shift and reopens the job in Job pool for replacement." },
+    { question: "What is a 'No Show'?", answer: "A 'No Show' is when you accept a job but fail to arrive at the store without prior cancellation. Repeated No Shows will lead to account deactivation." }
+  ];
+
+  const toggleFaq = (index: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedFaq(expandedFaq === index ? null : index);
   };
 
   useEffect(() => {
@@ -100,9 +115,13 @@ export default function ProfileScreen() {
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           {/* Profile Info Card */}
           <View className="bg-cream mx-5 mt-6 rounded-3xl p-6 shadow-sm border border-sage/10 items-center">
-            <View className="h-24 w-24 rounded-full bg-moss/10 items-center justify-center border-4 border-moss/10 mb-4 shadow-sm">
-              <Text className="text-moss text-4xl font-bold">{initial}</Text>
-            </View>
+            <TouchableOpacity 
+              onPress={() => setShowIdCard(true)}
+              className="h-24 w-24 rounded-full bg-[#FEF2F2] items-center justify-center border-4 border-[#0B5B31] mb-4 shadow-sm"
+              activeOpacity={0.8}
+            >
+              <Text className="text-[#D32F2F] text-4xl font-bold">{initial}</Text>
+            </TouchableOpacity>
 
             <Text className="text-2xl font-bold text-slate mb-1">{fullName.toUpperCase()}</Text>
             <Text className="text-muted text-sm font-medium mb-3">SahYogi</Text>
@@ -187,14 +206,23 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {/* Logout Button */}
+          {/* Action Buttons */}
           <View className="mx-5 mb-10 mt-6">
             <TouchableOpacity
-              onPress={handleLogout}
-              className="bg-red-50 py-4 rounded-3xl items-center border border-red-100 flex-row justify-center shadow-sm"
+              onPress={() => setShowSupportModal(true)}
+              className="bg-cream py-4 rounded-3xl items-center flex-row justify-center shadow-sm border border-sage/20 mb-4"
               activeOpacity={0.85}
             >
-              <Text className="text-red-600 font-bold text-lg mr-2">Logout</Text>
+              <Feather name="help-circle" size={20} color="#0B5B31" className="mr-2" />
+              <Text className="text-moss font-bold text-lg ml-2">Help & Support</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="bg-[#D32F2F] py-4 rounded-3xl items-center flex-row justify-center shadow-sm"
+              activeOpacity={0.85}
+            >
+              <Text className="text-white font-bold text-lg mr-2">Logout</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -250,6 +278,60 @@ export default function ProfileScreen() {
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Continue</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Help & Support Modal */}
+      <Modal visible={showSupportModal} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#F9FAFB', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' }}>
+            
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Help & Support</Text>
+              <TouchableOpacity onPress={() => setShowSupportModal(false)} style={{ padding: 4, backgroundColor: '#F3F4F6', borderRadius: 20 }}>
+                <Feather name="x" size={20} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#4B5563', marginBottom: 16 }}>Frequently Asked Questions</Text>
+              
+              {FAQS.map((faq, index) => (
+                <View key={index} style={{ backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', overflow: 'hidden' }}>
+                  <TouchableOpacity
+                    onPress={() => toggleFaq(index)}
+                    style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#1F2937', flex: 1, paddingRight: 12 }}>{faq.question}</Text>
+                    <Feather name={expandedFaq === index ? "chevron-up" : "chevron-down"} size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                  
+                  {expandedFaq === index && (
+                    <View style={{ padding: 16, paddingTop: 0, backgroundColor: '#FFFFFF' }}>
+                      <Text style={{ fontSize: 14, color: '#4B5563', lineHeight: 22 }}>{faq.answer}</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+
+              <View style={{ marginTop: 32, padding: 20, backgroundColor: '#FFFFFF', borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 }}>
+                <View style={{ width: 48, height: 48, backgroundColor: '#FEF2F2', borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <Feather name="phone-call" size={24} color="#D32F2F" />
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Still need help?</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>If your query is not resolved, please contact our support team directly.</Text>
+                
+                <TouchableOpacity
+                  onPress={() => Linking.openURL('whatsapp://send?phone=+919211540400')}
+                  style={{ backgroundColor: '#D32F2F', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'center' }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>Contact Support</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -313,6 +395,13 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+      {userProfile && (
+        <IDBadge 
+          visible={showIdCard} 
+          onClose={() => setShowIdCard(false)} 
+          user={userProfile} 
+        />
+      )}
     </Watermark>
   );
 }

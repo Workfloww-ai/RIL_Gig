@@ -119,6 +119,41 @@ export default function LibraryScreen() {
     }
   };
 
+  const [respondingExtensionId, setRespondingExtensionId] = useState<string | null>(null);
+
+  const handleRespondExtension = async (assignment_id: string, status: 'accepted' | 'rejected') => {
+    setRespondingExtensionId(assignment_id);
+    const job = [...acceptedToday, ...acceptedUpcoming, ...acceptedPast].find(j => j.job_assignment_id === assignment_id);
+    try {
+      await apiClient.post(`/jobs/worker/jobs/assignment/${assignment_id}/respond-extension`, { status });
+      
+      if (status === 'accepted' && job) {
+        const baseAmount = job.base_compensation * job.hours_duration;
+        const extAmount = job.extension_hours * job.base_compensation * 1.1;
+        const totalAmount = Math.round(baseAmount + extAmount);
+        
+        const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
+        const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+        const totalHours = job.hours_duration + job.extension_hours;
+        const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
+        const endTimeStr = endDateTime.getHours().toString().padStart(2, '0') + ':' + endDateTime.getMinutes().toString().padStart(2, '0');
+        
+        Alert.alert(
+          "Extension Accepted! 🎉",
+          `You have successfully extended your shift by ${job.extension_hours} hour(s).\n\nNew Shift End: ${endTimeStr}\nNew Total Payout: ₹${totalAmount}`,
+          [{ text: "Awesome!", style: "default" }]
+        );
+      } else {
+        showToast(`Extension ${status} successfully!`);
+      }
+      fetchJobs();
+    } catch (err: any) {
+      showToast(err.response?.data?.detail || `Failed to ${status} extension`);
+    } finally {
+      setRespondingExtensionId(null);
+    }
+  };
+
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
 
   const handleCancelJob = async (request_id: string) => {
@@ -408,10 +443,19 @@ export default function LibraryScreen() {
               <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
             </View>
           </View>
-          <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
-            <Text className="text-white font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
-            <Text className="text-white text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
-          </View>
+          {(() => {
+            const baseAmount = job.base_compensation * job.hours_duration;
+            const extAmount = job.extension_status === 'accepted' ? (job.extension_hours * job.base_compensation * 1.1) : 0;
+            const totalAmount = (baseAmount + extAmount).toFixed(0);
+            const totalHours = job.hours_duration + (job.extension_status === 'accepted' ? job.extension_hours : 0);
+            
+            return (
+              <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
+                <Text className="text-white font-bold text-xl">₹{totalAmount}</Text>
+                <Text className="text-white text-[9px] font-bold uppercase tracking-wider mt-0.5">{totalHours} {totalHours == 1 ? "Hour" : "Hours"}</Text>
+              </View>
+            );
+          })()}
         </View>
 
         <View className="flex-row bg-sand rounded-2xl p-3.5 mb-2 border border-sage/10 justify-around shadow-sm">
@@ -465,6 +509,13 @@ export default function LibraryScreen() {
             </View>
           </View>
         </View>
+
+        {job.extension_status === 'accepted' && (
+          <View className="bg-moss/10 px-3 py-2 rounded-xl mb-3 border border-moss/20 flex-row justify-center items-center">
+            <Feather name="clock" size={12} color="#15803D" style={{ marginRight: 6 }} />
+            <Text className="text-green-700 text-[10px] font-bold tracking-wide uppercase">Extension Accepted (+{job.extension_hours}hr)</Text>
+          </View>
+        )}
 
         {job.assignment_status === 'accepted' && job.arrival_status !== 'arrived' && (() => {
           const t90State = getStepState(job.t90_status, job.shift_date, job.start_time, 't90');
@@ -548,7 +599,7 @@ export default function LibraryScreen() {
         })()}
 
         {job.arrival_status === 'arrived' && job.assignment_status === 'accepted' && isBeforeStart(job.shift_date, job.start_time) && (
-          <View className="mt-3 bg-moss/5 border border-moss/20 p-3 rounded-xl items-center">
+          <View className="mt-3 bg-white border border-gray-200 border-l-4 border-l-[#D32F2F] border-r-4 border-r-[#0B5B31] p-4 rounded-xl items-center shadow-sm">
             {startOtps[job.request_id] ? (
               <View className="items-center">
                 <Text className="text-muted text-xs mb-1">Your Start OTP</Text>
@@ -574,18 +625,39 @@ export default function LibraryScreen() {
           </View>
         )}
 
-        {job.arrival_status === 'arrived' && job.assignment_status === 'started' && (
-          <View className="mt-3 bg-moss/5 border border-moss/20 p-4 rounded-xl items-center shadow-sm">
-            <View className="bg-moss/10 p-2 rounded-full mb-2">
-              <Feather name="check-circle" size={28} color="#15803D" />
-            </View>
-            <Text className="text-xl font-black text-moss">Verified</Text>
-            {/* <Text className="text-moss text-[11px] mt-1 text-center font-medium">Your shift has officially begun. Great job!</Text> */}
-          </View>
-        )}
+        {job.arrival_status === 'arrived' && job.assignment_status === 'started' && (() => {
+          let isJobEnded = false;
+          if (job.shift_date && job.start_time) {
+            const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
+            const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+            const totalHours = (Number(job.hours_duration) || 0) + (job.extension_status === 'accepted' ? (Number(job.extension_hours) || 0) : 0);
+            const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
+            if (new Date() >= endDateTime) {
+              isJobEnded = true;
+            }
+          }
+
+          if (isJobEnded) {
+            return (
+              <View className="mt-3 bg-white border border-gray-200 border-l-4 border-l-[#D32F2F] border-r-4 border-r-[#0B5B31] p-4 rounded-xl shadow-sm flex-row justify-center">
+                <View className="flex-1">
+                  <Text className="text-slate font-bold text-sm">Shift Completed</Text>
+                  <Text className="text-muted text-[10px] mt-0.5">Waiting for Store Manager to rate and approve your shift to receive payment.</Text>
+                </View>
+              </View>
+            );
+          } else {
+            return (
+              <View className="mt-3 bg-white border border-gray-200 border-l-4 border-l-[#D32F2F] border-r-4 border-r-[#0B5B31] p-4 rounded-xl items-center shadow-sm">
+                <Text className="text-xl font-black text-slate">Verified</Text>
+                <Text className="text-muted text-[11px] mt-1 text-center font-medium">Your shift is in progress.</Text>
+              </View>
+            );
+          }
+        })()}
 
         {job.assignment_status === 'completed' && job.rating_score && (
-          <View className="mt-3 bg-green-50 border border-green-200 p-4 rounded-xl items-center shadow-sm">
+          <View className="mt-3 bg-white border border-gray-200 border-l-4 border-l-[#D32F2F] border-r-4 border-r-[#0B5B31] p-4 rounded-xl items-center shadow-sm">
             <Text className="text-muted text-[10px] uppercase font-bold tracking-wider mb-2">Manager Rating</Text>
             <View className="flex-row mb-2">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -593,19 +665,19 @@ export default function LibraryScreen() {
                   key={star}
                   name="star"
                   size={20}
-                  color={star <= job.rating_score ? "#EAB308" : "#D1D5DB"}
+                  color={star <= job.rating_score ? "#0B5B31" : "#D1D5DB"}
                   style={{ marginRight: 4 }}
-                  fill={star <= job.rating_score ? "#EAB308" : "transparent"}
+                  fill={star <= job.rating_score ? "#0B5B31" : "transparent"}
                 />
               ))}
             </View>
-            <Text className="text-xl font-black text-moss mb-2">{job.rating_score}.0 / 5.0</Text>
+            <Text className="text-xl font-black text-slate mb-2">{job.rating_score}.0 / 5.0</Text>
 
             {job.rating_tags && job.rating_tags.length > 0 && (
               <View className="flex-row flex-wrap justify-center mt-1">
                 {job.rating_tags.map((tag: string, idx: number) => (
-                  <View key={idx} className="bg-cream border border-moss/20 px-2 py-1 rounded-md m-1">
-                    <Text className="text-moss text-[10px] font-bold">{tag}</Text>
+                  <View key={idx} className="bg-gray-100 border border-gray-200 px-2 py-1 rounded-md m-1">
+                    <Text className="text-slate text-[10px] font-bold">{tag}</Text>
                   </View>
                 ))}
               </View>
@@ -718,8 +790,8 @@ export default function LibraryScreen() {
                 </View>
 
                 <View className="mb-6">
-                  <Text className="text-2xl font-bold text-charcoal">Training Content Library</Text>
-                  <Text className="text-muted mt-1">Empower your growth with our curated training library. </Text>
+                  <Text className="text-2xl font-bold text-charcoal">Training Content</Text>
+                  {/* <Text className="text-muted mt-1">Empower your growth with our curated training library. </Text> */}
                 </View>
 
                 {loading ? (
@@ -728,16 +800,18 @@ export default function LibraryScreen() {
                   <Text className="text-clay/80 text-center mt-10">{error}</Text>
                 ) : (
                   modules.map((module) => (
-                    <TouchableOpacity
+                    <View
                       key={module.id}
                       className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10"
-                      onPress={() => {
-                        if (module.status !== 'locked') {
-                          handleStartLesson(module.id);
-                        }
-                      }}
-                      activeOpacity={module.status === 'locked' ? 1 : 0.7}
                     >
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (module.status !== 'locked') {
+                            handleStartLesson(module.id);
+                          }
+                        }}
+                        activeOpacity={module.status === 'locked' ? 1 : 0.7}
+                      >
                       <View className="flex-row mb-4">
                         {/* Thumbnail / Icon */}
                         <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
@@ -798,9 +872,11 @@ export default function LibraryScreen() {
                         )}
                       </View>
 
+                      </TouchableOpacity>
+
                       {/* Topics Pills */}
                       {module.key_module_topics && module.key_module_topics.length > 0 && (
-                        <View className="flex-row items-center mt-5">
+                        <View className="flex-row items-center mt-5 pt-1">
                           <Text className="text-sage text-xs font-medium mr-3">Topics:</Text>
                           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             {module.key_module_topics.map((topic, idx) => (
@@ -811,7 +887,7 @@ export default function LibraryScreen() {
                           </ScrollView>
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   ))
                 )}
               </View>
@@ -821,7 +897,25 @@ export default function LibraryScreen() {
               <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
                 {/* Certificate Template */}
                 <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
-                  <View className="w-full bg-cream border-8 border-moss rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden" style={{ aspectRatio: 1.414 }}>
+                  <View className="w-full bg-[#FAFBFB] rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden border border-gray-200" style={{ aspectRatio: 1.414 }}>
+                    {/* Decorative Brand Line - Absolute Top */}
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 30 }}>
+                      <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+                      <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+                      <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+                      <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+                      <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+                    </View>
+
+                    {/* Decorative Brand Line - Absolute Bottom */}
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 30 }}>
+                      <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+                      <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+                      <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+                      <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+                      <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+                    </View>
+
                     {/* Branding Logo - Top Left */}
                     <View className="absolute top-0 left-0 z-20">
                       <Image
@@ -1194,6 +1288,59 @@ export default function LibraryScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Extension Request Modal */}
+        {(() => {
+          const pendingExtensionJob = acceptedToday.find(job => job.extension_status === 'pending');
+          if (!pendingExtensionJob) return null;
+
+          const extensionAmount = (pendingExtensionJob.extension_hours * pendingExtensionJob.base_compensation * 1.10).toFixed(2);
+
+          return (
+            <Modal visible={true} animationType="slide" transparent={true}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 }}>Shift Extension Request</Text>
+                  
+                  <View style={{ backgroundColor: '#F0FDF4', borderRadius: 12, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#DCFCE7' }}>
+                    <Text style={{ fontSize: 15, color: '#4B5563', marginBottom: 8 }}>
+                      The store manager has requested to extend your current shift.
+                    </Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#0B5B31' }}>
+                      Additional Time: +{pendingExtensionJob.extension_hours} hours
+                    </Text>
+                    <Text style={{ fontSize: 14, color: '#15803D', marginTop: 4, fontWeight: '600' }}>
+                      Premium Pay: ₹{extensionAmount}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <TouchableOpacity
+                      onPress={() => handleRespondExtension(pendingExtensionJob.job_assignment_id, 'rejected')}
+                      disabled={respondingExtensionId !== null}
+                      style={{ flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginRight: 8 }}
+                    >
+                      <Text style={{ color: '#4B5563', fontSize: 16, fontWeight: '700' }}>Reject</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => handleRespondExtension(pendingExtensionJob.job_assignment_id, 'accepted')}
+                      disabled={respondingExtensionId !== null}
+                      style={{ flex: 1, backgroundColor: '#0B5B31', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginLeft: 8 }}
+                    >
+                      {respondingExtensionId === pendingExtensionJob.job_assignment_id ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Accept</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          );
+        })()}
+
       </SafeAreaView>
     </Watermark>
   );

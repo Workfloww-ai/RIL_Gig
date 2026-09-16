@@ -87,7 +87,7 @@ export default function SignupDetailsScreen() {
 
   const onSubmit = async (data: SignupFormData) => {
     router.push({ 
-      pathname: '/signup/documents', 
+      pathname: '/signup/bank_details', 
       params: { 
         mobile, 
         userDetails: JSON.stringify(data) 

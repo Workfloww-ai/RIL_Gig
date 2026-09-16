@@ -3,6 +3,7 @@ import { View, Text, SafeAreaView, Platform, StatusBar, TouchableOpacity, Activi
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../src/api/client';
 import { useAuthStore } from '../src/store/authStore';
+import StatusModal from '../src/components/StatusModal';
 
 interface Question {
   q: string;
@@ -18,6 +19,8 @@ export default function QuizScreen() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [currentSelection, setCurrentSelection] = useState<string | null>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   const [isIncorrect, setIsIncorrect] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
@@ -59,9 +62,12 @@ export default function QuizScreen() {
         score
       });
       
-      Alert.alert('Congratulations! 🎉', 'You have successfully completed this module.', [
-        { text: 'Go to Dashboard', onPress: () => router.push({ pathname: '/library', params: { justCompleted: 'true' } }) }
-      ]);
+      setStatusModalContent({
+        title: 'Congratulations! 🎉',
+        message: 'You have successfully completed this module.',
+        type: 'success'
+      });
+      setShowStatusModal(true);
     } catch (err) {
       console.error('Failed to submit score:', err);
       Alert.alert('Error', 'Failed to save your progress.');
@@ -127,10 +133,21 @@ export default function QuizScreen() {
   return (
     <SafeAreaView className="flex-1 bg-sand pt-8">
       {/* Header */}
-      <View className="bg-white px-6 py-5 border-b border-gray-100 shadow-sm flex-row items-center justify-between">
-        <Text className="text-gray-400 font-bold" onPress={() => router.back()}>Cancel</Text>
+      <View className="bg-white px-6 py-5 shadow-sm flex-row items-center justify-between" style={{ position: 'relative' }}>
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-red-50 rounded-full">
+           <Text className="text-red-500 font-bold text-lg">✕</Text>
+        </TouchableOpacity>
         <Text className="text-lg font-bold text-charcoal">Module Quiz</Text>
         <View className="w-10" />
+        
+        {/* Decorative Brand Line - Absolute Bottom of Header */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+        </View>
       </View>
 
       {/* Progress */}
@@ -138,7 +155,7 @@ export default function QuizScreen() {
         <Text className="text-moss font-bold mb-2">Question {currentQIndex + 1} of {questions.length}</Text>
         <View className="h-2 bg-sage/20 rounded-full overflow-hidden">
           <View 
-            className="h-full bg-moss/80" 
+            className="h-full bg-[#D32F2F]" 
             style={{ width: `${((currentQIndex + 1) / questions.length) * 100}%` }} 
           />
         </View>
@@ -206,17 +223,41 @@ export default function QuizScreen() {
       </View>
 
       {/* Footer Navigation */}
-      <View className="flex-1 justify-end px-6 mb-10">
-        <TouchableOpacity 
-          disabled={(!currentSelection && !showCorrectAnswer) || submitting}
-          onPress={handleNext}
-          className={`py-4 rounded-xl items-center w-full ${((!currentSelection && !showCorrectAnswer) || submitting) ? 'bg-primary-300' : 'bg-moss'}`}
-        >
-          <Text className="text-white font-bold text-lg">
-            {submitting ? 'Submitting...' : currentQIndex === questions.length - 1 ? 'Finish Module' : 'Check & Next'}
-          </Text>
-        </TouchableOpacity>
+      <View className="flex-1 justify-end pb-16">
+        {/* Decorative Brand Line - Above Button */}
+        <View style={{ height: 6, flexDirection: 'row', width: '100%', marginBottom: 20 }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+        </View>
+
+        <View className="px-6">
+          <TouchableOpacity 
+            disabled={(!currentSelection && !showCorrectAnswer) || submitting}
+            onPress={handleNext}
+            className={`py-4 rounded-xl items-center w-full ${((!currentSelection && !showCorrectAnswer) || submitting) ? 'bg-primary-300' : 'bg-[#D32F2F]'}`}
+          >
+            <Text className="text-white font-bold text-lg">
+              {submitting ? 'Submitting...' : currentQIndex === questions.length - 1 ? 'Finish Module' : 'Check & Next'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <StatusModal
+        visible={showStatusModal}
+        title={statusModalContent.title}
+        message={statusModalContent.message}
+        isError={statusModalContent.type === 'error'}
+        onClose={() => {
+          setShowStatusModal(false);
+          if (statusModalContent.type === 'success') {
+            router.push({ pathname: '/library', params: { justCompleted: 'true' } });
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

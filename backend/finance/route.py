@@ -65,7 +65,7 @@ async def process_payment_endpoint(
             remarks=payload.remarks
         )
         if not updated_payment:
-            raise HTTPException(status_code=404, detail="Payment record not found")
+            raise HTTPException(status_code=400, detail="Payment record not found or already processed")
             
         return {"status": "success", "message": "Payment processed successfully", "payment": updated_payment}
     except HTTPException:

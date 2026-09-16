@@ -86,6 +86,13 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
       return;
     }
 
+    const parsedHours = parseFloat(requestHours || '0');
+    if (parsedHours < 2) {
+      setStatusModalContent({ title: 'Invalid Duration', message: 'Minimum duration for a shift must be at least 2 hours.', type: 'error' });
+      setShowStatusModal(true);
+      return;
+    }
+
     const dateParts = requestDate.split('/');
     let formattedDate = requestDate;
     if (dateParts.length === 3) {

@@ -11,6 +11,7 @@ import { State, City } from 'country-state-city';
 import { apiClient } from '../../src/api/client';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
+import { useAuthStore } from '../../src/store/authStore';
 
 // Validation Schema for Add Store
 const storeSchema = z.object({
@@ -29,6 +30,7 @@ type StoreFormData = z.infer<typeof storeSchema>;
 export default function SuperadminStores() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const role = useAuthStore(state => state.role);
   
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,13 +125,15 @@ export default function SuperadminStores() {
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Stores</Text>
-          <TouchableOpacity
-            onPress={() => setIsAddModalOpen(true)}
-            style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Add Store</Text>
-          </TouchableOpacity>
+          {role !== 'admin' && (
+            <TouchableOpacity
+              onPress={() => setIsAddModalOpen(true)}
+              style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Add Store</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}>
