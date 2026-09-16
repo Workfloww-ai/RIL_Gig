@@ -637,7 +637,28 @@ export default function LibraryScreen() {
             }
           }
 
-          if (isJobEnded) {
+          if (job.extension_status === 'accepted') {
+            const baseAmount = (Number(job.base_compensation) || 0) * (Number(job.hours_duration) || 0);
+            const extAmount = (Number(job.extension_hours) || 0) * (Number(job.base_compensation) || 0) * 1.1;
+            const totalAmount = (baseAmount + extAmount).toFixed(0);
+            
+            let formattedEndTime = "";
+            if (job.shift_date && job.start_time) {
+              const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
+              const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+              const totalHours = (Number(job.hours_duration) || 0) + (Number(job.extension_hours) || 0);
+              const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
+              formattedEndTime = endDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            return (
+              <View className="mt-3 bg-white border border-gray-200 border-l-4 border-l-[#D32F2F] border-r-4 border-r-[#0B5B31] p-4 rounded-xl shadow-sm">
+                <Text className="text-xl font-black text-slate mb-2">Extension Accepted</Text>
+                <Text className="text-slate font-medium text-xs mb-1">New Total Payout: <Text className="font-bold text-moss">₹{totalAmount}</Text></Text>
+                <Text className="text-slate font-medium text-xs">New End Time: <Text className="font-bold text-charcoal">{formattedEndTime}</Text></Text>
+              </View>
+            );
+          } else if (isJobEnded) {
             return (
               <View className="mt-3 bg-white border border-gray-200 border-l-4 border-l-[#D32F2F] border-r-4 border-r-[#0B5B31] p-4 rounded-xl shadow-sm flex-row justify-center">
                 <View className="flex-1">
