@@ -16,7 +16,7 @@
       "icon": "./assets/images/newlogo.png"
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/newlogo.png",
