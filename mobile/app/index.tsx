@@ -32,8 +32,18 @@ export default function LoginScreen() {
     };
   }, []);
 
+  const formatMobileNumber = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    let formatted = cleaned;
+    if (cleaned.length > 5) {
+      formatted = cleaned.substring(0, 5) + ' - ' + cleaned.substring(5, 10);
+    }
+    setMobile(formatted);
+  };
+
   const handleContinue = async () => {
-    if (mobile.length < 10) {
+    const rawMobile = mobile.replace(/\D/g, '');
+    if (rawMobile.length < 10) {
       setError('Please enter a valid 10-digit mobile number');
       return;
     }
@@ -41,9 +51,9 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      console.log(`Sending request to backend for mobile: 91${mobile}`);
+      console.log(`Sending request to backend for mobile: 91${rawMobile}`);
       const response = await apiClient.post('/auth/check-mobile', {
-        mobile_number: `+91${mobile}`, // Stripping the + sign as backend requested
+        mobile_number: `+91${rawMobile}`, // Stripping the + sign as backend requested
       });
       console.log('Backend response:', response.data);
 
@@ -54,11 +64,11 @@ export default function LoginScreen() {
         // Send OTP directly for existing user before redirecting
         console.log('User exists, sending OTP...');
         await apiClient.post('/auth/send-otp', {
-          mobile_number: `91${mobile}`
+          mobile_number: `91${rawMobile}`
         });
-        router.push({ pathname: '/otp', params: { mobile: `91${mobile}` } });
+        router.push({ pathname: '/otp', params: { mobile: `91${rawMobile}` } });
       } else {
-        router.push({ pathname: '/signup/details', params: { mobile: `91${mobile}` } });
+        router.push({ pathname: '/signup/details', params: { mobile: `91${rawMobile}` } });
       }
     } catch (err: any) {
       console.error('API Error:', err.message, err.response?.data);
@@ -106,12 +116,14 @@ export default function LoginScreen() {
 
         <Input
           label="Mobile Number"
-          placeholder="e.g. 98765 43210"
+          placeholder="00000 - 00000"
           keyboardType="numeric"
           value={mobile}
-          onChangeText={setMobile}
+          onChangeText={formatMobileNumber}
           error={error}
-          maxLength={10}
+          maxLength={13}
+          textAlign="center"
+          style={{ fontSize: 24, fontWeight: 'bold' }}
         />
 
         <View className="mt-4">
