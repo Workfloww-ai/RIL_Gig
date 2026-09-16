@@ -786,8 +786,8 @@ export default function LibraryScreen() {
                 </View>
 
                 <View className="mb-6">
-                  <Text className="text-2xl font-bold text-charcoal">Training Content Library</Text>
-                  <Text className="text-muted mt-1">Empower your growth with our curated training library. </Text>
+                  <Text className="text-2xl font-bold text-charcoal">Training Content</Text>
+                  {/* <Text className="text-muted mt-1">Empower your growth with our curated training library. </Text> */}
                 </View>
 
                 {loading ? (
@@ -796,16 +796,18 @@ export default function LibraryScreen() {
                   <Text className="text-clay/80 text-center mt-10">{error}</Text>
                 ) : (
                   modules.map((module) => (
-                    <TouchableOpacity
+                    <View
                       key={module.id}
                       className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10"
-                      onPress={() => {
-                        if (module.status !== 'locked') {
-                          handleStartLesson(module.id);
-                        }
-                      }}
-                      activeOpacity={module.status === 'locked' ? 1 : 0.7}
                     >
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (module.status !== 'locked') {
+                            handleStartLesson(module.id);
+                          }
+                        }}
+                        activeOpacity={module.status === 'locked' ? 1 : 0.7}
+                      >
                       <View className="flex-row mb-4">
                         {/* Thumbnail / Icon */}
                         <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
@@ -866,9 +868,11 @@ export default function LibraryScreen() {
                         )}
                       </View>
 
+                      </TouchableOpacity>
+
                       {/* Topics Pills */}
                       {module.key_module_topics && module.key_module_topics.length > 0 && (
-                        <View className="flex-row items-center mt-5">
+                        <View className="flex-row items-center mt-5 pt-1">
                           <Text className="text-sage text-xs font-medium mr-3">Topics:</Text>
                           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             {module.key_module_topics.map((topic, idx) => (
@@ -879,7 +883,7 @@ export default function LibraryScreen() {
                           </ScrollView>
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   ))
                 )}
               </View>
