@@ -294,7 +294,7 @@ export default function SignupDetailsScreen() {
         </View>
 
         <View className="mb-12">
-          <Button title="Continue to Documents" onPress={handleSubmit(onSubmit)} loading={loading} />
+          <Button title="Continue to Account Details" onPress={handleSubmit(onSubmit)} loading={loading} />
         </View>
       </KeyboardAwareScrollView>
 

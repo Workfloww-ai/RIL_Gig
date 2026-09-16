@@ -5,6 +5,11 @@
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/newlogo.png",
+    "splash": {
+      "image": "./assets/images/newlogo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "scheme": "sahyogi",
     "userInterfaceStyle": "automatic",
     "ios": {

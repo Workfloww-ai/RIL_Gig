@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Image } from 'react-native';
+import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Pressable, Image, Animated } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -14,7 +14,7 @@ const formatTime = (inputSeconds: number) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const PlayerProgress = ({ player, module, language, isFullscreen = false, router }: any) => {
+const PlayerProgress = ({ player, module, language, router }: any) => {
   const [currentTime, setCurrentTime] = useState(0);
 
   useEffect(() => {
@@ -28,31 +28,8 @@ const PlayerProgress = ({ player, module, language, isFullscreen = false, router
   const progressPercent = player && player.duration ? (currentTime / player.duration) * 100 : 0;
   const isCompleted = progressPercent >= 95;
 
-  if (isFullscreen) {
-    return (
-      <View className="absolute bottom-8 left-12 right-12 z-20 pointer-events-none">
-        <View className="h-1.5 bg-cream/20 rounded-full mb-3 overflow-hidden flex-row">
-          <View className="h-full bg-moss/80" style={{ width: `${progressPercent}%` }} />
-        </View>
-        <Text className="text-white/90 text-sm font-bold tracking-widest text-center shadow-sm">
-          {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View className="p-5 opacity-100" style={{ opacity: player ? 1 : 0.5 }} pointerEvents={player ? 'auto' : 'none'}>
-      <View className="h-2 bg-sage/10 rounded-full mb-2 overflow-hidden flex-row">
-        <View className="h-full bg-moss/80" style={{ width: `${progressPercent}%` }} />
-      </View>
-
-      <View className="flex-row justify-between items-center mb-5">
-        <Text className="text-muted text-xs font-medium tracking-widest">
-          {formatTime(currentTime)} / {formatTime(player?.duration || 0)}
-        </Text>
-      </View>
-
       <View className="flex-row items-center justify-end">
         {isCompleted ? (
           <TouchableOpacity
@@ -71,6 +48,76 @@ const PlayerProgress = ({ player, module, language, isFullscreen = false, router
   );
 };
 
+const AudioWaveform = ({ player }: { player: any }) => {
+  const bars = Array.from({ length: 21 });
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!player) return;
+    const interval = setInterval(() => {
+      setIsPlaying(player.playing);
+    }, 250);
+    return () => clearInterval(interval);
+  }, [player]);
+
+  return (
+    <View className="flex-row items-center justify-center h-20 gap-1.5 opacity-50 w-full px-4 overflow-hidden mt-1">
+      {bars.map((_, index) => {
+        const anim = useRef(new Animated.Value(0.1)).current;
+
+        useEffect(() => {
+          let isMounted = true;
+          const startAnim = () => {
+            if (!isMounted) return;
+            Animated.sequence([
+              Animated.timing(anim, {
+                toValue: Math.random() * 0.8 + 0.2, 
+                duration: Math.random() * 300 + 200,
+                useNativeDriver: true,
+              }),
+              Animated.timing(anim, {
+                toValue: 0.1,
+                duration: Math.random() * 300 + 200,
+                useNativeDriver: true,
+              }),
+            ]).start(({ finished }) => {
+              if (finished && isMounted) startAnim();
+            });
+          };
+
+          if (isPlaying) {
+            startAnim();
+          } else {
+            anim.stopAnimation();
+            Animated.spring(anim, {
+              toValue: 0.1,
+              useNativeDriver: true,
+            }).start();
+          }
+
+          return () => {
+            isMounted = false;
+            anim.stopAnimation();
+          };
+        }, [isPlaying]);
+
+        return (
+          <Animated.View
+            key={index}
+            style={{
+              height: 60,
+              width: 5,
+              backgroundColor: '#A7F3D0', // soft emerald
+              borderRadius: 3,
+              transform: [{ scaleY: anim }]
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+};
+
 export default function StudioScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -80,25 +127,6 @@ export default function StudioScreen() {
   const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [module, setModule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-
-  const videoRef = useRef<any>(null);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const resetControlsTimeout = () => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    controlsTimeoutRef.current = setTimeout(() => {
-      // We check playing state inside the timeout, but because player is a ref-like object, 
-      // we can't reliably read its current state in this closure without it being stale. 
-      // Instead, we just hide it. We will handle the paused state in the useEffect.
-      setShowControls(false);
-    }, 3000);
-  };
-
   const currentVideoUrl = language === 'english' ? module?.video_url : module?.[`video_url_${language}`] || module?.video_url;
   const currentPodcastUrl = language === 'english' ? module?.podcast_url : module?.[`podcast_url_${language}`] || module?.podcast_url;
   const currentTitle = language === 'english' ? module?.title : module?.[`title_${language}`] || module?.title;
@@ -115,21 +143,23 @@ export default function StudioScreen() {
 
   const player = activeTab === 'video' ? videoPlayer : audioPlayer;
 
+  const maxTimeRef = useRef<{ video: number, audio: number }>({ video: 0, audio: 0 });
+
   useEffect(() => {
     if (!player) return;
-
-    // Auto-hide controls logic
-    if (player.playing) {
-      resetControlsTimeout();
-    } else {
-      setShowControls(true);
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    }
-
-    return () => {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    };
-  }, [player, player?.playing]);
+    const interval = setInterval(() => {
+      const currentMax = maxTimeRef.current[activeTab];
+      
+      // If user skipped forward by more than 2 seconds from their furthest watched point
+      if (player.currentTime > currentMax + 2.0) {
+        player.currentTime = currentMax;
+      } else {
+        // Update the max time seen
+        maxTimeRef.current[activeTab] = Math.max(currentMax, player.currentTime);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [player, activeTab]);
 
   useEffect(() => {
     return () => {
@@ -163,32 +193,6 @@ export default function StudioScreen() {
     setActiveTab(tab);
   };
 
-  const toggleFullscreen = async () => {
-    if (isFullscreen) {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-      setIsFullscreen(false);
-    } else {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      setIsFullscreen(true);
-    }
-  };
-
-  const togglePlayPause = () => {
-    if (player.playing) {
-      player.pause();
-    } else {
-      player.play();
-    }
-  };
-
-  const rewind10s = () => {
-    if (player) {
-      const newPosition = Math.max(0, player.currentTime - 10);
-      player.currentTime = newPosition;
-    }
-  };
-
-
 
   if (loading || !module) {
     return (
@@ -217,10 +221,7 @@ export default function StudioScreen() {
           </Text>
         </View>
         
-        <TouchableOpacity onPress={() => setShowLangDropdown(true)} className="flex-row items-center bg-sage/10 px-2 py-1.5 rounded-lg border border-sage/20 ml-2">
-          <Feather name="globe" size={14} color="#0B5B31" />
-          <Text className="text-moss text-xs font-semibold ml-1 capitalize">{language}</Text>
-        </TouchableOpacity>
+
 
         <Image
           source={require('../assets/images/newlogo.png')}
@@ -269,73 +270,52 @@ export default function StudioScreen() {
             ) : (
               <View className="w-full h-full relative">
                 {/* Video Player */}
-                {activeTab === 'video' && !isFullscreen && (
+                {activeTab === 'video' && (
                   <View className="absolute inset-0">
                     <VideoView
-                      ref={videoRef}
                       player={videoPlayer}
                       style={{ width: '100%', height: '100%' }}
                       contentFit="contain"
-                      nativeControls={false}
+                      nativeControls={true}
+                      allowsFullscreen={true}
+                      allowsPictureInPicture={true}
+                      buttonOptions={{ showSeekForward: false, showSeekBackward: false, showSettings: false }}
                     />
                   </View>
                 )}
 
                 {/* Audio Player */}
-                {activeTab === 'audio' && !isFullscreen && (
+                {activeTab === 'audio' && (
                   <View className="absolute inset-0">
                     <VideoView
                       player={audioPlayer}
                       style={{ width: '100%', height: '100%' }}
                       contentFit="contain"
-                      nativeControls={false}
+                      nativeControls={true}
+                      allowsFullscreen={true}
+                      allowsPictureInPicture={true}
+                      buttonOptions={{ showSeekForward: false, showSeekBackward: false, showSettings: false }}
                     />
                     {/* Podcast Graphic Overlay */}
-                    <View className="absolute inset-0 bg-gradient-to-br from-primary-900 to-primary-700 items-center justify-center" pointerEvents="none">
-                      <View className="w-28 h-28 bg-cream/10 rounded-full items-center justify-center border border-white/20 mb-3 shadow-xl">
-                        <Text className="text-6xl">🎙️</Text>
-                      </View>
-                      <Text className="text-white/90 font-bold tracking-widest text-xs">PODCAST EPISODE</Text>
+                    <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
+                      <AudioWaveform player={audioPlayer} />
                     </View>
+                    {/* <View className="absolute inset-x-0 top-4 items-center" pointerEvents="none">
+                      <View className="w-16 h-16 bg-white/10 rounded-full items-center justify-center border border-white/20 shadow-md">
+                        <Text className="text-3xl">🎧</Text>
+                      </View>
+                    </View> */}
                   </View>
                 )}
 
-                {/* Invisible Overlay to Capture Taps when controls are hidden */}
-                {!showControls && (
-                  <Pressable className="absolute inset-0 z-10" onPress={resetControlsTimeout} />
-                )}
-
-                {/* Overlay Controls */}
-                {showControls && (
-                  <>
-                    <Pressable className="absolute inset-0 z-20" onPress={resetControlsTimeout} />
-
-                    <View className="absolute inset-0 flex-row items-center justify-center gap-6 z-30" pointerEvents="box-none">
-                      <TouchableOpacity onPress={rewind10s} className="w-12 h-12 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
-                        <Feather name="rotate-ccw" size={20} color="white" />
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        onPress={togglePlayPause}
-                        className="w-16 h-16 rounded-full bg-moss/90 items-center justify-center border border-white/30 shadow-xl"
-                      >
-                        {player?.playing ? (
-                          <Feather name="pause" size={28} color="white" />
-                        ) : (
-                          <Feather name="play" size={28} color="white" style={{ marginLeft: 4 }} />
-                        )}
-                      </TouchableOpacity>
-
-                      <View className="w-12 h-12" />
-                    </View>
-
-                    <View className="absolute bottom-3 right-3 z-30" pointerEvents="box-none">
-                      <TouchableOpacity onPress={toggleFullscreen} className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20 backdrop-blur-sm">
-                        <Feather name="maximize" size={16} color="white" />
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
+                {/* Floating Language Button */}
+                <TouchableOpacity 
+                  onPress={() => setShowLangDropdown(true)} 
+                  className="absolute top-3 right-3 z-50 flex-row items-center bg-black/60 px-3 py-1.5 rounded-full border border-white/20 shadow-lg"
+                >
+                  <Feather name="globe" size={14} color="white" />
+                  <Text className="text-white text-xs font-semibold ml-1.5 capitalize">{language}</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -376,57 +356,6 @@ export default function StudioScreen() {
         </View>
       </ScrollView>
 
-      {/* Custom Fullscreen Modal */}
-      <Modal visible={isFullscreen} animationType="fade" supportedOrientations={['landscape', 'portrait']}>
-        <View className="flex-1 bg-black justify-center items-center relative">
-          <VideoView
-            player={player}
-            style={{ width: '100%', height: '100%' }}
-            contentFit="contain"
-            nativeControls={false}
-          />
-
-          {/* Invisible Overlay for Fullscreen */}
-          {!showControls && (
-            <Pressable className="absolute inset-0 z-10" onPress={resetControlsTimeout} />
-          )}
-
-          {/* Fullscreen Overlay Controls */}
-          {showControls && (
-            <>
-              <Pressable className="absolute inset-0 z-20" onPress={resetControlsTimeout} />
-
-              <View className="absolute inset-0 flex-row items-center justify-center gap-10 z-30" pointerEvents="box-none">
-                <TouchableOpacity onPress={rewind10s} className="w-16 h-16 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
-                  <Feather name="rotate-ccw" size={28} color="white" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={togglePlayPause}
-                  className="w-24 h-24 rounded-full bg-moss/90 items-center justify-center border border-white/30 shadow-2xl backdrop-blur-md"
-                >
-                  {player?.playing ? (
-                    <Feather name="pause" size={42} color="white" />
-                  ) : (
-                    <Feather name="play" size={42} color="white" style={{ marginLeft: 6 }} />
-                  )}
-                </TouchableOpacity>
-
-                <View className="w-16 h-16" />
-              </View>
-
-              <View className="absolute bottom-10 right-10 z-30" pointerEvents="box-none">
-                <TouchableOpacity onPress={toggleFullscreen} className="w-14 h-14 rounded-full bg-black/50 items-center justify-center border border-white/20 backdrop-blur-md">
-                  <Feather name="minimize" size={24} color="white" />
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-
-          {/* Fullscreen Progress Bar */}
-          <PlayerProgress player={player} module={module} language={language} router={router} isFullscreen={true} />
-        </View>
-      </Modal>
 
       {/* Language Selection Modal */}
       <Modal visible={showLangDropdown} transparent animationType="fade">
