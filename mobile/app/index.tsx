@@ -116,7 +116,7 @@ export default function LoginScreen() {
 
         <Input
           label="Mobile Number"
-          placeholder="00000 - 00000"
+          placeholder="xxxxx - xxxxx"
           keyboardType="numeric"
           value={mobile}
           onChangeText={formatMobileNumber}
