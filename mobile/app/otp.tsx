@@ -150,6 +150,8 @@ export default function OTPScreen() {
             label="6-Digit OTP"
             placeholder="------"
             keyboardType="numeric"
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
             value={otp}
             onChangeText={setOtp}
             error={error}
