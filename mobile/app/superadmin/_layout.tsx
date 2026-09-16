@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, Platform, Image } from 'react-native';
-import { Slot, useRouter, usePathname } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, SafeAreaView, TouchableOpacity, Platform, Image, BackHandler } from 'react-native';
+import { Slot, useRouter, usePathname, useFocusEffect } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../src/api/client';
@@ -11,6 +11,19 @@ export default function SuperadminLayout() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const role = useAuthStore(state => state.role);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [])
+  );
 
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
 
