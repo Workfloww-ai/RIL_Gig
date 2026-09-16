@@ -64,6 +64,16 @@ export default function HistoryPage() {
     }).format(amount);
   };
 
+  const formatPhoneNumber = (phone: string) => {
+    if (!phone) return '';
+    const cleaned = phone.replace(/\D/g, '');
+    const number = cleaned.slice(-10);
+    if (number.length === 10) {
+      return `+91 ${number.slice(0, 5)} ${number.slice(5)}`;
+    }
+    return phone;
+  };
+
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -189,7 +199,7 @@ export default function HistoryPage() {
                           {expandedGroups[group.worker_phone] ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                           <div>
                             <div className="font-medium text-slate">{group.worker_name}</div>
-                            <div className="text-xs text-sage">{group.worker_phone}</div>
+                            <div className="text-xs text-sage">{formatPhoneNumber(group.worker_phone)}</div>
                           </div>
                         </div>
                       </td>

@@ -74,7 +74,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-sand p-4">
       <div className="w-full max-w-md rounded-2xl bg-cream p-8 shadow-sm border border-gray-100">
         <div className="mb-8 text-center flex flex-col items-center">
-          <img src="/images/logowithoutbg.png" alt="SahYogi Logo" className="h-24 w-24 object-contain rounded-xl shadow-sm mb-4 bg-white" />
+          <img src="/images/newlogo.png" alt="SahYogi Logo" className="h-24 w-24 object-contain rounded-xl shadow-sm mb-4 bg-white" />
           <h1 className="text-3xl font-bold"><span style={{ color: '#0B5B31' }}>SahYogi</span> <span style={{ color: '#D32F2F' }}>Finance</span></h1>
           <p className="mt-2 text-sm text-sage">Secure access to payment processing</p>
         </div>
