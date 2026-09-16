@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,11 @@ import {
   Image,
   Alert,
   Platform,
+  Linking,
+  ActivityIndicator,
+  BackHandler,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/authStore';
@@ -34,7 +37,7 @@ interface AcceptedWorker {
   status: 'Review Pending' | 'En Route' | 'On Site' | 'Confirmed' | 'Completed';
   acceptances: {
     t90: AcceptanceStatus;
-    t60: AcceptanceStatus;
+    t45: AcceptanceStatus;
     onArrival: AcceptanceStatus;
   };
   rating?: {
@@ -57,6 +60,19 @@ interface JobRequest {
 
 export default function StoreManagerDashboard() {
   const router = useRouter();
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [])
+  );
   const logout = useAuthStore((state) => state.logout);
   const insets = useSafeAreaInsets();
 
@@ -84,6 +100,8 @@ export default function StoreManagerDashboard() {
   const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, boolean>>({});
 
   // Modal States
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<AcceptedWorker | null>(null);
@@ -104,7 +122,8 @@ export default function StoreManagerDashboard() {
 
   const handleVerifyOtp = async () => {
     if (otpInput.length !== 4) {
-      Alert.alert('Invalid', 'OTP must be 4 digits');
+      setStatusModalContent({ title: 'Invalid', message: 'OTP must be 4 digits', type: 'error' });
+      setShowStatusModal(true);
       return;
     }
     setVerifyingOtp(true);
@@ -113,11 +132,13 @@ export default function StoreManagerDashboard() {
         otp_code: otpInput,
         worker_id: otpWorkerId
       });
-      Alert.alert('Success', 'Job started successfully');
+      setStatusModalContent({ title: 'Success', message: 'Job started successfully', type: 'success' });
+      setShowStatusModal(true);
       setIsOtpModalOpen(false);
       fetchRequests();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to verify OTP');
+      setStatusModalContent({ title: 'Error', message: err.response?.data?.detail || 'Failed to verify OTP', type: 'error' });
+      setShowStatusModal(true);
     } finally {
       setVerifyingOtp(false);
     }
@@ -129,8 +150,17 @@ export default function StoreManagerDashboard() {
   const [feedbackText, setFeedbackText] = useState<string>('');
   const [submittingRating, setSubmittingRating] = useState<boolean>(false);
 
+  // Extend Job State
+  const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
+  const [extendHours, setExtendHours] = useState(1);
+  const [submittingExtension, setSubmittingExtension] = useState(false);
+
   // Job data state
   const [jobsList, setJobsList] = useState<any[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [counts, setCounts] = useState({ today: 0, upcoming: 0, past: 0, pending: 0, approved: 0, declined: 0 });
 
   // Accordion State
   const [expandedSections, setExpandedSections] = useState({
@@ -149,7 +179,7 @@ export default function StoreManagerDashboard() {
   };
 
   // Sort State
-  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_desc');
+  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'open_first' | 'closed_first'>('date_asc');
   const [isSortModalOpen, setIsSortModalOpen] = useState(false);
 
   // Available Jobs and Stores for Modal
@@ -175,7 +205,7 @@ export default function StoreManagerDashboard() {
         if (isAOpen !== isBOpen) return isBOpen - isAOpen;
         const dateA = new Date(a.shift_date || 0).getTime();
         const dateB = new Date(b.shift_date || 0).getTime();
-        return dateB - dateA; // secondary sort by date
+        return dateA - dateB; // secondary sort by date (ascending)
       }
       if (sortOption === 'closed_first') {
         const isAClosed = a.request_status?.toLowerCase() === 'closed' ? 1 : 0;
@@ -183,29 +213,69 @@ export default function StoreManagerDashboard() {
         if (isAClosed !== isBClosed) return isBClosed - isAClosed;
         const dateA = new Date(a.shift_date || 0).getTime();
         const dateB = new Date(b.shift_date || 0).getTime();
-        return dateB - dateA; // secondary sort by date
+        return dateA - dateB; // secondary sort by date (ascending)
       }
       return 0;
     });
   }, [jobsList, sortOption]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (loadMore = false) => {
+    if (loadMore && (!hasMore || loadingMore)) return;
     try {
-      const res = await apiClient.get('/jobs/manager/requests');
+      if (loadMore) setLoadingMore(true);
+
+      const currentOffset = loadMore ? offset + 20 : 0;
+      const res = await apiClient.get(`/jobs/manager/requests?limit=20&offset=${currentOffset}`);
       if (res.data) {
         if (res.data.requests) {
-          const sortedJobs = [...res.data.requests].sort((a: any, b: any) => {
-            const dateA = new Date(a.shift_date || 0).getTime();
-            const dateB = new Date(b.shift_date || 0).getTime();
-            return dateB - dateA;
-          });
-          setJobsList(sortedJobs);
+          const newRequests = res.data.requests;
+          setHasMore(res.data.has_more ?? newRequests.length >= 20);
+          
+          if (res.data.counts) {
+            setCounts(res.data.counts);
+          }
+
+          if (loadMore) {
+            setJobsList(prev => {
+              const combined = [...prev, ...newRequests];
+              const uniqueMap = new Map();
+              combined.forEach(job => {
+                if (job.request_id) {
+                  uniqueMap.set(job.request_id, job);
+                }
+              });
+              const unique = Array.from(uniqueMap.values());
+              return unique.sort((a: any, b: any) => {
+                const dateA = new Date(a.shift_date || 0).getTime();
+                const dateB = new Date(b.shift_date || 0).getTime();
+                return dateA - dateB;
+              });
+            });
+            setOffset(currentOffset);
+          } else {
+            const uniqueMap = new Map();
+            newRequests.forEach((job: any) => {
+              if (job.request_id) {
+                uniqueMap.set(job.request_id, job);
+              }
+            });
+            const unique = Array.from(uniqueMap.values());
+            const sortedJobs = unique.sort((a: any, b: any) => {
+              const dateA = new Date(a.shift_date || 0).getTime();
+              const dateB = new Date(b.shift_date || 0).getTime();
+              return dateA - dateB;
+            });
+            setJobsList(sortedJobs);
+            setOffset(0);
+          }
         }
         if (res.data.store_name) setManagerStoreName(res.data.store_name);
         else setManagerStoreName('Unassigned Store');
       }
     } catch (error) {
       console.error('Failed to fetch manager requests', error);
+    } finally {
+      if (loadMore) setLoadingMore(false);
     }
   };
 
@@ -244,12 +314,31 @@ export default function StoreManagerDashboard() {
 
       setIsRatingModalOpen(false);
       setSelectedWorker(null);
-      Alert.alert('Success', 'Thank you! The sahyogi performance has been rated and shift is completed.');
+      setStatusModalContent({ title: 'Success', message: 'Thank you! The SahYogi performance has been rated and shift is completed.', type: 'success' });
+      setShowStatusModal(true);
       fetchRequests();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to submit rating');
+      setStatusModalContent({ title: 'Error', message: err.response?.data?.detail || 'Failed to submit rating', type: 'error' });
+      setShowStatusModal(true);
     } finally {
       setSubmittingRating(false);
+    }
+  };
+
+  const handleExtendJob = async () => {
+    if (!selectedWorker) return;
+    setSubmittingExtension(true);
+    try {
+      await apiClient.post(`/jobs/manager/jobs/assignment/${selectedWorker.assignment_id}/extend`, { hours: extendHours });
+      setIsExtendModalOpen(false);
+      setStatusModalContent({ title: 'Success', message: 'Job extension request sent to the SahYogi.', type: 'success' });
+      setShowStatusModal(true);
+      fetchRequests();
+    } catch (err: any) {
+      setStatusModalContent({ title: 'Error', message: err.response?.data?.detail || 'Failed to request extension', type: 'error' });
+      setShowStatusModal(true);
+    } finally {
+      setSubmittingExtension(false);
     }
   };
 
@@ -292,12 +381,12 @@ export default function StoreManagerDashboard() {
     if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
       return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
     }
-    if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
+    if (minutesUntilShift <= 45 && worker.t45_status === 'pending') {
       return { label: 'Cancelled', bgColor: '#F3F4F6', textColor: '#9CA3AF' };
     }
 
-    // If they are not cancelled, and T-60 or T-90 is confirmed (or they bypassed it), they are Enroute.
-    if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
+    // If they are not cancelled, and T-45 or T-90 is confirmed (or they bypassed it), they are Enroute.
+    if (worker.t45_status === 'confirmed' || worker.t90_status === 'confirmed') {
       return { label: 'Enroute', bgColor: '#D1FAE5', textColor: '#059669' };
     }
 
@@ -324,9 +413,19 @@ export default function StoreManagerDashboard() {
   const pastJobs = approvedJobs.filter(job => job.shift_date < todayStr);
 
   const renderSimpleRequestCard = (job: any) => (
-    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
+    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-        <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.job_name}</Text>
+        <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, marginRight: 8 }}>{job.job_name}</Text>
+        <TouchableOpacity 
+          onPress={() => {
+            setStatusModalContent({ title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', type: 'success' });
+            setShowStatusModal(true);
+          }}
+          style={{ marginRight: 8, padding: 2 }}
+        >
+          <Ionicons name="information-circle-outline" size={22} color="#6B7280" />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
         <View
           style={{
             paddingHorizontal: 12,
@@ -341,16 +440,16 @@ export default function StoreManagerDashboard() {
         </View>
       </View>
 
-      <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shift_date} • {job.start_time}</Text>
+      <Text style={{ color: '#666666', fontSize: 13, fontWeight: '500', marginBottom: 14 }}>{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''} • {job.start_time}</Text>
 
       <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
         <View>
-          <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>No. of Sahyogis</Text>
+          <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>No. of SahYogi(s)</Text>
           <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workers_needed} Needed</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Compensation</Text>
-          <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.base_compensation * job.hours_duration}</Text>
+          <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}> Total Compensation</Text>
+          <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>₹{job.base_compensation * job.hours_duration * job.workers_needed}</Text>
         </View>
       </View>
 
@@ -371,21 +470,29 @@ export default function StoreManagerDashboard() {
     let shiftHasStarted = false;
     let isJobEnded = false;
     if (job.shift_date && job.start_time) {
-      const shiftDateTime = new Date(`${job.shift_date}T${job.start_time}`);
-      if (new Date() >= shiftDateTime) {
-        shiftHasStarted = true;
-      }
-      const hoursDuration = job.hours_duration || 0;
-      const endDateTime = new Date(shiftDateTime.getTime() + hoursDuration * 60 * 60 * 1000);
-      if (new Date() >= endDateTime) {
-        isJobEnded = true;
+      // Ensure the date is in YYYY-MM-DD format for reliable parsing
+      const formattedDate = String(job.shift_date).split('-')[0].length !== 4 
+        ? String(job.shift_date).split('-').reverse().join('-') 
+        : job.shift_date;
+        
+      const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+      
+      if (shiftDateTime instanceof Date && !isNaN(shiftDateTime.getTime())) {
+        if (new Date() >= shiftDateTime) {
+          shiftHasStarted = true;
+        }
+        const hoursDuration = Number(job.hours_duration) || 0;
+        const endDateTime = new Date(shiftDateTime.getTime() + hoursDuration * 60 * 60 * 1000);
+        if (new Date() >= endDateTime) {
+          isJobEnded = true;
+        }
       }
     }
 
     return (
       <View
         key={job.request_id}
-        style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
+        style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, overflow: 'hidden' }}
       >
         <TouchableOpacity
           onPress={() => toggleExpandJob(job.request_id)}
@@ -395,13 +502,23 @@ export default function StoreManagerDashboard() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', flex: 1 }}>{job.job_name}</Text>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginRight: 8 }}>{job.job_name}</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setStatusModalContent({ title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', type: 'success' });
+                    setShowStatusModal(true);
+                  }}
+                  style={{ marginRight: 8, padding: 2 }}
+                >
+                  <Ionicons name="information-circle-outline" size={22} color="#6B7280" />
+                </TouchableOpacity>
+                <View style={{ flex: 1 }} />
                 <View style={{ backgroundColor: job.request_status?.toLowerCase() === 'open' ? '#DCFCE7' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: job.request_status?.toLowerCase() === 'open' ? '#15803D' : '#B91C1C', textTransform: 'capitalize' }}>{job.request_status || 'Open'}</Text>
                 </View>
               </View>
 
-              <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date} • {job.start_time}</Text>
+              <Text style={{ fontSize: 13, color: '#666666', fontWeight: '500', marginBottom: 8 }}>{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''} • {job.start_time}</Text>
 
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="people-outline" size={16} color="#10472B" style={{ marginRight: 6 }} />
@@ -435,14 +552,35 @@ export default function StoreManagerDashboard() {
         {isExpanded && (
           <View style={{ padding: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', backgroundColor: '#FFFFFF' }}>
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#666666', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
-              Assigned Sahyogis & Check-in Status
+              Assigned SahYogi(s) & Check-in Status
             </Text>
 
             {acceptedWorkers.length === 0 ? (
-              <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No Sahyogis assigned yet for this job.</Text>
+              <Text style={{ color: '#9CA3AF', fontSize: 13, fontStyle: 'italic' }}>No SahYogi(s) assigned yet for this job.</Text>
             ) : (
               acceptedWorkers.map((worker: any) => {
                 const statusInfo = getWorkerStatusDisplay(worker, job);
+                
+                // Calculate worker-specific job end time including accepted extensions
+                let workerJobEnded = false;
+                if (job.shift_date && job.start_time) {
+                  const formattedDate = String(job.shift_date).split('-')[0].length !== 4 
+                    ? String(job.shift_date).split('-').reverse().join('-') 
+                    : job.shift_date;
+                  const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+                  
+                  if (shiftDateTime instanceof Date && !isNaN(shiftDateTime.getTime())) {
+                    const baseHours = Number(job.hours_duration) || 0;
+                    const extHours = worker.extension_status === 'accepted' ? (Number(worker.extension_hours) || 0) : 0;
+                    const totalHours = baseHours + extHours;
+                    
+                    const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
+                    if (new Date() >= endDateTime) {
+                      workerJobEnded = true;
+                    }
+                  }
+                }
+
                 return (
                   <View
                     key={worker.id}
@@ -459,7 +597,16 @@ export default function StoreManagerDashboard() {
                           )}
                         </View>
                         <View>
-                          <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15 }}>{worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 15, marginRight: 6 }}>
+                              {worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}
+                            </Text>
+                            {worker.mobile_number && (
+                              <TouchableOpacity onPress={() => Linking.openURL(`tel:${worker.mobile_number}`)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
+                                <Feather name="phone" size={12} color="#0B5B31" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
                           <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
                         </View>
                       </View>
@@ -485,6 +632,26 @@ export default function StoreManagerDashboard() {
                       </View>
                     </View>
 
+                    {worker.extension_status === 'accepted' && (
+                      <View style={{ backgroundColor: 'rgba(11, 91, 49, 0.05)', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(11, 91, 49, 0.2)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Feather name="clock" size={14} color="#0B5B31" style={{ marginRight: 6 }} />
+                          <Text style={{ color: '#0B5B31', fontWeight: '700', fontSize: 12 }}>Ext. Accepted (+{worker.extension_hours}h)</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ color: '#0B5B31', fontWeight: '800', fontSize: 14 }}>₹{Math.round((Number(job.hours_duration) || 0) * (Number(job.base_compensation) || 0) + (Number(worker.extension_hours) || 0) * (Number(job.base_compensation) || 0) * 1.1)}</Text>
+                          <Text style={{ color: '#0B5B31', fontSize: 10, fontWeight: '600' }}>New Shift End: {(() => {
+                            if (!job.shift_date || !job.start_time) return '';
+                            const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
+                            const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+                            const totalHours = (Number(job.hours_duration) || 0) + (Number(worker.extension_hours) || 0);
+                            const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
+                            return endDateTime.getHours().toString().padStart(2, '0') + ':' + endDateTime.getMinutes().toString().padStart(2, '0');
+                          })()}</Text>
+                        </View>
+                      </View>
+                    )}
+
                     {/* VERIFY OTP ACTION BUTTON */}
                     {worker.arrival_status === 'arrived' && worker.status === 'accepted' && !shiftHasStarted && (
                       <TouchableOpacity
@@ -498,15 +665,45 @@ export default function StoreManagerDashboard() {
                     )}
 
                     {/* RATE WORKER ACTION BUTTON (Primary Red Button) */}
-                    {worker.status === 'started' && isJobEnded && (
-                      <TouchableOpacity
-                        onPress={() => handleOpenRating(worker)}
-                        style={{ backgroundColor: '#D32F2F', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}
-                        activeOpacity={0.85}
-                      >
-                        <Ionicons name="star" size={14} color="#FFD700" style={{ marginRight: 6 }} />
-                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Rate Sahyogi & Approve Shift</Text>
-                      </TouchableOpacity>
+                    {worker.status === 'started' && workerJobEnded && (
+                      <View style={{ marginTop: 12 }}>
+                        {worker.extension_status === 'pending' ? (
+                          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}>
+                            <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 13 }}>Waiting for SahYogi to accept extension</Text>
+                          </View>
+                        ) : (
+                          <>
+                            {worker.extension_status === 'rejected' && (
+                              <Text style={{ color: '#D32F2F', fontSize: 11, textAlign: 'center', marginBottom: 8, fontWeight: '600' }}>Extension Rejected by Worker</Text>
+                            )}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                              {!worker.extension_status && (
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    setSelectedWorker(worker);
+                                    setIsExtendModalOpen(true);
+                                  }}
+                                  style={{ width: 44, backgroundColor: '#F0FDF4', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 8, borderWidth: 1, borderColor: '#BBF7D0' }}
+                                  activeOpacity={0.85}
+                                >
+                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Feather name="clock" size={16} color="#0B5B31" />
+                                    <Text style={{ color: '#0B5B31', fontWeight: '900', fontSize: 12, marginLeft: 2, marginTop: -6 }}>+</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              )}
+
+                              <TouchableOpacity
+                                onPress={() => handleOpenRating(worker)}
+                                style={{ flex: 1, backgroundColor: '#D32F2F', borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' }}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 }}>RATE & END SHIFT</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </>
+                        )}
+                      </View>
                     )}
 
                     {/* RATED STATUS SUMMARY */}
@@ -528,33 +725,74 @@ export default function StoreManagerDashboard() {
     );
   };
 
+  const isCloseToBottom = ({ layoutMeasurement, contentOffset, contentSize }: any) => {
+    const paddingToBottom = 20;
+    return layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9' }}>
       {/* ==================== 1. TOP HEADER ==================== */}
-      <View style={{ backgroundColor: '#10472B', borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingTop: 40, paddingBottom: 24, paddingHorizontal: 20 }}>
+      <View style={{ backgroundColor: '#FFFFFF', paddingTop: 16, paddingBottom: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 8, zIndex: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => router.push('/store_manager/profile')}
-            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)', marginRight: 12 }}
+            style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F9F9F9', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E5E7EB', marginRight: 16 }}
             activeOpacity={0.8}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>
+            <Text style={{ color: '#0B5B31', fontSize: 20, fontWeight: '800' }}>
               {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() : 'R'}
             </Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 }}>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: '#3C3C3B', letterSpacing: -0.5 }}>
               Hi, {userProfile ? `${userProfile.first_name}` : 'Rajesh'}
             </Text>
-            <Text style={{ fontSize: 13, color: '#E1EBE5', fontWeight: '500', marginTop: 2 }}>
-              {managerStoreName} {userProfile?.role_name ? `. ${userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` : '. Store Manager'}
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.8}
+              style={{ fontSize: 12, color: '#666666', fontWeight: '600', marginTop: 2 }}
+            >
+              {managerStoreName} •{' '}
+              {(!userProfile?.role_name || userProfile.role_name === 'store_manager') ? (
+                <>
+                  <Text style={{ color: '#0B5B31' }}>Store</Text>{' '}
+                  <Text style={{ color: '#D32F2F' }}>Manager</Text>
+                </>
+              ) : (
+                userProfile.role_name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+              )}
             </Text>
           </View>
+          <Image
+            source={require('../../assets/images/newlogo.png')}
+            style={{ width: 85, height: 85, resizeMode: 'contain', marginLeft: 12 }}
+          />
+        </View>
+
+        {/* Decorative Brand Line - Absolute Bottom */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
       </View>
 
       {/* ==================== 2. MAIN SCROLLABLE BODY CONTENT ==================== */}
-      <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        onScroll={({ nativeEvent }) => {
+          if (isCloseToBottom(nativeEvent)) {
+            fetchRequests(true);
+          }
+        }}
+        scrollEventThrottle={400}
+      >
 
         {/* ==================== HOME TAB (JOBS IN PROCESS & EXPANDABLE ASSIGNED WORKERS) ==================== */}
         {activeTab === 'home' && (
@@ -564,7 +802,7 @@ export default function StoreManagerDashboard() {
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Jobs in Process</Text>
               <View style={{ flexDirection: 'row' }}>
                 <TouchableOpacity
-                  onPress={fetchRequests}
+                  onPress={() => fetchRequests(false)}
                   style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, marginRight: 10 }}
                   activeOpacity={0.8}
                 >
@@ -588,7 +826,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Jobs Today</Text>
                 <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{todayJobs.length}</Text>
+                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{counts.today}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.today ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -614,7 +852,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Upcoming Jobs</Text>
                 <View style={{ backgroundColor: '#DBEAFE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#1D4ED8', fontSize: 12, fontWeight: '700' }}>{upcomingJobs.length}</Text>
+                  <Text style={{ color: '#1D4ED8', fontSize: 12, fontWeight: '700' }}>{counts.upcoming}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.upcoming ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -640,7 +878,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Past Jobs</Text>
                 <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#4B5563', fontSize: 12, fontWeight: '700' }}>{pastJobs.length}</Text>
+                  <Text style={{ color: '#4B5563', fontSize: 12, fontWeight: '700' }}>{counts.past}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.past ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -688,7 +926,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Pending Requests</Text>
                 <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>{pendingJobs.length}</Text>
+                  <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>{counts.pending}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.pending ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -714,7 +952,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Approved Requests</Text>
                 <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{approvedJobs.length}</Text>
+                  <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{counts.approved}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.req_approved ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -740,7 +978,7 @@ export default function StoreManagerDashboard() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Declined Requests</Text>
                 <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                  <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{declinedJobs.length}</Text>
+                  <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{counts.declined}</Text>
                 </View>
               </View>
               <Feather name={expandedSections.req_declined ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -777,7 +1015,7 @@ export default function StoreManagerDashboard() {
                 <Text style={{ color: '#F59E0B', marginRight: 6, fontSize: 14 }}>⭐⭐⭐⭐⭐</Text>
                 <Text style={{ color: '#B45309', fontWeight: '700', fontSize: 13 }}>5.0</Text>
               </View> */}
-              <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6 }}>Rated by Sahyogis & Operations</Text>
+              <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6 }}>Rated by SahYogi(s) & Operations</Text>
             </View>
 
             {/* Settings Options */}
@@ -788,7 +1026,7 @@ export default function StoreManagerDashboard() {
               </TouchableOpacity>
 
               <TouchableOpacity style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>Sahyogi Escalations</Text>
+                <Text style={{ color: '#1A1A1A', fontWeight: '600', fontSize: 14 }}>SahYogi Escalations</Text>
                 <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
               </TouchableOpacity>
 
@@ -808,6 +1046,13 @@ export default function StoreManagerDashboard() {
             </TouchableOpacity>
           </View>
         )}
+
+        {loadingMore && (
+          <View style={{ paddingVertical: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
+            <ActivityIndicator size="small" color="#10472B" />
+            <Text style={{ marginLeft: 10, color: '#10472B', fontWeight: '600' }}>Loading more...</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* ==================== 3. FIXED BOTTOM NAVIGATION BAR ==================== */}
@@ -818,11 +1063,10 @@ export default function StoreManagerDashboard() {
           left: 0,
           right: 0,
           backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
           flexDirection: 'row',
           justifyContent: 'space-around',
           paddingVertical: 12,
+          paddingTop: 16,
           paddingBottom: Platform.OS === 'ios' ? Math.max(24, insets.bottom) : Math.max(12, insets.bottom),
           elevation: 10,
           shadowColor: '#000',
@@ -832,6 +1076,15 @@ export default function StoreManagerDashboard() {
           zIndex: 999,
         }}
       >
+        {/* Decorative Brand Line - Absolute Top */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+        </View>
+
         <TouchableOpacity onPress={() => setActiveTab('home')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons
             name={activeTab === 'home' ? 'home' : 'home-outline'}
@@ -877,7 +1130,7 @@ export default function StoreManagerDashboard() {
               </TouchableOpacity>
             </View>
             <Text style={{ color: '#666666', fontSize: 14, marginBottom: 20 }}>
-              Ask the Sahyogi for their 4-digit start OTP to officially begin their shift.
+              Ask the SahYogi for their 4-digit start OTP to officially begin their shift.
             </Text>
 
             <TextInput
@@ -907,7 +1160,7 @@ export default function StoreManagerDashboard() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Rate Sahyogi Performance</Text>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Rate SahYogi Performance</Text>
               <TouchableOpacity onPress={() => setIsRatingModalOpen(false)}>
                 <Ionicons name="close-circle-outline" size={28} color="#9CA3AF" />
               </TouchableOpacity>
@@ -1061,6 +1314,83 @@ export default function StoreManagerDashboard() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* EXTEND SHIFT MODAL */}
+      <Modal visible={isExtendModalOpen} animationType="slide" transparent={true}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, minHeight: '40%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A' }}>Extend Shift</Text>
+              <TouchableOpacity onPress={() => setIsExtendModalOpen(false)}>
+                <Feather name="x" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 15, color: '#4B5563', marginBottom: 16 }}>Select the number of hours you would like to extend the shift for {selectedWorker?.name}:</Text>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
+              {[1, 2, 3].map((hours) => (
+                <TouchableOpacity
+                  key={hours}
+                  onPress={() => setExtendHours(hours)}
+                  style={{
+                    flex: 1,
+                    marginHorizontal: 4,
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: extendHours === hours ? '#0B5B31' : '#E5E7EB',
+                    backgroundColor: extendHours === hours ? '#F0FDF4' : '#FFFFFF',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: extendHours === hours ? '#0B5B31' : '#4B5563' }}>+{hours} hr</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>
+              An extension request will be sent to the SahYogi. Extended hours will be compensated at base rate + 10%.
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleExtendJob}
+              disabled={submittingExtension}
+              style={{ backgroundColor: '#D32F2F', paddingVertical: 16, borderRadius: 12, alignItems: 'center', opacity: submittingExtension ? 0.7 : 1 }}
+            >
+              {submittingExtension ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Send Extension Request</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }

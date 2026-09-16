@@ -10,6 +10,7 @@ class SuperadminJobResponse(BaseModel):
     shift_date: str
     start_time: str
     workers_needed: int
+    hours_duration: float
     compensation: float
     approval_status: str
     decline_reason: Optional[str] = None
@@ -17,9 +18,16 @@ class SuperadminJobResponse(BaseModel):
 class RejectRequestPayload(BaseModel):
     decline_reason: str
 
+class CountsData(BaseModel):
+    pending: int
+    approved: int
+    declined: int
+
 class SuperadminRequestsResponse(BaseModel):
     status: str
     requests: List[SuperadminJobResponse]
+    counts: Optional[CountsData] = None
+    has_more: bool = False
 
 class ActionResponse(BaseModel):
     status: str
@@ -32,6 +40,7 @@ class StoreCreateRequest(BaseModel):
     state: str
     pincode: str
     google_map_link: Optional[str] = None
+    contact_number: Optional[str] = None
     store_type: str
 
 class StoreResponse(BaseModel):
@@ -42,6 +51,7 @@ class StoreResponse(BaseModel):
     state: Optional[str] = None
     pincode: Optional[str] = None
     google_map_link: Optional[str] = None
+    contact_number: Optional[str] = None
     manager_name: Optional[str] = None
     store_type: Optional[str] = None
 

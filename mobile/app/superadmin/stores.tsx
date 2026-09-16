@@ -11,11 +11,13 @@ import { State, City } from 'country-state-city';
 import { apiClient } from '../../src/api/client';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
+import { useAuthStore } from '../../src/store/authStore';
 
 // Validation Schema for Add Store
 const storeSchema = z.object({
   store_name: z.string().min(2, "Store name is required"),
   address: z.string().min(5, "Street address is required"),
+  contact_number: z.string().optional().or(z.literal('')),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
   pincode: z.string().length(6, "PIN Code must be 6 digits"),
@@ -28,6 +30,7 @@ type StoreFormData = z.infer<typeof storeSchema>;
 export default function SuperadminStores() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const role = useAuthStore(state => state.role);
   
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +47,8 @@ export default function SuperadminStores() {
   const [showStateModal, setShowStateModal] = useState(false);
   const [showCityModal, setShowCityModal] = useState(false);
   const [showStoreTypeModal, setShowStoreTypeModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   const [selectedStateCode, setSelectedStateCode] = useState('');
 
   const { control, handleSubmit, setValue, reset, formState: { errors } } = useForm<StoreFormData>({
@@ -51,6 +56,7 @@ export default function SuperadminStores() {
     defaultValues: {
       store_name: '',
       address: '',
+      contact_number: '',
       city: '',
       state: '',
       pincode: '',
@@ -91,13 +97,23 @@ export default function SuperadminStores() {
     setSubmitting(true);
     try {
       await apiClient.post('/superadmin/stores', data);
-      Alert.alert('Success', 'Store created successfully');
+      setStatusModalContent({
+        title: 'Success',
+        message: 'Store created successfully',
+        type: 'success'
+      });
+      setShowStatusModal(true);
       setIsAddModalOpen(false);
       reset();
       setSelectedStateCode('');
       fetchStores();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to create store');
+      setStatusModalContent({
+        title: 'Error',
+        message: err.response?.data?.detail || 'Failed to create store',
+        type: 'error'
+      });
+      setShowStatusModal(true);
     } finally {
       setSubmitting(false);
     }
@@ -109,13 +125,15 @@ export default function SuperadminStores() {
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Stores</Text>
-          <TouchableOpacity
-            onPress={() => setIsAddModalOpen(true)}
-            style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Add Store</Text>
-          </TouchableOpacity>
+          {role !== 'admin' && (
+            <TouchableOpacity
+              onPress={() => setIsAddModalOpen(true)}
+              style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Add Store</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}>
@@ -162,6 +180,12 @@ export default function SuperadminStores() {
                         <Text style={{ fontSize: 14, color: '#3B82F6' }}>{store.google_map_link}</Text>
                       </View>
                     ) : null}
+                    {store.contact_number ? (
+                      <View style={{ marginBottom: 4 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 }}>Contact Number</Text>
+                        <Text style={{ fontSize: 14, color: '#1F2937' }}>{store.contact_number}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 )}
               </View>
@@ -173,8 +197,16 @@ export default function SuperadminStores() {
       {/* Add Store Modal */}
       <Modal visible={isAddModalOpen} animationType="slide" transparent={true}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '90%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '90%', overflow: 'hidden' }}>
+            {/* Decorative Brand Line - Absolute Top */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row', zIndex: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Add New Store</Text>
               <TouchableOpacity onPress={() => setIsAddModalOpen(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="close" size={20} color="#4B5563" />
@@ -194,6 +226,13 @@ export default function SuperadminStores() {
                 name="address"
                 render={({ field: { onChange, value } }) => (
                   <Input label="Street Address" placeholder="Main Street" value={value} onChangeText={onChange} error={errors.address?.message} />
+                )}
+              />
+              <Controller
+                control={control}
+                name="contact_number"
+                render={({ field: { onChange, value } }) => (
+                  <Input label="Contact Number" placeholder="Store Contact Number" keyboardType="phone-pad" value={value} onChangeText={onChange} error={errors.contact_number?.message} />
                 )}
               />
 
@@ -369,6 +408,29 @@ export default function SuperadminStores() {
             </TouchableOpacity>
             <TouchableOpacity onPress={() => { setValue('store_type', 'hybrid store', { shouldValidate: true }); setShowStoreTypeModal(false); }} style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' }}>
               <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>Hybrid Store</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

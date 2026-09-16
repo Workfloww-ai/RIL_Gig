@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform, Alert, Image, ScrollView } from 'react-native';
+import { View, Text, StatusBar, Platform, Alert, Image, Modal, TouchableOpacity, Linking, Keyboard } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useRouter } from 'expo-router';
 import { Button } from '../src/components/Button';
 import { Input } from '../src/components/Input';
@@ -12,9 +14,36 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showFinanceModal, setShowFinanceModal] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  React.useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  const formatMobileNumber = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    let formatted = cleaned;
+    if (cleaned.length > 5) {
+      formatted = cleaned.substring(0, 5) + ' - ' + cleaned.substring(5, 10);
+    }
+    setMobile(formatted);
+  };
 
   const handleContinue = async () => {
-    if (mobile.length < 10) {
+    const rawMobile = mobile.replace(/\D/g, '');
+    if (rawMobile.length < 10) {
       setError('Please enter a valid 10-digit mobile number');
       return;
     }
@@ -22,9 +51,9 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      console.log(`Sending request to backend for mobile: 91${mobile}`);
+      console.log(`Sending request to backend for mobile: 91${rawMobile}`);
       const response = await apiClient.post('/auth/check-mobile', {
-        mobile_number: `+91${mobile}`, // Stripping the + sign as backend requested
+        mobile_number: `+91${rawMobile}`, // Stripping the + sign as backend requested
       });
       console.log('Backend response:', response.data);
 
@@ -35,11 +64,11 @@ export default function LoginScreen() {
         // Send OTP directly for existing user before redirecting
         console.log('User exists, sending OTP...');
         await apiClient.post('/auth/send-otp', {
-          mobile_number: `91${mobile}`
+          mobile_number: `91${rawMobile}`
         });
-        router.push({ pathname: '/otp', params: { mobile: `91${mobile}` } });
+        router.push({ pathname: '/otp', params: { mobile: `91${rawMobile}` } });
       } else {
-        router.push({ pathname: '/signup/details', params: { mobile: `91${mobile}` } });
+        router.push({ pathname: '/signup/details', params: { mobile: `91${rawMobile}` } });
       }
     } catch (err: any) {
       console.error('API Error:', err.message, err.response?.data);
@@ -51,38 +80,100 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream pt-8">
-      <Watermark>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} className="px-8 pb-10" showsVerticalScrollIndicator={false} bounces={false}>
-            <View className="mb-12 mt-10">
-              <Image 
-                source={require('../assets/images/logo-sahyogi.png')} 
-                style={{ width: 160, height: 160, resizeMode: 'contain', marginBottom: 16 }}
-              />
-              <Text className="text-5xl font-bold text-red-600 mb-3 tracking-tight">Sah<Text className="text-moss/80">Yogi</Text></Text>
-              <Text className="text-sage text-lg font-medium">Enter your mobile number to get started.</Text>
+      {/* Decorative Brand Line - Top Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+        <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+        <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+        <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+        <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+      </View>
+      <KeyboardAwareScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={20}
+        className="flex-1 px-8"
+      >
+
+        {/* Top Spacer - hidden when keyboard is open to keep logo visible */}
+        {!isKeyboardVisible && <View style={{ flex: 0.3, minHeight: 10 }} />}
+
+        <View className="mb-6 items-center">
+          <Image
+            source={require('../assets/images/newlogo.png')}
+            style={{ 
+              width: isKeyboardVisible ? 90 : 250, 
+              height: isKeyboardVisible ? 90 : 250, 
+              resizeMode: 'contain', 
+              marginBottom: isKeyboardVisible ? 4 : 16 
+            }}
+          />
+          <Text className="text-5xl font-bold text-[#D32F2F] mb-3 tracking-tight text-center leading-[65px]">Sah<Text className="text-moss/80">Yogi</Text></Text>
+          <Text className="text-sage text-lg font-medium text-center">Enter your mobile number to get started.</Text>
+        </View>
+
+        <Input
+          label="Mobile Number"
+          placeholder="00000 - 00000"
+          keyboardType="numeric"
+          value={mobile}
+          onChangeText={formatMobileNumber}
+          error={error}
+          maxLength={13}
+          textAlign="center"
+          style={{ fontSize: 24, fontWeight: 'bold' }}
+        />
+
+        <View className="mt-4">
+          <Button title="Continue" onPress={handleContinue} loading={loading} />
+        </View>
+
+        {/* Bottom Spacer to push the footer to the bottom */}
+        <View className="flex-1 min-h-[40px]" />
+
+        <View className="items-center pb-4">
+          <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY WORKFLOWW.AI</Text>
+        </View>
+      </KeyboardAwareScrollView>
+
+      {/* Decorative Brand Line - Bottom Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+        <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+        <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+        <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+        <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+      </View>
+
+      <Modal visible={showFinanceModal} transparent animationType="fade">
+        <View className="flex-1 justify-center items-center bg-black/50 px-6">
+          <View className="bg-white rounded-3xl p-6 w-full shadow-xl">
+            <Text className="text-xl font-bold text-slate mb-3">Finance Portal</Text>
+            <Text className="text-sage text-base mb-6 leading-relaxed">
+              Finance users should log in via the web dashboard.
+            </Text>
+            <View className="flex-row justify-end">
+              <TouchableOpacity
+                onPress={() => setShowFinanceModal(false)}
+                className="px-5 py-2.5 mr-2 rounded-xl"
+              >
+                <Text className="text-moss font-bold text-base">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowFinanceModal(false);
+                  Linking.openURL('http://financedashboard.sahyogi.net.in/');
+                }}
+                className="px-5 py-2.5 rounded-xl"
+              >
+                <Text className="text-moss font-bold text-base">Open Portal</Text>
+              </TouchableOpacity>
             </View>
-            
-            <Input 
-              label="Mobile Number"
-              placeholder="e.g. 9876543210"
-              keyboardType="numeric"
-              value={mobile}
-              onChangeText={setMobile}
-              error={error}
-              maxLength={10}
-            />
-            
-            <View className="mt-4">
-              <Button title="Continue" onPress={handleContinue} loading={loading} />
-            </View>
-            
-            <View className="items-center mt-16 mb-4">
-              <Text className="text-sage text-sm font-medium tracking-widest">POWERED BY LUCID</Text>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Watermark>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

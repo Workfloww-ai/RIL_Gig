@@ -117,7 +117,7 @@ def get_all_modules(limit: int = None, offset: int = None):
     Orders them by order_index.
     """
     query = supabase.table("content_library").select(
-        "id, title, category_name, duration_text, video_url, podcast_url, overview_text, quiz_questions, key_module_topics, order_index, is_locked_default"
+        "id, title, title_hinglish, title_bengali, category_name, duration_text, video_url, video_url_hinglish, video_url_bengali, podcast_url, podcast_url_hinglish, podcast_url_bengali, overview_text, overview_text_hinglish, overview_text_bengali, quiz_questions, quiz_questions_hinglish, quiz_questions_bengali, key_module_topics, key_module_topics_hinglish, key_module_topics_bengali, order_index, is_locked_default"
     ).order("order_index")
     
     if limit is not None and offset is not None:

@@ -18,8 +18,8 @@ async def verify_superadmin(user_id: str = Depends(get_current_user)):
             raise HTTPException(status_code=403, detail="Role not found for user")
             
         role_res = supabase.table("roles").select("role_name").eq("role_id", role_id).execute()
-        if not role_res.data or role_res.data[0].get("role_name") != "superadmin":
-            raise HTTPException(status_code=403, detail="Not authorized. Superadmin access required.")
+        if not role_res.data or role_res.data[0].get("role_name") not in ["superadmin", "admin"]:
+            raise HTTPException(status_code=403, detail="Not authorized. Superadmin or Admin access required.")
             
         return user_id
     except HTTPException:
@@ -41,19 +41,49 @@ async def get_decline_reasons(user_id: str = Depends(verify_superadmin)):
         raise HTTPException(status_code=500, detail="Failed to fetch decline reasons")
 
 @router.get("/requests", response_model=SuperadminRequestsResponse)
-async def get_pending_requests(limit: int = 100, offset: int = 0, user_id: str = Depends(verify_superadmin)):
+async def get_pending_requests(limit: int = 20, offset: int = 0, user_id: str = Depends(verify_superadmin)):
     """
     Fetch all manpower requests for superadmin across all stores.
     """
     try:
-        response = supabase.table("manpower_requests").select(
+        base_select = (
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
             "jobs(job_id, job_name, base_compensation), "
             "stores(store_id, store_name, address, city)"
-        ).order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+        )
+        
+        pending_resp = supabase.table("manpower_requests").select(base_select)\
+            .eq("approval_status", "pending")\
+            .order("shift_date", desc=False).order("start_time", desc=False)\
+            .range(offset, offset + limit - 1).execute()
+            
+        approved_resp = supabase.table("manpower_requests").select(base_select)\
+            .in_("approval_status", ["approved", "confirmed"])\
+            .order("shift_date", desc=False).order("start_time", desc=False)\
+            .range(offset, offset + limit - 1).execute()
+            
+        declined_resp = supabase.table("manpower_requests").select(base_select)\
+            .in_("approval_status", ["declined", "rejected"])\
+            .order("shift_date", desc=False).order("start_time", desc=False)\
+            .range(offset, offset + limit - 1).execute()
+            
+        all_data = []
+        has_more = False
+        
+        if pending_resp.data:
+            all_data.extend(pending_resp.data)
+            if len(pending_resp.data) == limit: has_more = True
+            
+        if approved_resp.data:
+            all_data.extend(approved_resp.data)
+            if len(approved_resp.data) == limit: has_more = True
+            
+        if declined_resp.data:
+            all_data.extend(declined_resp.data)
+            if len(declined_resp.data) == limit: has_more = True
         
         requests = []
-        for r in response.data:
+        for r in all_data:
             job_info = r.get("jobs") or {}
             if isinstance(job_info, list) and len(job_info) > 0:
                 job_info = job_info[0]
@@ -74,12 +104,23 @@ async def get_pending_requests(limit: int = 100, offset: int = 0, user_id: str =
                 shift_date=r.get("shift_date", ""),
                 start_time=r.get("start_time", ""),
                 workers_needed=r.get("workers_needed", 1),
-                compensation=hours * base_comp,
+                hours_duration=hours,
+                compensation=hours * base_comp * r.get("workers_needed", 1),
                 approval_status=r.get("approval_status", ""),
                 decline_reason=r.get("decline_reason")
             ))
+        # Get accurate counts by fetching ids (safer than relying on .count attribute in some supabase-py versions)
+        pending_res = supabase.table("manpower_requests").select("request_id").eq("approval_status", "pending").execute()
+        approved_res = supabase.table("manpower_requests").select("request_id").in_("approval_status", ["approved", "confirmed"]).execute()
+        declined_res = supabase.table("manpower_requests").select("request_id").in_("approval_status", ["declined", "rejected"]).execute()
+        
+        counts = {
+            "pending": len(pending_res.data) if pending_res.data else 0,
+            "approved": len(approved_res.data) if approved_res.data else 0,
+            "declined": len(declined_res.data) if declined_res.data else 0
+        }
             
-        return SuperadminRequestsResponse(status="success", requests=requests)
+        return SuperadminRequestsResponse(status="success", requests=requests, counts=counts, has_more=has_more)
     except Exception as e:
         print(f"Error fetching superadmin requests: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -125,7 +166,7 @@ async def get_all_stores(user_id: str = Depends(verify_superadmin)):
     """
     try:
         # Fetch stores
-        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, store_type").order("created_at", desc=True).execute()
+        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, contact_number, store_type").order("created_at", desc=True).execute()
                 
         stores = []
         for s in stores_res.data:
@@ -137,6 +178,7 @@ async def get_all_stores(user_id: str = Depends(verify_superadmin)):
                 state=s.get("state"),
                 pincode=s.get("pincode"),
                 google_map_link=s.get("google_map_link"),
+                contact_number=s.get("contact_number"),
                 store_type=s.get("store_type")
             ))
             
@@ -314,4 +356,59 @@ async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(v
         print(f"Error creating manager: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/deletion-requests")
+async def get_deletion_requests(user_id: str = Depends(verify_superadmin)):
+    try:
+        # We need to join account_deletion_requests with users table to get first_name, last_name, mobile_number
+        res = supabase.table("account_deletion_requests").select(
+            "id, user_id, reason, requested_at, status, "
+            "users (first_name, last_name, mobile_number)"
+        ).eq("status", "pending").execute()
+        
+        requests = []
+        for row in res.data:
+            user_info = row.get("users") or {}
+            if isinstance(user_info, list) and len(user_info) > 0:
+                user_info = user_info[0]
+            
+            requests.append({
+                "id": row.get("id"),
+                "user_id": row.get("user_id"),
+                "reason": row.get("reason"),
+                "requested_at": row.get("requested_at"),
+                "first_name": user_info.get("first_name", "Unknown"),
+                "last_name": user_info.get("last_name", ""),
+                "mobile_number": user_info.get("mobile_number", "Unknown")
+            })
+            
+        return {"status": "success", "data": requests}
+    except Exception as e:
+        print(f"Error fetching deletion requests: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch deletion requests")
 
+@router.post("/deletion-requests/{user_id}/permanent-delete")
+async def permanent_delete_user(user_id: str, admin_id: str = Depends(verify_superadmin)):
+    try:
+        # Verify request exists and is older than 30 days
+        req_res = supabase.table("account_deletion_requests").select("requested_at").eq("user_id", user_id).eq("status", "pending").execute()
+        if not req_res.data:
+            raise HTTPException(status_code=404, detail="Deletion request not found")
+            
+        requested_at = datetime.datetime.fromisoformat(req_res.data[0]["requested_at"].replace("Z", "+00:00"))
+        if (datetime.datetime.now(datetime.timezone.utc) - requested_at).days < 30:
+            raise HTTPException(status_code=400, detail="Cannot permanently delete before 30 days")
+            
+        # Hard delete from users table (cascades to requests)
+        # Note: True permanent deletion from Auth requires admin API, but deleting from public.users is sufficient for application level
+        del_res = supabase.table("users").delete().eq("user_id", user_id).execute()
+        
+        if not del_res.data:
+             # Just in case users delete failed, update request status to deleted
+             supabase.table("account_deletion_requests").update({"status": "deleted"}).eq("user_id", user_id).execute()
+
+        return {"status": "success", "message": "User permanently deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error permanently deleting user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to permanently delete user")

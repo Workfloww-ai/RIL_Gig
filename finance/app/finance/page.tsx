@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Copy, Check, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, IndianRupee } from 'lucide-react';
 import { getDashboardStats, getPendingPayments, processPayment } from '@/lib/api';
 import currency from 'currency.js';
+import StatusModal from '@/components/StatusModal';
 
 // Types
 type DashboardStats = {
@@ -58,6 +59,11 @@ export default function FinanceDashboard() {
   const [remarks, setRemarks] = useState('');
   const [processing, setProcessing] = useState(false);
   const [processError, setProcessError] = useState('');
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalIsError, setModalIsError] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
@@ -140,9 +146,19 @@ export default function FinanceDashboard() {
       setSelectedGroup(null);
       setUtrNumber('');
       setRemarks('');
+      
+      setModalTitle('Payment Successful');
+      setModalMessage('The payment has been processed successfully.');
+      setModalIsError(false);
+      setModalVisible(true);
     } catch (err: any) {
       console.error(err);
-      setProcessError(err.response?.data?.detail || 'Failed to process payment(s)');
+      const errorMsg = err.response?.data?.detail || 'Failed to process payment(s)';
+      setProcessError(errorMsg);
+      setModalTitle('Payment Failed');
+      setModalMessage(errorMsg);
+      setModalIsError(true);
+      setModalVisible(true);
     } finally {
       setProcessing(false);
     }
@@ -154,6 +170,16 @@ export default function FinanceDashboard() {
       currency: 'INR',
       minimumFractionDigits: 2
     }).format(amount);
+  };
+
+  const formatPhoneNumber = (phone: string) => {
+    if (!phone) return '';
+    const cleaned = phone.replace(/\D/g, '');
+    const number = cleaned.slice(-10);
+    if (number.length === 10) {
+      return `+91 ${number.slice(0, 5)} ${number.slice(5)}`;
+    }
+    return phone;
   };
 
   const filteredPayments = payments.filter(p => {
@@ -198,7 +224,7 @@ export default function FinanceDashboard() {
     const createdAt = new Date(p.created_at);
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
+
     return createdAt < startOfToday;
   };
 
@@ -263,7 +289,7 @@ export default function FinanceDashboard() {
               {expandedGroups[group.worker_phone] ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
               <div>
                 <div className="font-medium text-slate">{group.worker_name}</div>
-                <div className="text-xs text-sage">{group.worker_phone}</div>
+                <div className="text-xs text-sage">{formatPhoneNumber(group.worker_phone)}</div>
               </div>
             </div>
           </td>
@@ -410,13 +436,13 @@ export default function FinanceDashboard() {
       <div className="rounded-xl bg-cream shadow-sm border border-gray-100 overflow-hidden mt-6">
         <div className="bg-sand border-b border-gray-200 p-3 px-4 flex items-center justify-between">
           <h3 className="font-semibold text-moss">Today's Jobs</h3>
-          <span className="text-xs font-medium bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full">{presentGroups.length} Sahyogi</span>
+          <span className="text-xs font-medium bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full">{presentGroups.length} SahYogi</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate">
             <thead className="bg-gray-50 text-xs uppercase text-sage border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3">Sahyogi Details</th>
+                <th className="px-6 py-3">SahYogi Details</th>
                 <th className="px-6 py-3">UPI ID</th>
                 <th className="px-6 py-3">Jobs Summary</th>
                 <th className="px-6 py-3">Total Amount</th>
@@ -435,13 +461,13 @@ export default function FinanceDashboard() {
       <div className="rounded-xl bg-cream shadow-sm border border-gray-100 overflow-hidden mt-6">
         <div className="bg-sand border-b border-gray-200 p-3 px-4 flex items-center justify-between">
           <h3 className="font-semibold text-clay">Past / Rollover Jobs</h3>
-          <span className="text-xs font-medium bg-clay/10 text-clay px-2.5 py-0.5 rounded-full">{pastGroups.length}Sahyogi</span>
+          <span className="text-xs font-medium bg-clay/10 text-clay px-2.5 py-0.5 rounded-full">{pastGroups.length}SahYogi</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate">
             <thead className="bg-gray-50 text-xs uppercase text-sage border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3">Sahyogi Details</th>
+                <th className="px-6 py-3">SahYogi Details</th>
                 <th className="px-6 py-3">UPI ID</th>
                 <th className="px-6 py-3">Jobs Summary</th>
                 <th className="px-6 py-3">Total Amount</th>
@@ -472,7 +498,7 @@ export default function FinanceDashboard() {
 
             <div className="mb-6 rounded-xl bg-sand p-4 border border-gray-200">
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-sage">Sahyogi Name</span>
+                <span className="text-sm text-sage">SahYogi Name</span>
                 <span className="text-sm font-medium text-slate">
                   {selectedGroup ? selectedGroup.worker_name : selectedPayment?.worker_name}
                 </span>
@@ -480,7 +506,7 @@ export default function FinanceDashboard() {
               <div className="flex justify-between mb-4">
                 <span className="text-sm text-sage">Phone</span>
                 <span className="text-sm font-medium text-slate">
-                  {selectedGroup ? selectedGroup.worker_phone : selectedPayment?.worker_phone}
+                  {formatPhoneNumber(selectedGroup ? selectedGroup.worker_phone : (selectedPayment?.worker_phone || ''))}
                 </span>
               </div>
 
@@ -582,6 +608,15 @@ export default function FinanceDashboard() {
           </div>
         </div>
       )}
+
+      {/* Status Modal */}
+      <StatusModal
+        visible={modalVisible}
+        title={modalTitle}
+        message={modalMessage}
+        isError={modalIsError}
+        onClose={() => setModalVisible(false)}
+      />
     </div>
   );
 }

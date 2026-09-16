@@ -19,7 +19,7 @@ def send_welcome_email(to_email: str, manager_name: str, role: str, store_name: 
 <br>
 <p><strong>Action Required - Please Verify Your Account:</strong></p>
 <p>Please download the SahYogi app from the link below and log in to confirm your verification.</p>
-<p><strong>Download App:</strong> <a href=https://expo.dev/artifacts/eas/wpOrPP-kUZnySaysCKrzSjkiq5jSiBeSNpx_cmB7nmc.apk
+<p><strong>Download App:</strong> <a href=https://play.google.com/store/apps/details?id=com.workfloww.sahyogi&hl=en
 >Download SahYogi</a></p>
 <br>
 <p><strong>How to Login:</strong></p>

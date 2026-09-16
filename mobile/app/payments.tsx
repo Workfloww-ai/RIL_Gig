@@ -48,11 +48,19 @@ export default function PaymentsScreen() {
     <Watermark>
     <SafeAreaView className="flex-1 bg-transparent pt-8">
       {/* Header */}
-      <View className="bg-cream px-6 py-4 flex-row items-center border-b border-sage/10 shadow-sm z-10">
+      <View className="bg-cream px-6 py-4 flex-row items-center border-b border-sage/10 shadow-sm z-10" style={{ position: 'relative', paddingBottom: 24 }}>
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-sage/10 rounded-full mr-3">
           <Feather name="arrow-left" size={20} color="#666666" />
         </TouchableOpacity>
         <Text className="font-bold text-slate text-lg flex-1 text-center pr-13">Payment History</Text>
+        {/* Decorative Brand Line - Absolute Bottom */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>

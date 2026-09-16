@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import Dict, Any
-from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse, CompleteJobRequest
+from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse, CompleteJobRequest, ExtendJobRequest, RespondExtensionRequest
 from db.jobs_db import create_job_request, get_all_jobs
 from db.finance_db import create_payment_record
 from utils.jwt_auth import get_current_user
@@ -34,14 +34,14 @@ async def raise_job_request(
     return created_request
 
 @router.get("/available", response_model=AvailableJobsResponse)
-async def get_available_jobs(user_id: str = Depends(get_current_user)):
+async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = Depends(get_current_user)):
     try:
         # Fetch open requests and join jobs and stores
         response = supabase.table("manpower_requests").select(
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
-            "jobs(job_id, job_name, base_compensation), "
+            "jobs(job_id, job_name, base_compensation, description), "
             "stores(store_id, store_name, address, city, google_map_link)"
-        ).eq("request_status", "open").execute()
+        ).eq("request_status", "open").order("shift_date", desc=False).order("start_time", desc=False).execute()
         
         # Allow either 'approved' or 'confirmed'
         requests = [r for r in response.data if str(r.get("approval_status")).lower() in ("approved", "confirmed")]
@@ -99,6 +99,7 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
                 request_status=r.get("request_status", ""),
                 job_id=job_info.get("job_id", ""),
                 job_name=job_info.get("job_name", ""),
+                job_description=job_info.get("description"),
                 base_compensation=float(job_info.get("base_compensation", 0)),
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
@@ -107,7 +108,8 @@ async def get_available_jobs(user_id: str = Depends(get_current_user)):
                 google_map_link=store_info.get("google_map_link")
             ))
             
-        return AvailableJobsResponse(status="success", jobs=jobs)
+        final_jobs = jobs[offset:offset+limit]
+        return AvailableJobsResponse(status="success", jobs=final_jobs)
     except Exception as e:
         print(f"Error fetching available jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -121,7 +123,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
         req_details = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
         
         t90_status = "pending"
-        t60_status = "pending"
+        t45_status = "pending"
         
         if req_details.data:
             rd = req_details.data[0]
@@ -138,8 +140,8 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
                     if minutes_until_shift <= 90:
                         t90_status = "confirmed"
                     
-                    if minutes_until_shift <= 60:
-                        t60_status = "confirmed"
+                    if minutes_until_shift <= 45:
+                        t45_status = "confirmed"
                 except Exception as e:
                     print(f"Error parsing date for accept_job bypass: {e}")
         else:
@@ -152,7 +154,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
                 "p_request_id": request_id,
                 "p_worker_id": user_id,
                 "p_t90_status": t90_status,
-                "p_t60_status": t60_status
+                "p_t60_status": t45_status
             }
         ).execute()
 
@@ -200,10 +202,10 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/accepted", response_model=MyAcceptedJobsResponse)
-async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
+async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str = None, user_id: str = Depends(get_current_user)):
     try:
         response = supabase.table("worker_job_assignments").select(
-            "assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city, google_map_link))"
+            "job_assignment_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, extension_status, extension_hours, manpower_requests(request_id, shift_date, start_time, hours_duration, jobs(job_id, job_name, base_compensation), stores(store_id, store_name, address, city, google_map_link, contact_number))"
         ).eq("worker_id", user_id).execute()
         
         jobs = []
@@ -223,6 +225,7 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
                 store_info = store_info[0]
                 
             jobs.append(AcceptedJobResponse(
+                job_assignment_id=r.get("job_assignment_id", ""),
                 assignment_status=r.get("assignment_status", ""),
                 request_id=req_info.get("request_id", ""),
                 shift_date=req_info.get("shift_date", ""),
@@ -230,34 +233,54 @@ async def get_accepted_jobs(user_id: str = Depends(get_current_user)):
                 hours_duration=float(req_info.get("hours_duration", 0)),
                 job_id=job_info.get("job_id", ""),
                 job_name=job_info.get("job_name", ""),
+                job_description=job_info.get("description"),
                 base_compensation=float(job_info.get("base_compensation", 0)),
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),
                 city=store_info.get("city"),
                 google_map_link=store_info.get("google_map_link"),
+                contact_number=store_info.get("contact_number"),
                 t90_status=r.get("t90_status", "pending"),
-                t60_status=r.get("t60_status", "pending"),
+                t45_status=r.get("t60_status", "pending"),
                 arrival_status=r.get("arrival_status", "pending"),
                 rating_score=r.get("rating_score"),
                 rating_tags=r.get("rating_tags"),
-                rating_feedback=r.get("rating_feedback")
+                rating_feedback=r.get("rating_feedback"),
+                extension_status=r.get("extension_status"),
+                extension_hours=r.get("extension_hours") or 0
             ))
             
-        return MyAcceptedJobsResponse(status="success", jobs=jobs)
+        import datetime
+        current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        filtered_jobs = []
+        for j in jobs:
+            s_date = str(j.shift_date)
+            if time_filter == "today" and s_date != current_date_str:
+                continue
+            if time_filter == "upcoming" and s_date <= current_date_str:
+                continue
+            if time_filter == "past" and s_date >= current_date_str:
+                continue
+            filtered_jobs.append(j)
+            
+        filtered_jobs.sort(key=lambda x: (str(x.shift_date), str(x.start_time)), reverse=(time_filter == "past"))
+        final_jobs = filtered_jobs[offset:offset+limit]
+        return MyAcceptedJobsResponse(status="success", jobs=final_jobs)
     except Exception as e:
         print(f"Error fetching accepted jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 from pydantic import BaseModel
 class ConfirmJobRequest(BaseModel):
-    step: str # 't90', 't60', or 'arrival'
+    step: str # 't90', 't45', or 'arrival'
 
 @router.post("/confirm/{request_id}")
 async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id: str = Depends(get_current_user)):
     try:
         step = payload.step
-        if step not in ['t90', 't60', 'arrival']:
+        if step not in ['t90', 't45', 'arrival']:
             raise HTTPException(status_code=400, detail="Invalid step")
             
         # Check if the job is accepted by this user
@@ -270,7 +293,7 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
         update_data = {}
         if step == 't90':
             update_data = {"t90_status": "confirmed", "t90_accepted_at": now_iso}
-        elif step == 't60':
+        elif step == 't45':
             update_data = {"t60_status": "confirmed", "t60_accepted_at": now_iso}
         elif step == 'arrival':
             update_data = {"arrival_status": "arrived", "arrival_accepted_at": now_iso}
@@ -282,8 +305,17 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
         print(f"Error confirming job step: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 @router.get("/manager/requests")
-async def get_manager_requests(user_id: str = Depends(get_current_user)):
+async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: str = None, user_id: str = Depends(get_current_user)):
     try:
+        # Verify store manager authorization
+        user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if not user_resp.data or not user_resp.data[0].get("role_id"):
+            raise HTTPException(status_code=403, detail="Unauthorized: No role assigned")
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized: Only store managers and supervisors can access this endpoint")
+
         # First find the store_assignment for this manager
         assignment = supabase.table("user_store_assignment").select("store_id, stores(store_name)").eq("user_id", user_id).execute()
         if not assignment.data:
@@ -298,16 +330,45 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
             elif isinstance(store_info, dict):
                 store_name = store_info.get("store_name")
         
-        # Now fetch requests for this store
-        response = supabase.table("manpower_requests").select(
+        # The frontend uses a single offset to paginate all 6 categories (Pending, Approved, Declined, Today, Upcoming, Past)
+        # To ensure no bucket is empty, we fetch up to limit for each category independently using the same offset.
+        
+        base_select = (
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
-            "jobs(job_id, job_name, base_compensation), "
+            "jobs(job_id, job_name, base_compensation, description), "
             "stores(store_id, store_name, address, city), "
-            "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, users!fk_wja_worker(first_name, last_name))"
-        ).eq("store_id", store_id).order("created_at", desc=True).execute()
+            "worker_job_assignments(job_assignment_id, worker_id, assignment_status, t90_status, t60_status, arrival_status, rating_score, rating_tags, rating_feedback, extension_status, extension_hours, users!fk_wja_worker(first_name, last_name, mobile_number))"
+        )
+        
+        import datetime
+        current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        # Execute 6 independent paginated queries
+        queries = [
+            supabase.table("manpower_requests").select(base_select).eq("store_id", store_id).eq("approval_status", "pending").order("shift_date", desc=False).range(offset, offset+limit-1).execute(),
+            supabase.table("manpower_requests").select(base_select).eq("store_id", store_id).in_("approval_status", ["approved", "confirmed"]).order("shift_date", desc=False).range(offset, offset+limit-1).execute(),
+            supabase.table("manpower_requests").select(base_select).eq("store_id", store_id).in_("approval_status", ["declined", "rejected"]).order("shift_date", desc=False).range(offset, offset+limit-1).execute(),
+            supabase.table("manpower_requests").select(base_select).eq("store_id", store_id).eq("shift_date", current_date_str).order("start_time", desc=False).range(offset, offset+limit-1).execute(),
+            supabase.table("manpower_requests").select(base_select).eq("store_id", store_id).gt("shift_date", current_date_str).order("shift_date", desc=False).range(offset, offset+limit-1).execute(),
+            supabase.table("manpower_requests").select(base_select).eq("store_id", store_id).lt("shift_date", current_date_str).order("shift_date", desc=True).range(offset, offset+limit-1).execute()
+        ]
+        
+        all_data = []
+        has_more = False
+        seen_ids = set()
+        
+        for q in queries:
+            if q.data:
+                if len(q.data) == limit:
+                    has_more = True
+                for row in q.data:
+                    rid = row.get("request_id")
+                    if rid not in seen_ids:
+                        seen_ids.add(rid)
+                        all_data.append(row)
         
         requests = []
-        for r in response.data:
+        for r in all_data:
             job_info = r.get("jobs") or {}
             if isinstance(job_info, list) and len(job_info) > 0:
                 job_info = job_info[0]
@@ -327,19 +388,20 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                     "id": w.get("worker_id"),
                     "assignment_id": w.get("job_assignment_id"),
                     "name": name,
+                    "mobile_number": user_info.get("mobile_number"),
                     "status": w.get("assignment_status"),
                     "t90_status": w.get("t90_status", "pending") or "pending",
-                    "t60_status": w.get("t60_status", "pending") or "pending",
+                    "t45_status": w.get("t60_status", "pending") or "pending",
                     "arrival_status": w.get("arrival_status", "pending") or "pending",
                     "role": job_info.get("job_name", ""),
                     "rating": {
                         "score": w.get("rating_score") or 0,
                         "tags": w.get("rating_tags") or [],
                         "feedback": w.get("rating_feedback") or ""
-                    } if w.get("rating_score") else None
+                    } if w.get("rating_score") else None,
+                    "extension_status": w.get("extension_status"),
+                    "extension_hours": w.get("extension_hours") or 0
                 })
-            
-            print(f"[Debug] Worker assignments for request {r.get('request_id')}: {accepted_workers}")
                 
             requests.append({
                 "request_id": r.get("request_id", ""),
@@ -350,16 +412,43 @@ async def get_manager_requests(user_id: str = Depends(get_current_user)):
                 "hours_duration": float(r.get("hours_duration", 0)),
                 "request_status": r.get("request_status", ""),
                 "approval_status": r.get("approval_status", ""),
-                "decline_reason": r.get("decline_reason", ""),
+                "decline_reason": r.get("decline_reason"),
                 "job_id": job_info.get("job_id", ""),
                 "job_name": job_info.get("job_name", ""),
+                "job_description": job_info.get("description"),
                 "base_compensation": float(job_info.get("base_compensation", 0)),
                 "store_id": store_info.get("store_id", ""),
                 "store_name": store_info.get("store_name", ""),
+                "address": store_info.get("address"),
+                "city": store_info.get("city"),
+                "google_map_link": store_info.get("google_map_link"),
                 "accepted_workers": accepted_workers
             })
             
-        return {"status": "success", "requests": requests, "store_name": store_name}
+        all_res = supabase.table("manpower_requests").select("request_id, shift_date, approval_status").eq("store_id", store_id).execute()
+        
+        counts = {
+            "today": 0,
+            "upcoming": 0,
+            "past": 0,
+            "pending": 0,
+            "approved": 0,
+            "declined": 0
+        }
+        
+        for req in all_res.data:
+            st = req.get("approval_status")
+            if st == "pending": counts["pending"] += 1
+            elif st in ["approved", "confirmed"]: counts["approved"] += 1
+            elif st in ["declined", "rejected"]: counts["declined"] += 1
+            
+            d = req.get("shift_date")
+            if st in ["approved", "confirmed"]:
+                if d == current_date_str: counts["today"] += 1
+                elif d and d > current_date_str: counts["upcoming"] += 1
+                elif d and d < current_date_str: counts["past"] += 1
+
+        return {"status": "success", "requests": requests, "store_name": store_name, "counts": counts, "has_more": has_more}
     except Exception as e:
         print(f"Error fetching manager requests: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -385,12 +474,18 @@ async def manager_cancel_and_replace(
         
         # Verify store manager authorization
         user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
-        if user_resp.data and user_resp.data[0].get("role_id"):
-            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
-            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
-                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
-                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
-                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
+        if not user_resp.data or not user_resp.data[0].get("role_id"):
+            raise HTTPException(status_code=403, detail="Unauthorized: No role assigned")
+            
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized: Only store managers and supervisors can access this endpoint")
+            
+        store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+        if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+            raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
 
         
         # 1. Cancel the assignment
@@ -504,12 +599,18 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
         
         # Verify store manager authorization
         user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
-        if user_resp.data and user_resp.data[0].get("role_id"):
-            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
-            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
-                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
-                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
-                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
+        if not user_resp.data or not user_resp.data[0].get("role_id"):
+            raise HTTPException(status_code=403, detail="Unauthorized: No role assigned")
+            
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized: Only store managers and supervisors can access this endpoint")
+            
+        store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+        if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+            raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
         
         # Validate time limit before verifying
         req_res = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", request_id).execute()
@@ -592,12 +693,18 @@ async def manager_complete_job(
         
         # Verify store manager authorization
         user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
-        if user_resp.data and user_resp.data[0].get("role_id"):
-            role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
-            if role_resp.data and "manager" in role_resp.data[0].get("role_name", "").lower():
-                store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
-                if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
-                    raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
+        if not user_resp.data or not user_resp.data[0].get("role_id"):
+            raise HTTPException(status_code=403, detail="Unauthorized: No role assigned")
+            
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized: Only store managers and supervisors can access this endpoint")
+            
+        store_assignment = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).execute()
+        if not store_assignment.data or str(store_assignment.data[0]["store_id"]) != str(job_store_id):
+            raise HTTPException(status_code=403, detail="You are not authorized to manage jobs for this store")
                     
         if assignment_resp.data[0].get("assignment_status") != "started":
             raise HTTPException(status_code=400, detail="Only started shifts can be completed and rated")
@@ -644,6 +751,14 @@ async def manager_complete_job(
                 
                 amount = float((hours_dec * base_comp_dec).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
                 
+                # Calculate extension premium if accepted
+                ext_hours = assignment_resp.data[0].get("extension_hours", 0)
+                ext_status = assignment_resp.data[0].get("extension_status")
+                if ext_status == "accepted" and ext_hours:
+                    ext_hours_dec = Decimal(str(ext_hours))
+                    ext_amount = float((ext_hours_dec * base_comp_dec * Decimal('1.10')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+                    amount += ext_amount
+                
                 user_res = supabase.table("users").select("upi_id").eq("user_id", worker_id).execute()
                 upi_id = user_res.data[0].get("upi_id") if user_res.data else None
                 
@@ -661,3 +776,38 @@ async def manager_complete_job(
         print(f"Error completing job assignment: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/manager/jobs/assignment/{assignment_id}/extend")
+async def request_job_extension(assignment_id: str, payload: ExtendJobRequest, user_id: str = Depends(get_current_user)):
+    try:
+        user_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        if not user_resp.data:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_resp.data[0]["role_id"]).execute()
+        role_name = role_resp.data[0].get("role_name", "").lower() if role_resp.data else ""
+        
+        if "manager" not in role_name and "supervisor" not in role_name:
+            raise HTTPException(status_code=403, detail="Unauthorized")
+
+        supabase.table("worker_job_assignments").update({
+            "extension_hours": payload.hours,
+            "extension_status": "pending"
+        }).eq("job_assignment_id", assignment_id).execute()
+
+        return {"status": "success", "message": "Extension requested"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/worker/jobs/assignment/{assignment_id}/respond-extension")
+async def respond_job_extension(assignment_id: str, payload: RespondExtensionRequest, user_id: str = Depends(get_current_user)):
+    try:
+        if payload.status not in ["accepted", "rejected"]:
+            raise HTTPException(status_code=400, detail="Invalid status")
+
+        supabase.table("worker_job_assignments").update({
+            "extension_status": payload.status
+        }).eq("job_assignment_id", assignment_id).eq("worker_id", user_id).execute()
+
+        return {"status": "success", "message": f"Extension {payload.status}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

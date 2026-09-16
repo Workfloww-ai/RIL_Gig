@@ -2,18 +2,24 @@
   "expo": {
     "name": "Sahyogi",
     "slug": "sahyogi",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon_sahyogi.png",
+    "icon": "./assets/images/newlogo.png",
+    "splash": {
+      "image": "./assets/images/newlogo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "scheme": "sahyogi",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/newlogo.png"
     },
     "android": {
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/icon_sahyogi.png",
+        "foregroundImage": "./assets/images/newlogo.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -29,8 +35,8 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/logo-sahyogi.png",
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/newlogo.png",
           "imageWidth": 200
         }
       ],

@@ -1,16 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal, TextInput, BackHandler } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../src/api/client';
 
 export default function SuperadminDashboard() {
   const router = useRouter();
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [])
+  );
   const insets = useSafeAreaInsets();
   const [requestsList, setRequestsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [counts, setCounts] = useState({ pending: 0, approved: 0, declined: 0 });
 
   const [expandedSections, setExpandedSections] = useState({
     pending: true,
@@ -22,7 +40,9 @@ export default function SuperadminDashboard() {
   const [declineReason, setDeclineReason] = useState('');
   const [jobToDecline, setJobToDecline] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [declineReasonsList, setDeclineReasonsList] = useState<{id: string, reason_text: string}[]>([]);
+  const [declineReasonsList, setDeclineReasonsList] = useState<{ id: string, reason_text: string }[]>([]);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
 
   const toggleSection = (section: 'pending' | 'approved' | 'declined') => {
     setExpandedSections(prev => ({
@@ -31,18 +51,37 @@ export default function SuperadminDashboard() {
     }));
   };
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (loadMore = false) => {
+    if (loadMore && (!hasMore || loadingMore)) return;
     try {
-      setLoading(true);
-      const res = await apiClient.get('/superadmin/requests');
+      if (loadMore) setLoadingMore(true);
+      else setLoading(true);
+
+      const currentOffset = loadMore ? offset + 20 : 0;
+      const res = await apiClient.get(`/superadmin/requests?limit=20&offset=${currentOffset}`);
+      
       if (res.data && res.data.requests) {
-        setRequestsList(res.data.requests);
+        const newRequests = res.data.requests;
+        setHasMore(res.data.has_more ?? newRequests.length >= 20);
+        
+        if (res.data.counts) {
+          setCounts(res.data.counts);
+        }
+
+        if (loadMore) {
+          setRequestsList(prev => [...prev, ...newRequests]);
+          setOffset(currentOffset);
+        } else {
+          setRequestsList(newRequests);
+          setOffset(0);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch superadmin requests', error);
       Alert.alert('Error', 'Failed to load requests');
     } finally {
-      setLoading(false);
+      if (loadMore) setLoadingMore(false);
+      else setLoading(false);
     }
   };
 
@@ -67,7 +106,12 @@ export default function SuperadminDashboard() {
     try {
       const payload = action === 'reject' ? { decline_reason: reason || 'No reason provided' } : undefined;
       await apiClient.post(`/superadmin/requests/${requestId}/${action}`, payload);
-      Alert.alert('Success', action === 'approve' ? 'Job has been published live.' : 'Job has been rejected.');
+      setStatusModalContent({
+        title: action === 'approve' ? 'Published' : 'Job Rejected',
+        message: action === 'approve' ? 'The job request has been approved and is now visible to workers.' : 'The job request has been rejected.',
+        type: action === 'approve' ? 'success' : 'error'
+      });
+      setShowStatusModal(true);
       if (action === 'reject') {
         setIsDeclineModalOpen(false);
         setIsDropdownOpen(false);
@@ -77,7 +121,12 @@ export default function SuperadminDashboard() {
       await fetchRequests();
     } catch (error: any) {
       console.error(`Failed to ${action} request`, error);
-      Alert.alert('Error', error.response?.data?.detail || `Failed to ${action} job.`);
+      setStatusModalContent({
+        title: 'Error',
+        message: error.response?.data?.detail || `Failed to ${action} job.`,
+        type: 'error'
+      });
+      setShowStatusModal(true);
     } finally {
       setProcessingId(null);
     }
@@ -88,7 +137,7 @@ export default function SuperadminDashboard() {
   const declinedJobs = requestsList.filter(job => job.approval_status === 'declined' || job.approval_status === 'rejected');
 
   const renderJobCard = (job: any, isPending: boolean) => (
-    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
+    <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <Text style={{ fontWeight: '700', color: '#111827', fontSize: 16, flex: 1, marginRight: 8 }}>{job.job_name}</Text>
         <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: job.approval_status === 'pending' ? '#FEF3C7' : job.approval_status === 'declined' ? '#FEE2E2' : '#DCFCE7' }}>
@@ -106,22 +155,22 @@ export default function SuperadminDashboard() {
       <View style={{ backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, marginBottom: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Date</Text>
-            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.shift_date}</Text>
+            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}> Job Date</Text>
+            <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Timing</Text>
+            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Time</Text>
             <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.start_time}</Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Sahyogi's Needed</Text>
+            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>SahYogi(s) Needed</Text>
             <Text style={{ color: '#111827', fontWeight: '700', fontSize: 15 }}>{job.workers_needed}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>Compensation</Text>
-            <Text style={{ color: '#10B981', fontWeight: '700', fontSize: 15 }}>₹{job.compensation}</Text>
+            <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: '500', marginBottom: 4 }}> Total Compensation</Text>
+            <Text style={{ color: '#0b5b31', fontWeight: '700', fontSize: 15 }}>₹{job.compensation}</Text>
           </View>
         </View>
       </View>
@@ -138,12 +187,12 @@ export default function SuperadminDashboard() {
           <TouchableOpacity
             onPress={() => handleAction(job.request_id, 'approve')}
             disabled={processingId === job.request_id}
-            style={{ flex: 1, backgroundColor: '#059669', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginRight: 8, opacity: processingId === job.request_id ? 0.7 : 1 }}
+            style={{ flex: 1, backgroundColor: '#0b5b31', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginRight: 8, opacity: processingId === job.request_id ? 0.7 : 1 }}
           >
             {processingId === job.request_id ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Publish Live</Text>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Publish</Text>
             )}
           </TouchableOpacity>
 
@@ -162,6 +211,11 @@ export default function SuperadminDashboard() {
     </View>
   );
 
+  const isCloseToBottom = ({ layoutMeasurement, contentOffset, contentSize }: any) => {
+    const paddingToBottom = 20;
+    return layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       {loading ? (
@@ -169,13 +223,23 @@ export default function SuperadminDashboard() {
           <ActivityIndicator size="large" color="#10472B" />
         </View>
       ) : (
-        <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} 
+          contentContainerStyle={{ paddingBottom: 100 + insets.bottom }} 
+          showsVerticalScrollIndicator={false}
+          onScroll={({ nativeEvent }) => {
+            if (isCloseToBottom(nativeEvent)) {
+              fetchRequests(true);
+            }
+          }}
+          scrollEventThrottle={400}
+        >
 
           <TouchableOpacity onPress={() => toggleSection('pending')} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Pending Approval</Text>
               <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>{pendingJobs.length}</Text>
+                <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>{counts.pending}</Text>
               </View>
             </View>
             <Feather name={expandedSections.pending ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -197,7 +261,7 @@ export default function SuperadminDashboard() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Approved Jobs</Text>
               <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{approvedJobs.length}</Text>
+                <Text style={{ color: '#15803D', fontSize: 12, fontWeight: '700' }}>{counts.approved}</Text>
               </View>
             </View>
             <Feather name={expandedSections.approved ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -219,7 +283,7 @@ export default function SuperadminDashboard() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#10472B' }}>Declined Jobs</Text>
               <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 12 }}>
-                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{declinedJobs.length}</Text>
+                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{counts.declined}</Text>
               </View>
             </View>
             <Feather name={expandedSections.declined ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
@@ -237,6 +301,12 @@ export default function SuperadminDashboard() {
             </View>
           )}
 
+          {loadingMore && (
+            <View style={{ paddingVertical: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
+              <ActivityIndicator size="small" color="#10472B" />
+              <Text style={{ marginLeft: 10, color: '#10472B', fontWeight: '600' }}>Loading more...</Text>
+            </View>
+          )}
         </ScrollView>
       )}
 
@@ -314,7 +384,8 @@ export default function SuperadminDashboard() {
               <TouchableOpacity
                 onPress={() => {
                   if (!declineReason.trim()) {
-                    Alert.alert('Required', 'Please enter a decline reason.');
+                    setStatusModalContent({ title: 'Required', message: 'Please enter a decline reason.', type: 'error' });
+                    setShowStatusModal(true);
                     return;
                   }
                   if (jobToDecline) {
@@ -328,6 +399,29 @@ export default function SuperadminDashboard() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
     </View>

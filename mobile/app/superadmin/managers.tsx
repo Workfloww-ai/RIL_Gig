@@ -10,6 +10,7 @@ import { State, City } from 'country-state-city';
 import { apiClient } from '../../src/api/client';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
+import { useAuthStore } from '../../src/store/authStore';
 
 // Validation Schema for Add Manager
 const managerSchema = z.object({
@@ -27,6 +28,7 @@ type ManagerFormData = z.infer<typeof managerSchema>;
 
 export default function SuperadminManagers() {
   const insets = useSafeAreaInsets();
+  const role = useAuthStore(state => state.role);
   
   const [managers, setManagers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,9 @@ export default function SuperadminManagers() {
   const [showCityModal, setShowCityModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showStoreModal, setShowStoreModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   
   const [selectedStateCode, setSelectedStateCode] = useState('');
 
@@ -93,13 +98,23 @@ export default function SuperadminManagers() {
     setSubmitting(true);
     try {
       await apiClient.post('/superadmin/managers', data);
-      Alert.alert('Success', 'Manager created successfully');
+      setStatusModalContent({
+        title: 'Success',
+        message: 'Manager created successfully',
+        type: 'success'
+      });
+      setShowStatusModal(true);
       setIsAddModalOpen(false);
       reset();
       setSelectedStateCode('');
       fetchData();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to create manager');
+      setStatusModalContent({
+        title: 'Error',
+        message: err.response?.data?.detail || 'Failed to create manager',
+        type: 'error'
+      });
+      setShowStatusModal(true);
     } finally {
       setSubmitting(false);
     }
@@ -116,12 +131,22 @@ export default function SuperadminManagers() {
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 20 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.3 }}>Store Managers</Text>
-          <TouchableOpacity
-            onPress={() => setIsAddModalOpen(true)}
-            style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>+ Add Manager</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity 
+              onPress={() => setShowInfoModal(true)}
+              style={{ marginRight: 12 }}
+            >
+              <Ionicons name="information-circle-outline" size={24} color="#6B7280" />
+            </TouchableOpacity>
+            {role !== 'admin' && (
+              <TouchableOpacity
+                onPress={() => setIsAddModalOpen(true)}
+                style={{ backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>+ Add Manager</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}>
@@ -145,14 +170,16 @@ export default function SuperadminManagers() {
                       <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>{manager.store_name || 'Unassigned'}</Text>
                     </View>
                   </View>
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="storefront" size={20} color="#D32F2F" />
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: manager.is_verified ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="storefront" size={20} color={manager.is_verified ? '#15803D' : '#D32F2F'} />
                   </View>
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                   <Feather name="phone" size={14} color="#9CA3AF" style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 14, color: '#4B5563', fontWeight: '500' }}>{manager.mobile_number}</Text>
+                  <Text style={{ fontSize: 14, color: '#4B5563', fontWeight: '500' }}>
+                    {manager.mobile_number ? (manager.mobile_number.startsWith('91') && manager.mobile_number.length === 12 ? `+91 ${manager.mobile_number.slice(2, 7)} ${manager.mobile_number.slice(7)}` : manager.mobile_number) : 'N/A'}
+                  </Text>
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -166,11 +193,6 @@ export default function SuperadminManagers() {
                       {manager.role_name}
                     </Text>
                   )}
-                  <View style={{ backgroundColor: manager.is_verified ? '#DCFCE7' : '#FEF2F2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: manager.is_verified ? '#15803D' : '#D32F2F' }}>
-                      {manager.is_verified ? 'Verified' : 'Not Verified'}
-                    </Text>
-                  </View>
                 </View>
               </View>
             ))
@@ -181,8 +203,16 @@ export default function SuperadminManagers() {
       {/* Add Manager Modal */}
       <Modal visible={isAddModalOpen} animationType="slide" transparent={true}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '90%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '90%', overflow: 'hidden' }}>
+            {/* Decorative Brand Line - Absolute Top */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, flexDirection: 'row', zIndex: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Add New Store Manager</Text>
               <TouchableOpacity onPress={() => setIsAddModalOpen(false)} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="close" size={20} color="#4B5563" />
@@ -411,6 +441,51 @@ export default function SuperadminManagers() {
                 </View>
               )}
             />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      <Modal visible={showInfoModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowInfoModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name="information" size={24} color="#3B82F6" />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>Verification Info</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              <Text style={{ color: '#15803D', fontWeight: '700' }}>Green</Text> store icons represent managers who are verified, while <Text style={{ color: '#D32F2F', fontWeight: '700' }}>Red</Text> store icons represent managers who are not verified.
+            </Text>
+            <TouchableOpacity onPress={() => setShowInfoModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={showStatusModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowStatusModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
+            {/* Left Red Bar */}
+            <View style={{ position: 'absolute', bottom: -20, left: 0, width: 10, height: '60%', backgroundColor: '#D32F2F', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            {/* Right Green Bar */}
+            <View style={{ position: 'absolute', top: -20, right: 0, width: 10, height: '60%', backgroundColor: '#0B5B31', zIndex: 10, transform: [{ skewY: '45deg' }] }} />
+
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: statusModalContent.type === 'success' ? '#DCFCE7' : '#FEF2F2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={statusModalContent.type === 'success' ? "checkmark-circle" : "close-circle"} size={28} color={statusModalContent.type === 'success' ? "#15803D" : "#D32F2F"} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 }}>{statusModalContent.title}</Text>
+            <Text style={{ fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              {statusModalContent.message}
+            </Text>
+            <TouchableOpacity onPress={() => setShowStatusModal(false)} style={{ backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 15 }}>Close</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>

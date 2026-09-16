@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, Platform, StatusBar, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../src/api/client';
-import useAuthStore from '../src/store/useAuthStore'; // Or however you get the user_id
+import { useAuthStore } from '../src/store/authStore';
+import StatusModal from '../src/components/StatusModal';
 
 interface Question {
   q: string;
@@ -11,14 +12,18 @@ interface Question {
 }
 
 export default function QuizScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, lang = 'english' } = useLocalSearchParams();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [currentSelection, setCurrentSelection] = useState<string | null>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   const [isIncorrect, setIsIncorrect] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -27,12 +32,16 @@ export default function QuizScreen() {
         const response = await apiClient.get(`/content/modules`);
         const module = response.data.find((m: any) => m.id === id);
         
-        if (module && module.quiz_questions && module.quiz_questions.length > 0) {
-          setQuestions(module.quiz_questions);
-        } else {
-          // If no questions, auto pass for now
-          Alert.alert('No Quiz', 'There are no quiz questions for this module. Marking as passed!');
-          submitScore(100);
+        if (module) {
+          const currentQuizQuestions = lang === 'english' ? module.quiz_questions : module[`quiz_questions_${lang}`] || module.quiz_questions;
+          
+          if (currentQuizQuestions && currentQuizQuestions.length > 0) {
+            setQuestions(currentQuizQuestions);
+          } else {
+            // If no questions, auto pass for now
+            Alert.alert('No Quiz', 'There are no quiz questions for this module. Marking as passed!');
+            submitScore(100);
+          }
         }
       } catch (err) {
         console.error('Failed to load quiz:', err);
@@ -43,7 +52,7 @@ export default function QuizScreen() {
     };
     
     fetchModule();
-  }, [id]);
+  }, [id, lang]);
 
   const submitScore = async (score: number) => {
     setSubmitting(true);
@@ -53,9 +62,12 @@ export default function QuizScreen() {
         score
       });
       
-      Alert.alert('Congratulations! 🎉', 'You have successfully completed this module.', [
-        { text: 'Go to Dashboard', onPress: () => router.push({ pathname: '/library', params: { justCompleted: 'true' } }) }
-      ]);
+      setStatusModalContent({
+        title: 'Congratulations! 🎉',
+        message: 'You have successfully completed this module.',
+        type: 'success'
+      });
+      setShowStatusModal(true);
     } catch (err) {
       console.error('Failed to submit score:', err);
       Alert.alert('Error', 'Failed to save your progress.');
@@ -65,24 +77,43 @@ export default function QuizScreen() {
   };
 
   const handleNext = () => {
-    if (!currentSelection) return;
+    if (!currentSelection && !showCorrectAnswer) return;
     
+    if (showCorrectAnswer) {
+      moveToNextQuestion();
+      return;
+    }
+
     const isCorrect = currentSelection === questions[currentQIndex].answer;
     
     if (isCorrect) {
-      if (currentQIndex < questions.length - 1) {
-        setCurrentQIndex(prev => prev + 1);
-        setCurrentSelection(null);
+      moveToNextQuestion();
+    } else {
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      if (newAttempts >= 2) {
+        setShowCorrectAnswer(true);
         setIsIncorrect(false);
       } else {
-        submitScore(100);
+        setIsIncorrect(true);
       }
+    }
+  };
+
+  const moveToNextQuestion = () => {
+    if (currentQIndex < questions.length - 1) {
+      setCurrentQIndex(prev => prev + 1);
+      setCurrentSelection(null);
+      setIsIncorrect(false);
+      setAttempts(0);
+      setShowCorrectAnswer(false);
     } else {
-      setIsIncorrect(true);
+      submitScore(100);
     }
   };
 
   const handleOptionSelect = (option: string) => {
+    if (showCorrectAnswer) return;
     setCurrentSelection(option);
     setIsIncorrect(false);
   };
@@ -102,10 +133,21 @@ export default function QuizScreen() {
   return (
     <SafeAreaView className="flex-1 bg-sand pt-8">
       {/* Header */}
-      <View className="bg-white px-6 py-5 border-b border-gray-100 shadow-sm flex-row items-center justify-between">
-        <Text className="text-gray-400 font-bold" onPress={() => router.back()}>Cancel</Text>
+      <View className="bg-white px-6 py-5 shadow-sm flex-row items-center justify-between" style={{ position: 'relative' }}>
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-red-50 rounded-full">
+           <Text className="text-red-500 font-bold text-lg">✕</Text>
+        </TouchableOpacity>
         <Text className="text-lg font-bold text-charcoal">Module Quiz</Text>
         <View className="w-10" />
+        
+        {/* Decorative Brand Line - Absolute Bottom of Header */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+        </View>
       </View>
 
       {/* Progress */}
@@ -113,7 +155,7 @@ export default function QuizScreen() {
         <Text className="text-moss font-bold mb-2">Question {currentQIndex + 1} of {questions.length}</Text>
         <View className="h-2 bg-sage/20 rounded-full overflow-hidden">
           <View 
-            className="h-full bg-moss/80" 
+            className="h-full bg-[#D32F2F]" 
             style={{ width: `${((currentQIndex + 1) / questions.length) * 100}%` }} 
           />
         </View>
@@ -127,10 +169,20 @@ export default function QuizScreen() {
 
         {question.options.map((option, idx) => {
           const isSelected = currentSelection === option;
+          const isActualAnswer = option === question.answer;
+          
           let borderClass = 'border-sage/20 bg-cream';
           let textClass = 'text-slate';
 
-          if (isSelected) {
+          if (showCorrectAnswer) {
+            if (isActualAnswer) {
+              borderClass = 'border-moss bg-green-50 border-2';
+              textClass = 'text-moss font-bold';
+            } else if (isSelected) {
+              borderClass = 'border-red-500 bg-red-50';
+              textClass = 'text-red-600';
+            }
+          } else if (isSelected) {
             if (isIncorrect) {
               borderClass = 'border-red-500 bg-red-50';
               textClass = 'text-red-600 font-bold';
@@ -156,24 +208,56 @@ export default function QuizScreen() {
         {isIncorrect && (
           <View className="bg-red-50 p-4 rounded-xl mt-2 border border-red-200">
             <Text className="text-red-600 font-bold text-center">
-              Incorrect answer. Please select another option.
+              Incorrect. {2 - attempts} attempt(s) left.
+            </Text>
+          </View>
+        )}
+
+        {showCorrectAnswer && (
+          <View className="bg-green-50 p-4 rounded-xl mt-2 border border-green-200">
+            <Text className="text-green-700 font-bold text-center">
+              Max attempts reached. See correct answer above.
             </Text>
           </View>
         )}
       </View>
 
       {/* Footer Navigation */}
-      <View className="flex-1 justify-end px-6 mb-10">
-        <TouchableOpacity 
-          disabled={!currentSelection || submitting}
-          onPress={handleNext}
-          className={`py-4 rounded-xl items-center w-full ${(!currentSelection || submitting) ? 'bg-primary-300' : 'bg-moss'}`}
-        >
-          <Text className="text-white font-bold text-lg">
-            {submitting ? 'Submitting...' : currentQIndex === questions.length - 1 ? 'Finish Module' : 'Check & Next'}
-          </Text>
-        </TouchableOpacity>
+      <View className="flex-1 justify-end pb-16">
+        {/* Decorative Brand Line - Above Button */}
+        <View style={{ height: 6, flexDirection: 'row', width: '100%', marginBottom: 20 }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+        </View>
+
+        <View className="px-6">
+          <TouchableOpacity 
+            disabled={(!currentSelection && !showCorrectAnswer) || submitting}
+            onPress={handleNext}
+            className={`py-4 rounded-xl items-center w-full ${((!currentSelection && !showCorrectAnswer) || submitting) ? 'bg-primary-300' : 'bg-[#D32F2F]'}`}
+          >
+            <Text className="text-white font-bold text-lg">
+              {submitting ? 'Submitting...' : currentQIndex === questions.length - 1 ? 'Finish Module' : 'Check & Next'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <StatusModal
+        visible={showStatusModal}
+        title={statusModalContent.title}
+        message={statusModalContent.message}
+        isError={statusModalContent.type === 'error'}
+        onClose={() => {
+          setShowStatusModal(false);
+          if (statusModalContent.type === 'success') {
+            router.push({ pathname: '/library', params: { justCompleted: 'true' } });
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

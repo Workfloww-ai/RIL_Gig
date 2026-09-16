@@ -45,6 +45,7 @@ class JobResponse(BaseModel):
     request_status: str
     job_id: str
     job_name: str
+    job_description: Optional[str] = None
     base_compensation: float
     store_id: str
     store_name: str
@@ -61,6 +62,7 @@ class AcceptJobResponse(BaseModel):
     message: str
 
 class AcceptedJobResponse(BaseModel):
+    job_assignment_id: str
     assignment_status: str
     request_id: str
     shift_date: date
@@ -68,18 +70,22 @@ class AcceptedJobResponse(BaseModel):
     hours_duration: float
     job_id: str
     job_name: str
+    job_description: Optional[str] = None
     base_compensation: float
     store_id: str
     store_name: str
     address: Optional[str] = None
     city: Optional[str] = None
     google_map_link: Optional[str] = None
+    contact_number: Optional[str] = None
     t90_status: str
-    t60_status: str
+    t45_status: str
     arrival_status: str
     rating_score: Optional[int] = None
     rating_tags: Optional[List[str]] = None
     rating_feedback: Optional[str] = None
+    extension_status: Optional[str] = None
+    extension_hours: Optional[int] = 0
 
 class MyAcceptedJobsResponse(BaseModel):
     status: str
@@ -89,3 +95,9 @@ class CompleteJobRequest(BaseModel):
     rating_score: int
     rating_tags: List[str]
     rating_feedback: str = ""
+
+class ExtendJobRequest(BaseModel):
+    hours: int
+
+class RespondExtensionRequest(BaseModel):
+    status: str

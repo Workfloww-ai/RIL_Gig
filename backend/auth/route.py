@@ -4,7 +4,7 @@ from typing import List
 import random
 import os
 
-from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest
+from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest
 from utils.sms import send_otp_sms
 from utils.supabase_client import supabase
 from utils.jwt_auth import create_access_token, get_current_user, SECRET_KEY
@@ -48,7 +48,7 @@ async def check_mobile(payload: MobileCheckRequest):
 @router.get("/me")
 async def get_my_profile(user_id: str = Depends(get_current_user)):
     from db.jobs_db import get_recent_activity
-    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id, ratings, shifts_completed").eq("user_id", user_id).execute()
+    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id, ratings, shifts_completed, address, city, state, dob, created_at").eq("user_id", user_id).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -62,7 +62,65 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
     if user_data["role_name"] == "worker":
         user_data["recent_activity"] = get_recent_activity(user_id)
         
+    # Fetch Profile Pic (Live Photo)
+    try:
+        doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", "Live Photo").execute()
+        if doc_type_resp.data:
+            doc_id = doc_type_resp.data[0]["doc_id"]
+            user_doc = supabase.table("user_documents").select("doc_url").eq("user_id", user_id).eq("doc_id", doc_id).execute()
+            if user_doc.data:
+                user_data["profile_pic_url"] = user_doc.data[0]["doc_url"]
+    except Exception as e:
+        print(f"Error fetching profile pic: {e}")
+        
     return user_data
+
+@router.post("/me/profile-pic")
+async def update_profile_pic(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
+    MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png"}
+    
+    mime_type = file.content_type.lower() if file.content_type else ""
+    ext = file.filename.lower().split('.')[-1] if file.filename else ""
+    is_valid = mime_type in ALLOWED_MIME_TYPES or ext in ["jpg", "jpeg", "png"]
+    
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename} (MIME: {mime_type}). Allowed types: JPEG, JPG, PNG.")
+    if file.size and file.size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File is too large. Maximum size is 2MB.")
+        
+    doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", "Live Photo").execute()
+    if not doc_type_resp.data:
+        raise HTTPException(status_code=400, detail="Live Photo document type not found in database.")
+    doc_id = doc_type_resp.data[0]["doc_id"]
+    
+    file_bytes = await file.read()
+    file_path = f"users/{user_id}/profile_pic_{file.filename}"
+    
+    try:
+        supabase.storage.from_("documents").upload(
+            file_path, 
+            file_bytes, 
+            file_options={"upsert": "true"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage upload failed: {str(e)}")
+    
+    doc_url = supabase.storage.from_("documents").get_public_url(file_path)
+    
+    # Update DB
+    existing = supabase.table("user_documents").select("user_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
+    if len(existing.data) > 0:
+        supabase.table("user_documents").update({"doc_url": doc_url}).eq("user_id", user_id).eq("doc_id", doc_id).execute()
+    else:
+        supabase.table("user_documents").insert({
+            "user_id": user_id,
+            "doc_id": doc_id,
+            "doc_number": "PROFILE_PIC",
+            "doc_url": doc_url
+        }).execute()
+        
+    return {"status": "success", "profile_pic_url": doc_url}
 
 @router.get("/me/stats")
 async def get_my_stats(month: str = None, user_id: str = Depends(get_current_user)):
@@ -241,12 +299,12 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     test_mobile = os.getenv("TEST_MOBILE_NUMBER")
     if test_mobile and clean_mobile == test_mobile:
         return {"status": "otp_sent"}
-    # Check DB limit: max 3 OTPs per phone per 1 second (for testing)
-    one_sec_ago = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
-    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", one_sec_ago).execute()
+    # Check DB limit: max 3 OTPs per phone per 120 second (for testing)
+    onetwenty_sec_ago = (datetime.now(timezone.utc) - timedelta(seconds=120)).isoformat()
+    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", onetwenty_sec_ago).execute()
     
     if len(recent_otps.data) >= 3:
-        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 1 second. Please try again later.")
+        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 120 seconds. Please try again later.")
         
     # otp_code = "000000" 
     otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
@@ -284,15 +342,18 @@ async def verify_otp(request: Request, payload: VerifyOTPRequest):
     clean, with_plus = get_mobile_variations(payload.mobile_number)
     response = supabase.table("otp_codes").select("id, mobile_number, otp_hash, expires_at, failed_attempts, locked_until").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
-    # --- BYPASS FOR SPECIFIC USER FROM ENV ---
-    test_mobile = os.getenv("TEST_MOBILE_NUMBER")
-    test_otp = os.getenv("TEST_OTP")
+    # --- BYPASS FOR SPECIFIC USER OR UNIVERSAL OTP FROM ENV ---
+    test_mobile = os.getenv("TEST_MOBILE_NUMBER", "").strip("'\"")
+    test_otp = os.getenv("TEST_OTP", "").strip("'\"")
     
-    if test_mobile and clean == test_mobile:
-        if test_otp and payload.otp == test_otp:
-            pass # Skip all OTP DB checks and expiration logic
-        else:
-            raise HTTPException(status_code=400, detail="Incorrect OTP.")
+    is_bypass = False
+    if test_otp and payload.otp == test_otp:
+        is_bypass = True
+    elif test_mobile and clean == test_mobile:
+        is_bypass = True
+        
+    if is_bypass:
+        pass # Skip all OTP DB checks and expiration logic
     else:
         response = supabase.table("otp_codes").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
         
@@ -320,11 +381,14 @@ async def verify_otp(request: Request, payload: VerifyOTPRequest):
         
     # 5. Fetch user_id and role to inject into token and response
     # Use 'clean' directly since otp_record might not exist if bypass is used
-    user_response = supabase.table("users").select("user_id, role_id").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
+    user_response = supabase.table("users").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
     if not user_response.data:
         raise HTTPException(status_code=400, detail="User account not found. Please sign up.")
     
     user_data = user_response.data[0]
+    if user_data.get("is_deactivated"):
+        raise HTTPException(status_code=403, detail="Account has been deactivated. Please contact support.")
+        
     user_id = user_data["user_id"]
     
     role_name = "worker"
@@ -355,15 +419,18 @@ async def verify_and_signup(
     clean, with_plus = get_mobile_variations(mobile_number)
     otp_resp = supabase.table("otp_codes").select("id, mobile_number, otp_hash, expires_at, failed_attempts, locked_until").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").order("created_at", desc=True).limit(1).execute()
     
-    # --- BYPASS FOR SPECIFIC USER FROM ENV ---
-    test_mobile = os.getenv("TEST_MOBILE_NUMBER")
-    test_otp = os.getenv("TEST_OTP")
+    # --- BYPASS FOR SPECIFIC USER OR UNIVERSAL OTP FROM ENV ---
+    test_mobile = os.getenv("TEST_MOBILE_NUMBER", "").strip("'\"")
+    test_otp = os.getenv("TEST_OTP", "").strip("'\"")
     
-    if test_mobile and clean == test_mobile:
-        if test_otp and otp == test_otp:
-            pass # Skip all OTP DB checks and expiration logic
-        else:
-            raise HTTPException(status_code=400, detail="Incorrect OTP.")
+    is_bypass = False
+    if test_otp and otp == test_otp:
+        is_bypass = True
+    elif test_mobile and clean == test_mobile:
+        is_bypass = True
+        
+    if is_bypass:
+        pass # Skip all OTP DB checks and expiration logic
     else:
         if not otp_resp.data:
             raise HTTPException(status_code=400, detail="No OTP found for this number.")
@@ -377,17 +444,17 @@ async def verify_and_signup(
                 locked_until = locked_until[:-1] + "+00:00"
             locked_dt = datetime.fromisoformat(locked_until)
             if datetime.now(timezone.utc) < locked_dt:
-                raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 1 second.")
+                raise HTTPException(status_code=403, detail="Account locked due to too many failed attempts. Try again in 2 minutes.")
         
         if str(otp_record["otp_hash"]) != hash_otp(otp):
             failed_attempts = otp_record.get("failed_attempts", 0) + 1
             update_data = {"failed_attempts": failed_attempts}
             if failed_attempts >= 5:
-                update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(seconds=1)).isoformat()
+                update_data["locked_until"] = (datetime.now(timezone.utc) + timedelta(seconds=120)).isoformat()
             supabase.table("otp_codes").update(update_data).eq("id", otp_record["id"]).execute()
             
             if failed_attempts >= 5:
-                raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 1 second.")
+                raise HTTPException(status_code=403, detail="Too many failed attempts. Account locked for 2 minutes.")
             raise HTTPException(status_code=400, detail="Incorrect OTP.")
             
         expires_at_str = otp_record["expires_at"]
@@ -434,6 +501,8 @@ async def verify_and_signup(
         "gender": payload.gender,
         "upi_id": payload.upi_id,
         "alternate_number": payload.alternate_number,
+        "bank_account_number": payload.bank_account_number,
+        "ifsc_code": payload.ifsc_code,
         "role_id": role_id
     }
     user_dict = {k: v for k, v in user_dict.items() if v is not None and v != ""}
@@ -454,11 +523,15 @@ async def verify_and_signup(
     uploaded_docs = []
     
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-    ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+    ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "application/pdf"}
     
     for file in files:
-        if file.content_type not in ALLOWED_MIME_TYPES:
-            raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename}. Allowed types: JPEG, PNG, PDF.")
+        mime_type = file.content_type.lower() if file.content_type else ""
+        ext = file.filename.lower().split('.')[-1] if file.filename else ""
+        is_valid = mime_type in ALLOWED_MIME_TYPES or ext in ["jpg", "jpeg", "png", "pdf"]
+        
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid file type for {file.filename} (MIME: {mime_type}). Allowed types: JPEG, JPG, PNG, PDF.")
         if file.size and file.size > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail=f"File {file.filename} is too large. Maximum size is 10MB.")
             
@@ -505,3 +578,41 @@ async def verify_and_signup(
                 
     access_token = create_access_token({"sub": user_id})
     return {"status": "login_success", "token": access_token, "user_id": user_id, "uploaded_documents": len(uploaded_docs), "role": "worker"}
+
+
+@router.post("/delete-account")
+async def request_account_deletion(payload: DeleteAccountRequest, user_id: str = Depends(get_current_user)):
+    try:
+        # Fetch user details first
+        user_res = supabase.table("users").select("*").eq("user_id", user_id).execute()
+        if user_res.data:
+            user = user_res.data[0]
+            
+            # Format address
+            address_parts = [user.get("address"), user.get("city"), user.get("state")]
+            full_address = ", ".join(part for part in address_parts if part)
+
+            # Insert into deactivated_users table
+            supabase.table("deactivated_users").insert({
+                "user_id": user_id,
+                "user_name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
+                "email": user.get("email"),
+                "phone_number": user.get("mobile_number"),
+                "address": full_address,
+                "date_of_joining": user.get("created_at"),
+                "avg_ratings": user.get("ratings")
+            }).execute()
+
+        # Mark user as deactivated
+        supabase.table("users").update({"is_deactivated": True}).eq("user_id", user_id).execute()
+        
+        # Insert deletion request
+        supabase.table("account_deletion_requests").insert({
+            "user_id": user_id,
+            "reason": payload.reason,
+            "status": "pending"
+        }).execute()
+        
+        return {"status": "success", "message": "Account deletion requested successfully. Account deactivated."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process deletion request: {str(e)}")

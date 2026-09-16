@@ -49,7 +49,7 @@ export default function FinanceLayout({
       {/* Sidebar - Desktop */}
       <aside className="hidden w-64 flex-col bg-moss text-white md:flex">
         <div className="flex flex-col items-center justify-center gap-2 border-b border-green-800 py-6">
-          <img src="/images/logowithoutbg.png" alt="SahYogi Logo" className="h-28 w-28 object-contain bg-white rounded-xl shadow-sm" />
+          <img src="/images/newlogo.png" alt="SahYogi Logo" className="h-28 w-28 object-contain bg-white rounded-xl shadow-sm" />
           <h1 className="text-3xl font-bold tracking-wider mt-1">SahYogi</h1>
         </div>
 

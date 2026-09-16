@@ -30,12 +30,12 @@ export default function StoreManagerRequestsScreen() {
     if (minutesUntilShift <= 90 && worker.t90_status === 'pending') {
       return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
     }
-    if (minutesUntilShift <= 60 && worker.t60_status === 'pending') {
+    if (minutesUntilShift <= 45 && worker.t45_status === 'pending') {
       return { label: '⚪ Cancelled', color: '#9CA3AF', showCancel: false };
     }
 
-    // If they are not cancelled, and T-60 or T-90 is confirmed, they are Enroute.
-    if (worker.t60_status === 'confirmed' || worker.t90_status === 'confirmed') {
+    // If they are not cancelled, and T-45 or T-90 is confirmed (or they bypassed it), they are Enroute.
+    if (worker.t45_status === 'confirmed' || worker.t90_status === 'confirmed') {
       return { label: '🟢 Enroute', color: '#10B981', showCancel: false };
     }
 
@@ -100,6 +100,12 @@ export default function StoreManagerRequestsScreen() {
           <View key={job.request_id || job.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
               <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, flex: 1, marginRight: 8 }}>{job.job_name || job.title}</Text>
+              <TouchableOpacity 
+                onPress={() => Alert.alert('Job Description', job.description || job.job_description || 'No description available for this job.')}
+                style={{ marginRight: 8, padding: 2 }}
+              >
+                <Ionicons name="information-circle-outline" size={22} color="#6B7280" />
+              </TouchableOpacity>
               <View
                 style={{
                   paddingHorizontal: 12,
@@ -125,7 +131,7 @@ export default function StoreManagerRequestsScreen() {
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 4 }}>Replacement in progress</Text>
                   <Text style={{ fontSize: 12, fontWeight: '500', color: '#B45309', lineHeight: 18 }}>A worker missed their check-in. We are automatically assigning a new replacement ASAP.</Text>
                 </View>
-                <TouchableOpacity onPress={() => setDismissedAlerts(prev => ({...prev, [job.request_id || job.id]: true}))} style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 2 }}>
+                <TouchableOpacity onPress={() => setDismissedAlerts(prev => ({ ...prev, [job.request_id || job.id]: true }))} style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginTop: 2 }}>
                   <Text style={{ color: '#D97706', fontWeight: '700', fontSize: 11 }}>Got it</Text>
                 </TouchableOpacity>
               </View>
@@ -133,7 +139,7 @@ export default function StoreManagerRequestsScreen() {
 
             <View style={{ backgroundColor: '#F7F8F9', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>
               <View>
-                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Sahyogis</Text>
+                <Text style={{ color: '#666666', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>SahYogi(s)</Text>
                 <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16 }}>{job.workers_needed || job.workersNeeded} Needed</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
