@@ -537,9 +537,14 @@ async def generate_start_otp(request_id: str, user_id: str = Depends(get_current
                 try:
                     from datetime import timezone
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                    if datetime.now() < shift_datetime - timedelta(minutes=10):
+                    
+                    # Fix: Ensure current time is evaluated in IST, since shift times are in IST
+                    ist_tz = timezone(timedelta(hours=5, minutes=30))
+                    current_time_ist = datetime.now(ist_tz).replace(tzinfo=None)
+                    
+                    if current_time_ist < shift_datetime - timedelta(minutes=10):
                         raise HTTPException(status_code=400, detail="Cannot generate OTP more than 10 minutes before shift")
-                    if datetime.now() > shift_datetime:
+                    if current_time_ist > shift_datetime:
                         supabase.table("worker_job_assignments").update({
                             "assignment_status": "no_show",
                             "rating_score": 1,
@@ -623,9 +628,13 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
                 if len(start_time.split(':')) == 2:
                     start_time += ":00"
                 try:
-                    from datetime import timezone
+                    from datetime import timezone, timedelta
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                    if datetime.now() > shift_datetime:
+                    
+                    ist_tz = timezone(timedelta(hours=5, minutes=30))
+                    current_time_ist = datetime.now(ist_tz).replace(tzinfo=None)
+                    
+                    if current_time_ist > shift_datetime:
                         supabase.table("worker_job_assignments").update({
                             "assignment_status": "no_show",
                             "rating_score": 1,
@@ -709,6 +718,34 @@ async def manager_complete_job(
         if assignment_resp.data[0].get("assignment_status") != "started":
             raise HTTPException(status_code=400, detail="Only started shifts can be completed and rated")
             
+        worker_id = assignment_resp.data[0].get("worker_id")
+        request_id = assignment_resp.data[0].get("request_id")
+        
+        # Verify shift end time has passed before allowing completion
+        req_res = supabase.table("manpower_requests").select("shift_date, start_time, hours_duration").eq("request_id", request_id).execute()
+        if req_res.data:
+            rd = req_res.data[0]
+            shift_date = rd.get("shift_date")
+            start_time = rd.get("start_time")
+            hours = rd.get("hours_duration", 0)
+            if shift_date and start_time:
+                from datetime import timedelta
+                if len(start_time.split(':')) == 2:
+                    start_time += ":00"
+                try:
+                    shift_start_dt = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
+                    shift_end_dt = shift_start_dt + timedelta(hours=float(hours))
+                    
+                    ist_tz = timezone(timedelta(hours=5, minutes=30))
+                    current_time_ist = datetime.now(ist_tz).replace(tzinfo=None)
+                    
+                    if current_time_ist < shift_end_dt:
+                        raise HTTPException(status_code=400, detail="Cannot complete and rate shift before it has ended")
+                except HTTPException:
+                    raise
+                except Exception as e:
+                    print(f"Error parsing date in complete job: {e}")
+            
         now_iso = datetime.now(timezone.utc).isoformat()
         
         # Update assignment to completed and save rating
@@ -720,9 +757,6 @@ async def manager_complete_job(
             "rated_by": user_id,
             "rated_at": now_iso
         }).eq("job_assignment_id", assignment_id).execute()
-        
-        worker_id = assignment_resp.data[0].get("worker_id")
-        request_id = assignment_resp.data[0].get("request_id")
         
         # Recalculate average rating and shifts completed
         if worker_id:
