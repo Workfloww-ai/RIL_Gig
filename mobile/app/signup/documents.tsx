@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, Platform, StatusBar, ScrollView, Alert } from 'react-native';
+import { View, Text, Platform, StatusBar, ScrollView, Alert, Modal, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../src/components/Button';
@@ -22,6 +23,17 @@ export default function DocumentsScreen() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string>('');
+
+  // Consent Modal State
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentPersonalInfo, setConsentPersonalInfo] = useState(false);
+  const [consentBankDetails, setConsentBankDetails] = useState(false);
+  const [consentAadhar, setConsentAadhar] = useState(false);
+  const [consentPan, setConsentPan] = useState(false);
+  const [consentCertification, setConsentCertification] = useState(false);
+  const [consentLivePhoto, setConsentLivePhoto] = useState(false);
+
+  const allConsented = consentPersonalInfo && consentBankDetails && consentAadhar && consentPan && consentCertification && consentLivePhoto;
 
   const requiredDocs = [
     { key: 'Aadhar Card', name: 'Aadhar Card', placeholder: 'Aadhar Number' },
@@ -84,7 +96,7 @@ export default function DocumentsScreen() {
     }
   };
 
-  const submitDocuments = async () => {
+  const handleInitialSubmit = () => {
     setErrors({});
     setTopError('');
     let hasError = false;
@@ -116,6 +128,11 @@ export default function DocumentsScreen() {
       return;
     }
 
+    setShowConsentModal(true);
+  };
+
+  const submitDocuments = async () => {
+    setShowConsentModal(false);
     setLoading(true);
     try {
       // 1. Prepare metadata
@@ -150,7 +167,15 @@ export default function DocumentsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream pt-8">
-      <ScrollView className="flex-1 px-8 pt-8">
+      {/* Decorative Brand Line - Top Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+      </View>
+      <ScrollView className="flex-1 px-8 pt-8" contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <Text className="text-4xl font-bold text-slate mb-3 tracking-tight">Documents</Text>
         <Text className="text-sage mb-8 text-lg font-medium">Upload your KYC documents.</Text>
 
@@ -201,9 +226,107 @@ export default function DocumentsScreen() {
         })}
 
         <View className="mt-4 mb-12">
-          <Button title="Submit & Request OTP" onPress={submitDocuments} loading={loading} />
+          <Button title="Submit & Request OTP" onPress={handleInitialSubmit} loading={loading} />
         </View>
       </ScrollView>
+
+      {/* Consent Modal */}
+      <Modal visible={showConsentModal} animationType="slide" transparent={true}>
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="bg-cream w-full rounded-t-3xl overflow-hidden shadow-xl h-[85%]" onStartShouldSetResponder={() => true}>
+            <View className="bg-sand px-6 py-5 border-b border-sage/10 flex-row justify-between items-center">
+              <Text className="text-lg font-bold text-slate">Terms & Permissions</Text>
+              <TouchableOpacity onPress={() => setShowConsentModal(false)}>
+                <Text className="text-sage font-bold">Close</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View className="p-6 flex-1">
+              <Text className="text-sage mb-6 text-base">To proceed with your application, we need your consent to collect and process the following information:</Text>
+              
+              <ScrollView className="flex-1 mb-2" showsVerticalScrollIndicator={false}>
+                <TouchableOpacity onPress={() => setConsentPersonalInfo(!consentPersonalInfo)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPersonalInfo ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentPersonalInfo && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-slate font-bold text-base mb-1">Personal Information</Text>
+                    <Text className="text-sage text-xs">Name, DOB, Contact, Address</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setConsentBankDetails(!consentBankDetails)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentBankDetails ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentBankDetails && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-slate font-bold text-base mb-1">Bank Details</Text>
+                    <Text className="text-sage text-xs">UPI ID, Account Information</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setConsentAadhar(!consentAadhar)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentAadhar ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentAadhar && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-slate font-bold text-base mb-1">Aadhar Card</Text>
+                    <Text className="text-sage text-xs">Identity verification</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setConsentPan(!consentPan)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPan ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentPan && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-slate font-bold text-base mb-1">PAN Card</Text>
+                    <Text className="text-sage text-xs">Tax & financial verification</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setConsentCertification(!consentCertification)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentCertification ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentCertification && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-slate font-bold text-base mb-1">Certification/Marksheet</Text>
+                    <Text className="text-sage text-xs">Professional qualifications</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setConsentLivePhoto(!consentLivePhoto)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentLivePhoto ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentLivePhoto && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-slate font-bold text-base mb-1">Live Photo</Text>
+                    <Text className="text-sage text-xs">Real-time facial verification</Text>
+                  </View>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+            
+            <View className="bg-sand px-6 py-5 border-t border-sage/10">
+              <Button 
+                title="Agree & Continue" 
+                onPress={submitDocuments} 
+                loading={loading}
+                disabled={!allConsented}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Decorative Brand Line - Bottom Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+      </View>
     </SafeAreaView>
   );
 }
