@@ -9,11 +9,12 @@ router = APIRouter()
 
 async def verify_superadmin(user_id: str = Depends(get_current_user)):
     try:
-        user_res = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+        user_res = supabase.table("users").select("role_id, tenant_id").eq("user_id", user_id).execute()
         if not user_res.data:
             raise HTTPException(status_code=403, detail="User not found")
             
         role_id = user_res.data[0].get("role_id")
+        tenant_id = user_res.data[0].get("tenant_id")
         if not role_id:
             raise HTTPException(status_code=403, detail="Role not found for user")
             
@@ -21,7 +22,8 @@ async def verify_superadmin(user_id: str = Depends(get_current_user)):
         if not role_res.data or role_res.data[0].get("role_name") not in ["superadmin", "admin"]:
             raise HTTPException(status_code=403, detail="Not authorized. Superadmin or Admin access required.")
             
-        return user_id
+        role_name = role_res.data[0].get("role_name")
+        return {"user_id": user_id, "role_name": role_name, "tenant_id": tenant_id}
     except HTTPException:
         raise
     except Exception as e:
@@ -29,7 +31,7 @@ async def verify_superadmin(user_id: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Internal Server Error during authorization")
 
 @router.get("/decline-reasons", response_model=DeclineReasonsResponse)
-async def get_decline_reasons(user_id: str = Depends(verify_superadmin)):
+async def get_decline_reasons(admin_info: dict = Depends(verify_superadmin)):
     """
     Fetch all active decline reasons from the database.
     """
@@ -41,28 +43,35 @@ async def get_decline_reasons(user_id: str = Depends(verify_superadmin)):
         raise HTTPException(status_code=500, detail="Failed to fetch decline reasons")
 
 @router.get("/requests", response_model=SuperadminRequestsResponse)
-async def get_pending_requests(limit: int = 20, offset: int = 0, user_id: str = Depends(verify_superadmin)):
+async def get_pending_requests(limit: int = 20, offset: int = 0, admin_info: dict = Depends(verify_superadmin)):
     """
-    Fetch all manpower requests for superadmin across all stores.
+    Fetch all manpower requests for superadmin across their tenant's stores.
     """
     try:
+        tenant_id = admin_info.get("tenant_id")
+        if not tenant_id:
+            raise HTTPException(status_code=403, detail="Admin is not assigned to a tenant.")
+            
         base_select = (
             "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, decline_reason, "
             "jobs(job_id, job_name, base_compensation), "
-            "stores(store_id, store_name, address, city)"
+            "stores!inner(store_id, store_name, address, city, tenant_id)"
         )
         
         pending_resp = supabase.table("manpower_requests").select(base_select)\
+            .eq("stores.tenant_id", tenant_id)\
             .eq("approval_status", "pending")\
             .order("shift_date", desc=False).order("start_time", desc=False)\
             .range(offset, offset + limit - 1).execute()
             
         approved_resp = supabase.table("manpower_requests").select(base_select)\
+            .eq("stores.tenant_id", tenant_id)\
             .in_("approval_status", ["approved", "confirmed"])\
             .order("shift_date", desc=False).order("start_time", desc=False)\
             .range(offset, offset + limit - 1).execute()
             
         declined_resp = supabase.table("manpower_requests").select(base_select)\
+            .eq("stores.tenant_id", tenant_id)\
             .in_("approval_status", ["declined", "rejected"])\
             .order("shift_date", desc=False).order("start_time", desc=False)\
             .range(offset, offset + limit - 1).execute()
@@ -110,9 +119,9 @@ async def get_pending_requests(limit: int = 20, offset: int = 0, user_id: str = 
                 decline_reason=r.get("decline_reason")
             ))
         # Get accurate counts by fetching ids (safer than relying on .count attribute in some supabase-py versions)
-        pending_res = supabase.table("manpower_requests").select("request_id").eq("approval_status", "pending").execute()
-        approved_res = supabase.table("manpower_requests").select("request_id").in_("approval_status", ["approved", "confirmed"]).execute()
-        declined_res = supabase.table("manpower_requests").select("request_id").in_("approval_status", ["declined", "rejected"]).execute()
+        pending_res = supabase.table("manpower_requests").select("request_id, stores!inner(tenant_id)").eq("approval_status", "pending").eq("stores.tenant_id", tenant_id).execute()
+        approved_res = supabase.table("manpower_requests").select("request_id, stores!inner(tenant_id)").in_("approval_status", ["approved", "confirmed"]).eq("stores.tenant_id", tenant_id).execute()
+        declined_res = supabase.table("manpower_requests").select("request_id, stores!inner(tenant_id)").in_("approval_status", ["declined", "rejected"]).eq("stores.tenant_id", tenant_id).execute()
         
         counts = {
             "pending": len(pending_res.data) if pending_res.data else 0,
@@ -126,9 +135,15 @@ async def get_pending_requests(limit: int = 20, offset: int = 0, user_id: str = 
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/requests/{request_id}/approve", response_model=ActionResponse)
-async def approve_request(request_id: str, user_id: str = Depends(verify_superadmin)):
+async def approve_request(request_id: str, admin_info: dict = Depends(verify_superadmin)):
     try:
-        # Check if the user is a superadmin in a real world app here
+        tenant_id = admin_info.get("tenant_id")
+        
+        # Verify the request belongs to a store in this tenant before approving
+        req_verify = supabase.table("manpower_requests").select("stores!inner(tenant_id)").eq("request_id", request_id).eq("stores.tenant_id", tenant_id).execute()
+        if not req_verify.data:
+            raise HTTPException(status_code=403, detail="Request not found or not in your tenant")
+            
         res = supabase.table("manpower_requests").update({
             "approval_status": "approved",
             "request_status": "open"
@@ -142,8 +157,15 @@ async def approve_request(request_id: str, user_id: str = Depends(verify_superad
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/requests/{request_id}/reject", response_model=ActionResponse)
-async def reject_request(request_id: str, payload: RejectRequestPayload, user_id: str = Depends(verify_superadmin)):
+async def reject_request(request_id: str, payload: RejectRequestPayload, admin_info: dict = Depends(verify_superadmin)):
     try:
+        tenant_id = admin_info.get("tenant_id")
+        
+        # Verify the request belongs to a store in this tenant before rejecting
+        req_verify = supabase.table("manpower_requests").select("stores!inner(tenant_id)").eq("request_id", request_id).eq("stores.tenant_id", tenant_id).execute()
+        if not req_verify.data:
+            raise HTTPException(status_code=403, detail="Request not found or not in your tenant")
+            
         res = supabase.table("manpower_requests").update({
             "approval_status": "declined",
             "request_status": "closed",
@@ -160,13 +182,15 @@ async def reject_request(request_id: str, payload: RejectRequestPayload, user_id
 from .schemas import StoresListResponse, StoreCreateRequest, StoreResponse
 
 @router.get("/stores", response_model=StoresListResponse)
-async def get_all_stores(user_id: str = Depends(verify_superadmin)):
+async def get_all_stores(admin_info: dict = Depends(verify_superadmin)):
     """
-    Fetch all stores for superadmin.
+    Fetch all stores for superadmin's tenant.
     """
     try:
+        tenant_id = admin_info.get("tenant_id")
+        
         # Fetch stores
-        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, contact_number, store_type").order("created_at", desc=True).execute()
+        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, contact_number, store_type").eq("tenant_id", tenant_id).order("created_at", desc=True).execute()
                 
         stores = []
         for s in stores_res.data:
@@ -188,12 +212,14 @@ async def get_all_stores(user_id: str = Depends(verify_superadmin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/stores", response_model=ActionResponse)
-async def create_store(request: StoreCreateRequest, user_id: str = Depends(verify_superadmin)):
+async def create_store(request: StoreCreateRequest, admin_info: dict = Depends(verify_superadmin)):
     """
     Create a new store.
     """
     try:
+        tenant_id = admin_info.get("tenant_id")
         payload = request.model_dump(mode='json', exclude_none=True)
+        payload["tenant_id"] = tenant_id
         res = supabase.table("stores").insert(payload).execute()
         
         if not res.data:
@@ -213,22 +239,28 @@ class SuperadminStatsResponse(BaseModel):
     total_managers: int
 
 @router.get("/stats", response_model=SuperadminStatsResponse)
-async def get_superadmin_stats(user_id: str = Depends(verify_superadmin)):
+async def get_superadmin_stats(admin_info: dict = Depends(verify_superadmin)):
     """
     Fetch high level statistics for the superadmin dashboard.
     """
     try:
+        tenant_id = admin_info.get("tenant_id")
+        
         # Get total stores
-        stores_res = supabase.table("stores").select("store_id", count="exact").execute()
+        stores_res = supabase.table("stores").select("store_id", count="exact").eq("tenant_id", tenant_id).execute()
         total_stores = stores_res.count if hasattr(stores_res, 'count') and stores_res.count is not None else len(stores_res.data)
 
         # Get total managers (store_manager or supervisor)
         roles_res = supabase.table("roles").select("role_id").in_("role_name", ["store_manager", "supervisor"]).execute()
         role_ids = [r["role_id"] for r in roles_res.data]
         
+        # Find which managers belong to this tenant's stores
+        assign_res = supabase.table("user_store_assignment").select("user_id, stores!inner(tenant_id)").eq("stores.tenant_id", tenant_id).execute()
+        user_ids = [a["user_id"] for a in assign_res.data]
+        
         total_managers = 0
-        if role_ids:
-            managers_res = supabase.table("users").select("user_id", count="exact").in_("role_id", role_ids).execute()
+        if role_ids and user_ids:
+            managers_res = supabase.table("users").select("user_id", count="exact").in_("role_id", role_ids).in_("user_id", user_ids).execute()
             total_managers = managers_res.count if hasattr(managers_res, 'count') and managers_res.count is not None else len(managers_res.data)
 
         return SuperadminStatsResponse(total_stores=total_stores, total_managers=total_managers)
@@ -237,11 +269,13 @@ async def get_superadmin_stats(user_id: str = Depends(verify_superadmin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/managers", response_model=ManagersListResponse)
-async def get_all_managers(user_id: str = Depends(verify_superadmin)):
+async def get_all_managers(admin_info: dict = Depends(verify_superadmin)):
     """
-    Fetch all users with role 'store_manager' or 'supervisor'.
+    Fetch all users with role 'store_manager' or 'supervisor' for this tenant.
     """
     try:
+        tenant_id = admin_info.get("tenant_id")
+        
         # Get role IDs
         roles_res = supabase.table("roles").select("role_id, role_name").in_("role_name", ["store_manager", "supervisor"]).execute()
         role_map = {r["role_id"]: r["role_name"] for r in roles_res.data}
@@ -250,23 +284,26 @@ async def get_all_managers(user_id: str = Depends(verify_superadmin)):
         if not role_ids:
             return ManagersListResponse(status="success", managers=[])
             
-        # Fetch users explicitly
-        users_res = supabase.table("users").select("user_id, first_name, last_name, email, mobile_number, role_id, is_verified").in_("role_id", role_ids).order("created_at", desc=True).execute()
+        # Fetch store assignments for this tenant
+        assign_res = supabase.table("user_store_assignment").select("user_id, stores!inner(store_name, tenant_id)").eq("stores.tenant_id", tenant_id).execute()
+        user_ids = [a["user_id"] for a in assign_res.data]
         
-        # Fetch store assignments
-        user_ids = [u["user_id"] for u in users_res.data]
+        if not user_ids:
+            return ManagersListResponse(status="success", managers=[])
+            
+        # Fetch users explicitly
+        users_res = supabase.table("users").select("user_id, first_name, last_name, email, mobile_number, role_id, is_verified").in_("role_id", role_ids).in_("user_id", user_ids).order("created_at", desc=True).execute()
+        
         assignments_map = {}
-        if user_ids:
-            assign_res = supabase.table("user_store_assignment").select("user_id, stores(store_name)").in_("user_id", user_ids).execute()
-            for a in assign_res.data:
-                store_data = a.get("stores")
-                if store_data:
-                    # Could be list or dict based on relation setup
-                    if isinstance(store_data, list) and len(store_data) > 0:
-                        store_name = store_data[0].get("store_name")
-                    else:
-                        store_name = store_data.get("store_name")
-                    assignments_map[a["user_id"]] = store_name
+        for a in assign_res.data:
+            store_data = a.get("stores")
+            if store_data:
+                # Could be list or dict based on relation setup
+                if isinstance(store_data, list) and len(store_data) > 0:
+                    store_name = store_data[0].get("store_name")
+                else:
+                    store_name = store_data.get("store_name")
+                assignments_map[a["user_id"]] = store_name
 
         managers = []
         for u in users_res.data:
@@ -287,11 +324,18 @@ async def get_all_managers(user_id: str = Depends(verify_superadmin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/managers", response_model=ActionResponse)
-async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(verify_superadmin)):
+async def create_manager(request: ManagerCreateRequest, admin_info: dict = Depends(verify_superadmin)):
     """
     Create a new store manager or supervisor.
     """
     try:
+        tenant_id = admin_info.get("tenant_id")
+        
+        # Verify that the store they want to assign to belongs to their tenant
+        store_res = supabase.table("stores").select("tenant_id, store_name, address, google_map_link").eq("store_id", request.store_id).execute()
+        if not store_res.data or store_res.data[0].get("tenant_id") != tenant_id:
+            raise HTTPException(status_code=403, detail="Store not found or does not belong to your tenant")
+            
         # Validate role
         role_name_clean = request.role.lower().replace(" ", "_")
         if role_name_clean not in ["store_manager", "supervisor"]:
@@ -318,7 +362,8 @@ async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(v
             "city": request.city,
             "state": request.state,
             "pincode": request.pincode,
-            "role_id": role_id
+            "role_id": role_id,
+            "tenant_id": tenant_id
         }
         
         user_res = supabase.table("users").insert(user_dict).execute()
@@ -357,7 +402,7 @@ async def create_manager(request: ManagerCreateRequest, user_id: str = Depends(v
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/deletion-requests")
-async def get_deletion_requests(user_id: str = Depends(verify_superadmin)):
+async def get_deletion_requests(admin_info: dict = Depends(verify_superadmin)):
     try:
         # We need to join account_deletion_requests with users table to get first_name, last_name, mobile_number
         res = supabase.table("account_deletion_requests").select(
@@ -387,7 +432,7 @@ async def get_deletion_requests(user_id: str = Depends(verify_superadmin)):
         raise HTTPException(status_code=500, detail="Failed to fetch deletion requests")
 
 @router.post("/deletion-requests/{user_id}/permanent-delete")
-async def permanent_delete_user(user_id: str, admin_id: str = Depends(verify_superadmin)):
+async def permanent_delete_user(user_id: str, admin_info: dict = Depends(verify_superadmin)):
     try:
         # Verify request exists and is older than 30 days
         req_res = supabase.table("account_deletion_requests").select("requested_at").eq("user_id", user_id).eq("status", "pending").execute()

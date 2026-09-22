@@ -25,7 +25,7 @@ export default function SuperadminLayout() {
     }, [])
   );
 
-  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; tenant_name?: string } | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -71,7 +71,7 @@ export default function SuperadminLayout() {
               minimumFontScale={0.8}
               style={{ fontSize: 12, fontWeight: '600', marginTop: 2 }}
             >
-              <Text style={{ color: '#0B5B31' }}>SahYogi</Text>{' '}
+              <Text style={{ color: '#0B5B31' }}>{userProfile?.tenant_name || 'SahYogi'}</Text>{' '}
               <Text style={{ color: '#D32F2F' }}>{role === 'admin' ? 'Approver' : 'Superadmin'}</Text>
             </Text>
           </View>
