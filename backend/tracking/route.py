@@ -74,19 +74,35 @@ async def receive_location(
             should_recalculate = True
             
     if should_recalculate:
-        # Mock destination coordinates for now, in a real app fetch job destination from DB
-        dest_lat = 28.4595 # Example
-        dest_lng = 77.0266
+        dest_lat = None
+        dest_lng = None
         
-        await enqueue_eta_calculation(
-            job_id=payload.job_id,
-            worker_id=worker_id,
-            current_lat=payload.latitude,
-            current_lng=payload.longitude,
-            dest_lat=dest_lat,
-            dest_lng=dest_lng
-        )
-        await client.setex(last_eta_key, 3600, str(current_time))
+        try:
+            from utils.supabase_client import supabase
+            # payload.job_id is actually the request_id from manpower_requests
+            req_resp = supabase.table("manpower_requests").select("store_id").eq("request_id", payload.job_id).execute()
+            if req_resp.data and len(req_resp.data) > 0:
+                store_id = req_resp.data[0].get("store_id")
+                if store_id:
+                    store_resp = supabase.table("stores").select("latitude, longitude").eq("store_id", store_id).execute()
+                    if store_resp.data and len(store_resp.data) > 0:
+                        dest_lat = store_resp.data[0].get("latitude")
+                        dest_lng = store_resp.data[0].get("longitude")
+        except Exception as e:
+            print(f"[Tracking] Error fetching real store destination: {e}")
+            
+        if dest_lat is not None and dest_lng is not None:
+            await enqueue_eta_calculation(
+                job_id=payload.job_id,
+                worker_id=worker_id,
+                current_lat=payload.latitude,
+                current_lng=payload.longitude,
+                dest_lat=dest_lat,
+                dest_lng=dest_lng
+            )
+            await client.setex(last_eta_key, 3600, str(current_time))
+        else:
+            print(f"[Tracking] Warning: Could not find destination coordinates for job {payload.job_id}. Skipping ETA calculation.")
     
     print(f"Received and broadcasted location for job {payload.job_id}: {payload.latitude}, {payload.longitude}")
     return {"message": "Location received"}
