@@ -24,7 +24,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.workfloww.sahyogi"
+      "package": "com.workfloww.sahyogi",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDPusnkphIiRGM0f6BayBezFVTAcg0rjZ8"
+        }
+      }
     },
     "web": {
       "output": "static",
@@ -42,7 +47,16 @@
       ],
       "expo-video",
       "@react-native-community/datetimepicker",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Sahyogi to use your location to track your route during active jobs.",
+          "locationAlwaysPermission": "Allow Sahyogi to track your location in the background so store managers can see your real-time ETA.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -602,10 +602,13 @@ export default function StoreManagerDashboard() {
                               {worker.name ? worker.name.split(' ').map((n: string) => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' ') : ''}
                             </Text>
                             {worker.mobile_number && (
-                              <TouchableOpacity onPress={() => Linking.openURL(`tel:${worker.mobile_number}`)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
+                              <TouchableOpacity onPress={() => Linking.openURL(`tel:${worker.mobile_number}`)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12, marginRight: 6 }}>
                                 <Feather name="phone" size={12} color="#0B5B31" />
                               </TouchableOpacity>
                             )}
+                            <TouchableOpacity onPress={() => router.push(`/store_manager/live_tracking?jobId=${job.request_id}&workerId=${worker.id}` as any)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
+                              <Feather name="navigation" size={12} color="#0B5B31" />
+                            </TouchableOpacity>
                           </View>
                           <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
                         </View>
@@ -770,6 +773,14 @@ export default function StoreManagerDashboard() {
             style={{ width: 85, height: 85, resizeMode: 'contain', marginLeft: 12 }}
           />
         </View>
+
+        {/* TEMPORARY LIVE TRACKING TEST BUTTON */}
+        <TouchableOpacity 
+          onPress={() => router.push('/store_manager/live_tracking?jobId=TEST-JOB-123' as any)}
+          style={{ backgroundColor: '#0B5B31', padding: 12, borderRadius: 8, marginTop: 15, alignItems: 'center' }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>🎯 Test Live Tracking</Text>
+        </TouchableOpacity>
 
         {/* Decorative Brand Line - Absolute Bottom */}
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>

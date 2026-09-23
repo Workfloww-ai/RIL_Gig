@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import "../global.css"; // Note: For NativeWind v4
 import OfflineBanner from '../src/components/OfflineBanner';
 import { View } from 'react-native';
+import '../src/services/LocationTrackingService'; // Initialize global TaskManager
 
 export default function RootLayout() {
   return (
