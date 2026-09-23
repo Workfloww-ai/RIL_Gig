@@ -5,6 +5,13 @@ from db.jobs_db import create_job_request, get_all_jobs
 from db.finance_db import create_payment_record
 from utils.jwt_auth import get_current_user
 from utils.supabase_client import supabase
+from datetime import datetime, timedelta, timezone
+
+def get_ist_now():
+    return datetime.now(timezone(timedelta(hours=5, minutes=30)))
+
+def get_ist_now_naive():
+    return get_ist_now().replace(tzinfo=None)
 
 router = APIRouter()
 
@@ -47,7 +54,7 @@ async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = De
         requests = [r for r in response.data if str(r.get("approval_status")).lower() in ("approved", "confirmed")]
         
         import datetime
-        current_time = datetime.datetime.now()
+        current_time = get_ist_now_naive()
         
         valid_requests = []
         for r in requests:
@@ -134,7 +141,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
                     start_time_str += ":00"
                 try:
                     shift_dt = datetime.datetime.strptime(f"{shift_date_str} {start_time_str}", "%Y-%m-%d %H:%M:%S")
-                    time_diff = shift_dt - datetime.datetime.now()
+                    time_diff = shift_dt - get_ist_now_naive()
                     minutes_until_shift = time_diff.total_seconds() / 60.0
                     
                     if minutes_until_shift <= 90:
@@ -186,7 +193,7 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
             start_time = req_res.data[0].get("start_time")
             if shift_date and start_time:
                 shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                diff = shift_datetime - datetime.now()
+                diff = shift_datetime - get_ist_now_naive()
                 if diff.total_seconds() > 0 and diff.total_seconds() < 5400:
                     raise HTTPException(status_code=400, detail="Cannot cancel job less than 90 minutes before start time")
                     
@@ -252,7 +259,7 @@ async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str =
             ))
             
         import datetime
-        current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+        current_date_str = get_ist_now_naive().strftime("%Y-%m-%d")
         
         filtered_jobs = []
         for j in jobs:
@@ -289,7 +296,7 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
             raise HTTPException(status_code=400, detail="You have not accepted this job")
             
         from datetime import datetime, timezone
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = get_ist_now().isoformat()
         update_data = {}
         if step == 't90':
             update_data = {"t90_status": "confirmed", "t90_accepted_at": now_iso}
@@ -341,7 +348,7 @@ async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: st
         )
         
         import datetime
-        current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+        current_date_str = get_ist_now_naive().strftime("%Y-%m-%d")
         
         # Execute 6 independent paginated queries
         queries = [
@@ -537,14 +544,14 @@ async def generate_start_otp(request_id: str, user_id: str = Depends(get_current
                 try:
                     from datetime import timezone
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                    if datetime.now() < shift_datetime - timedelta(minutes=10):
+                    if get_ist_now_naive() < shift_datetime - timedelta(minutes=10):
                         raise HTTPException(status_code=400, detail="Cannot generate OTP more than 10 minutes before shift")
-                    if datetime.now() > shift_datetime:
+                    if get_ist_now_naive() > shift_datetime:
                         supabase.table("worker_job_assignments").update({
                             "assignment_status": "no_show",
                             "rating_score": 1,
                             "rating_feedback": "Auto-assigned due to No Show",
-                            "rated_at": datetime.now(timezone.utc).isoformat()
+                            "rated_at": get_ist_now().isoformat()
                         }).eq("job_assignment_id", assignment.get("job_assignment_id")).execute()
                         
                         # Recalculate average rating
@@ -625,12 +632,12 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
                 try:
                     from datetime import timezone
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                    if datetime.now() > shift_datetime:
+                    if get_ist_now_naive() > shift_datetime:
                         supabase.table("worker_job_assignments").update({
                             "assignment_status": "no_show",
                             "rating_score": 1,
                             "rating_feedback": "Auto-assigned due to No Show",
-                            "rated_at": datetime.now(timezone.utc).isoformat()
+                            "rated_at": get_ist_now().isoformat()
                         }).eq("job_assignment_id", assignment_id).execute()
                         
                         # Recalculate average rating
@@ -709,7 +716,7 @@ async def manager_complete_job(
         if assignment_resp.data[0].get("assignment_status") != "started":
             raise HTTPException(status_code=400, detail="Only started shifts can be completed and rated")
             
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = get_ist_now().isoformat()
         
         # Update assignment to completed and save rating
         supabase.table("worker_job_assignments").update({
