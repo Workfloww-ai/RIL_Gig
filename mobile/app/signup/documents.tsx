@@ -25,9 +25,11 @@ export default function DocumentsScreen() {
   const [topError, setTopError] = useState<string>('');
 
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentAadhar, setConsentAadhar] = useState(false);
+  const [consentPan, setConsentPan] = useState(false);
   const [consentPrivacy, setConsentPrivacy] = useState(false);
 
-  const allConsented = consentPrivacy;
+  const allConsented = consentAadhar && consentPan && consentPrivacy;
 
   const requiredDocs = [
     { key: 'Aadhar Card', name: 'Aadhar Card', placeholder: 'Aadhar Number' },
@@ -238,6 +240,28 @@ export default function DocumentsScreen() {
             <View className="p-6 pb-2">
               <Text className="text-sage mb-6 text-base">To proceed with your application, we need your consent to collect and process the following information:</Text>
               
+              <View className="mb-2">
+                <TouchableOpacity onPress={() => setConsentAadhar(!consentAadhar)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentAadhar ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentAadhar && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1 flex-row flex-wrap items-center">
+                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to use my Aadhaar number and details for identity verification and e-KYC purposes in accordance with UIDAI guidelines. </Text>
+                    
+                  </View>
+                </TouchableOpacity>
+              </View>
+              <View className="mb-2">
+                <TouchableOpacity onPress={() => setConsentPan(!consentPan)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPan ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentPan && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1 flex-row flex-wrap items-center">
+                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to fetch and verify my PAN details with the Income Tax Department database for onboarding and compliance purposes. </Text>
+                    
+                  </View>
+                </TouchableOpacity>
+              </View>
               <View className="mb-2">
                 <TouchableOpacity onPress={() => setConsentPrivacy(!consentPrivacy)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
                   <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPrivacy ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
