@@ -66,6 +66,40 @@ async def redis_listener(job_id: str):
 async def websocket_endpoint(websocket: WebSocket, job_id: str):
     await manager.connect(websocket, job_id)
     
+    # Send the last known location and ETA immediately so the frontend doesn't wait
+    try:
+        redis_client = await get_redis()
+        # 1. Send last known ETA
+        eta_str = await redis_client.get(f"job:{job_id}:latest_eta")
+        if eta_str:
+            eta_data = json.loads(eta_str)
+            eta_data["type"] = "eta_update"
+            await websocket.send_json(eta_data)
+            
+        # 2. Send last known Location
+        # Since locations are keyed by worker_id, we need to find the one matching this job_id
+        keys = await redis_client.keys("worker:*:location")
+        for key in keys:
+            loc_str = await redis_client.get(key)
+            if loc_str:
+                loc_data = json.loads(loc_str)
+                if loc_data.get("job_id") == job_id:
+                    # worker:123:location -> 123
+                    key_str = key.decode() if isinstance(key, bytes) else key
+                    worker_id = key_str.split(":")[1]
+                    await websocket.send_json({
+                        "type": "worker_location_update",
+                        "worker_id": worker_id,
+                        "latitude": loc_data.get("lat"),
+                        "longitude": loc_data.get("lng"),
+                        "accuracy": loc_data.get("accuracy", 0),
+                        "speed": loc_data.get("speed", 0),
+                        "heading": loc_data.get("heading", 0),
+                        "timestamp": loc_data.get("timestamp")
+                    })
+    except Exception as e:
+        print(f"[WebSocket] Error sending initial state: {e}")
+        
     # Start the Redis listener for this job if it's the first connection
     # Note: In a production environment with many workers, 
     # it might be better to have a single listener reading all channels

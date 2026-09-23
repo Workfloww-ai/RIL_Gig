@@ -31,9 +31,19 @@ async def process_persistence():
                 data = json.loads(data_str)
                 worker_id = key.split(":")[1]
                 
+                request_id = data["job_id"]
+                real_job_id = request_id
+                try:
+                    # The mobile app passes request_id as 'job_id', but the DB expects the real job type ID
+                    req_resp = supabase.table("manpower_requests").select("job_id").eq("request_id", request_id).execute()
+                    if req_resp.data:
+                        real_job_id = req_resp.data[0].get("job_id")
+                except Exception as e:
+                    pass
+                
                 locations_to_persist.append({
                     "worker_id": worker_id,
-                    "job_id": data["job_id"],
+                    "job_id": real_job_id,
                     "latitude": data["lat"],
                     "longitude": data["lng"],
                     "accuracy": data["accuracy"],

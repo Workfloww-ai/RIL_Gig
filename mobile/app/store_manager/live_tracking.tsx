@@ -57,7 +57,6 @@ export default function LiveTrackingScreen() {
         const eventWorkerId = data.worker_id || data.workerId;
         
         if (data.type === "worker_location_update") {
-          if (workerId && eventWorkerId && eventWorkerId !== workerId) return;
           
           setLocation({
             ...data,
@@ -65,7 +64,6 @@ export default function LiveTrackingScreen() {
             longitude: data.lng || data.longitude
           });
         } else if (data.type === "eta_update") {
-          if (workerId && eventWorkerId && eventWorkerId !== workerId) return;
           
           setEta(data);
         }
