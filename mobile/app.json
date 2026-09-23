@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sahyogi",
     "slug": "sahyogi",
-    "version": "1.0.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/newlogo.png",
     "splash": {
@@ -16,7 +16,7 @@
       "icon": "./assets/images/newlogo.png"
     },
     "android": {
-      "versionCode": 2,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/newlogo.png",
@@ -51,9 +51,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c146f487-b7c0-45de-81a8-7a89af035689"
+        "projectId": "999659e5-5045-4ce6-aa34-5668376ae1a5"
       }
     },
-    "owner": "workflowwais-team"
+    "owner": "sahyogi"
   }
 }
