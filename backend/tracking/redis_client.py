@@ -21,7 +21,16 @@ async def get_redis():
             if "--tls" in raw_url and redis_url.startswith("redis://"):
                 redis_url = redis_url.replace("redis://", "rediss://", 1)
                 
-        redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Add connection parameters to prevent Upstash timeouts
+        redis_client = redis.from_url(
+            redis_url,
+            decode_responses=True,
+            socket_keepalive=True,
+            health_check_interval=10,
+            socket_connect_timeout=5,
+            socket_timeout=30,
+            retry_on_timeout=True
+        )
     return redis_client
 
 async def update_worker_location(worker_id: str, job_id: str, lat: float, lng: float, accuracy: float, speed: float, heading: float, timestamp: str):
