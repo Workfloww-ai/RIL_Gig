@@ -34,7 +34,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
           timestamp: new Date(location.timestamp).toISOString(),
         };
 
-        await apiClient.post('/api/tracking/location', payload);
+        await apiClient.post('/tracking/location', payload);
         console.log(`[LocationTask] Sent location for job ${jobId}`);
       } catch (err) {
         console.error('[LocationTask] Failed to send location', err);
@@ -65,7 +65,7 @@ export const LocationTrackingService = {
 
     // Notify backend that session is starting
     try {
-      await apiClient.post('/api/tracking/session/start', { job_id: jobId });
+      await apiClient.post('/tracking/session/start', { job_id: jobId });
     } catch (err) {
       console.error('[LocationTrackingService] Failed to notify backend of start', err);
     }
@@ -101,7 +101,7 @@ export const LocationTrackingService = {
     // Notify backend that session is stopping
     if (jobId) {
       try {
-        await apiClient.post('/api/tracking/session/stop', { job_id: jobId });
+        await apiClient.post('/tracking/session/stop', { job_id: jobId });
       } catch (err) {
         console.error('[LocationTrackingService] Failed to notify backend of stop', err);
       }

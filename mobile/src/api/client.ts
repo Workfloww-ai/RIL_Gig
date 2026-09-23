@@ -16,14 +16,7 @@ export const apiClient = axios.create({
 // Add a request interceptor to automatically attach the JWT token
 apiClient.interceptors.request.use(
   (config) => {
-    // Automatically prepend /api if it's missing
-    if (config.url) {
-      if (config.url.startsWith('/') && !config.url.startsWith('/api')) {
-        config.url = `/api${config.url}`;
-      } else if (!config.url.startsWith('/') && !config.url.startsWith('api/')) {
-        config.url = `/api/${config.url}`;
-      }
-    }
+    // URL prefixing is handled by the baseURL configuration
 
     const token = useAuthStore.getState().token;
     if (token) {
