@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Platform, StatusBar, ScrollView, Alert, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, Platform, StatusBar, ScrollView, Alert, Modal, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -24,16 +24,10 @@ export default function DocumentsScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string>('');
 
-  // Consent Modal State
   const [showConsentModal, setShowConsentModal] = useState(false);
-  const [consentPersonalInfo, setConsentPersonalInfo] = useState(false);
-  const [consentBankDetails, setConsentBankDetails] = useState(false);
-  const [consentAadhar, setConsentAadhar] = useState(false);
-  const [consentPan, setConsentPan] = useState(false);
-  const [consentCertification, setConsentCertification] = useState(false);
-  const [consentLivePhoto, setConsentLivePhoto] = useState(false);
+  const [consentPrivacy, setConsentPrivacy] = useState(false);
 
-  const allConsented = consentPersonalInfo && consentBankDetails && consentAadhar && consentPan && consentCertification && consentLivePhoto;
+  const allConsented = consentPrivacy;
 
   const requiredDocs = [
     { key: 'Aadhar Card', name: 'Aadhar Card', placeholder: 'Aadhar Number' },
@@ -233,7 +227,7 @@ export default function DocumentsScreen() {
       {/* Consent Modal */}
       <Modal visible={showConsentModal} animationType="slide" transparent={true}>
         <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-cream w-full rounded-t-3xl overflow-hidden shadow-xl h-[85%]" onStartShouldSetResponder={() => true}>
+          <View className="bg-cream w-full rounded-t-3xl overflow-hidden shadow-xl" onStartShouldSetResponder={() => true}>
             <View className="bg-sand px-6 py-5 border-b border-sage/10 flex-row justify-between items-center">
               <Text className="text-lg font-bold text-slate">Terms & Permissions</Text>
               <TouchableOpacity onPress={() => setShowConsentModal(false)}>
@@ -241,70 +235,25 @@ export default function DocumentsScreen() {
               </TouchableOpacity>
             </View>
             
-            <View className="p-6 flex-1">
+            <View className="p-6 pb-2">
               <Text className="text-sage mb-6 text-base">To proceed with your application, we need your consent to collect and process the following information:</Text>
               
-              <ScrollView className="flex-1 mb-2" showsVerticalScrollIndicator={false}>
-                <TouchableOpacity onPress={() => setConsentPersonalInfo(!consentPersonalInfo)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPersonalInfo ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentPersonalInfo && <Text className="text-white text-xs font-bold">✓</Text>}
+              <View className="mb-2">
+                <TouchableOpacity onPress={() => setConsentPrivacy(!consentPrivacy)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPrivacy ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentPrivacy && <Text className="text-white text-xs font-bold">✓</Text>}
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-slate font-bold text-base mb-1">Personal Information</Text>
-                    <Text className="text-sage text-xs">Name, DOB, Contact, Address</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => setConsentBankDetails(!consentBankDetails)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentBankDetails ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentBankDetails && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-slate font-bold text-base mb-1">Bank Details</Text>
-                    <Text className="text-sage text-xs">UPI ID, Account Information</Text>
+                  <View className="flex-1 flex-row flex-wrap items-center">
+                    <Text className="text-slate text-base">I read and agree to </Text>
+                    <TouchableOpacity onPress={(e) => {
+                      e.stopPropagation();
+                      Linking.openURL('https://www.sahyogi.net.in/privacy.html');
+                    }}>
+                      <Text className="text-[#0B5B31] text-base font-bold underline">privacy policy</Text>
+                    </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => setConsentAadhar(!consentAadhar)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentAadhar ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentAadhar && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-slate font-bold text-base mb-1">Aadhar Card</Text>
-                    <Text className="text-sage text-xs">Identity verification</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => setConsentPan(!consentPan)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPan ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentPan && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-slate font-bold text-base mb-1">PAN Card</Text>
-                    <Text className="text-sage text-xs">Tax & financial verification</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => setConsentCertification(!consentCertification)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentCertification ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentCertification && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-slate font-bold text-base mb-1">Certification/Marksheet</Text>
-                    <Text className="text-sage text-xs">Professional qualifications</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => setConsentLivePhoto(!consentLivePhoto)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentLivePhoto ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentLivePhoto && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-slate font-bold text-base mb-1">Live Photo</Text>
-                    <Text className="text-sage text-xs">Real-time facial verification</Text>
-                  </View>
-                </TouchableOpacity>
-              </ScrollView>
+              </View>
             </View>
             
             <View className="bg-sand px-6 py-5 border-t border-sage/10">
