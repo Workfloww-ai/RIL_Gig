@@ -5,10 +5,10 @@ from db.jobs_db import create_job_request, get_all_jobs
 from db.finance_db import create_payment_record
 from utils.jwt_auth import get_current_user
 from utils.supabase_client import supabase
-from datetime import datetime, timedelta, timezone
+import datetime as _dt_module
 
 def get_ist_now():
-    return datetime.now(timezone(timedelta(hours=5, minutes=30)))
+    return _dt_module.datetime.now(_dt_module.timezone(_dt_module.timedelta(hours=5, minutes=30)))
 
 def get_ist_now_naive():
     return get_ist_now().replace(tzinfo=None)
