@@ -40,6 +40,11 @@ async def receive_location(
     request: Request,
     worker_id: str = Depends(get_current_user)
 ):
+    print(f"==================================================")
+    print(f"[Backend] HIT /api/tracking/location FROM MOBILE!")
+    print(f"[Backend] Worker: {worker_id}, Job: {payload.job_id}")
+    print(f"==================================================")
+    
     # Push to Redis for realtime broadcast
     await update_worker_location(
         worker_id=worker_id,

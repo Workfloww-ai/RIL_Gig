@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import * as Location from 'expo-location';
 import { View, Text, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable, Linking, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -550,6 +551,37 @@ export default function LibraryScreen() {
             <Text className="text-green-700 text-[10px] font-bold tracking-wide uppercase">Extension Accepted (+{job.extension_hours}hr)</Text>
           </View>
         )}
+        
+        {/* DEBUG BUTTON: Force Send Location to bypass Expo Go Background restriction */}
+        <TouchableOpacity 
+          onPress={async () => {
+            try {
+              showToast("Getting GPS...");
+              let { status } = await Location.requestForegroundPermissionsAsync();
+              if (status !== 'granted') {
+                showToast("Permission denied");
+                return;
+              }
+              let location = await Location.getCurrentPositionAsync({});
+              const payload = {
+                job_id: job.request_id,
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                accuracy: location.coords.accuracy || 0,
+                speed: location.coords.speed || 0,
+                heading: location.coords.heading || 0,
+                timestamp: new Date(location.timestamp).toISOString(),
+              };
+              await apiClient.post('/tracking/location', payload);
+              showToast("Sent! Check backend logs.");
+            } catch (e: any) {
+              showToast("Failed to send: " + e.message);
+            }
+          }}
+          className="bg-blue-500 p-2 rounded-xl mb-3 items-center"
+        >
+          <Text className="text-white font-bold text-xs uppercase">Force Ping Location (Debug)</Text>
+        </TouchableOpacity>
 
         {job.assignment_status === 'accepted' && job.arrival_status !== 'arrived' && (() => {
           const t90State = getStepState(job.t90_status, job.shift_date, job.start_time, 't90');

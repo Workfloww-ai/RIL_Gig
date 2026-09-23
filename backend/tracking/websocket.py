@@ -29,6 +29,9 @@ class ConnectionManager:
     async def broadcast(self, job_id: str, message: dict):
         if job_id in self.active_connections:
             # We must iterate over a copy of the list as it may change during iteration
+            clients_count = len(self.active_connections[job_id])
+            msg_type = message.get("type", "unknown")
+            print(f"[WebSocket] Broadcasting {msg_type} to {clients_count} Store Manager(s) for job {job_id}")
             for connection in self.active_connections[job_id][:]:
                 try:
                     await connection.send_json(message)
