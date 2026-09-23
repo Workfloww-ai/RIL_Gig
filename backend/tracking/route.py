@@ -31,11 +31,15 @@ from .eta_service import enqueue_eta_calculation
 import time
 import json
 
+from utils.jwt_auth import get_current_user
+from fastapi import Depends
+
 @router.post("/location")
-async def receive_location(payload: LocationUpdateSchema, request: Request):
-    # Validate tracking session (Assume worker_id from auth, using a mock for now)
-    worker_id = "mock_worker_id" # In real app, extract from JWT in Request
-    
+async def receive_location(
+    payload: LocationUpdateSchema, 
+    request: Request,
+    worker_id: str = Depends(get_current_user)
+):
     # Push to Redis for realtime broadcast
     await update_worker_location(
         worker_id=worker_id,
