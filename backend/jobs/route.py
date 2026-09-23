@@ -5,6 +5,13 @@ from db.jobs_db import create_job_request, get_all_jobs
 from db.finance_db import create_payment_record
 from utils.jwt_auth import get_current_user
 from utils.supabase_client import supabase
+import datetime as _dt_module
+
+def get_ist_now():
+    return _dt_module.datetime.now(_dt_module.timezone(_dt_module.timedelta(hours=5, minutes=30)))
+
+def get_ist_now_naive():
+    return get_ist_now().replace(tzinfo=None)
 
 router = APIRouter()
 
@@ -537,14 +544,14 @@ async def generate_start_otp(request_id: str, user_id: str = Depends(get_current
                 try:
                     from datetime import timezone
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                    if datetime.now() < shift_datetime - timedelta(minutes=10):
+                    if get_ist_now_naive() < shift_datetime - timedelta(minutes=10):
                         raise HTTPException(status_code=400, detail="Cannot generate OTP more than 10 minutes before shift")
-                    if datetime.now() > shift_datetime:
+                    if get_ist_now_naive() > shift_datetime:
                         supabase.table("worker_job_assignments").update({
                             "assignment_status": "no_show",
                             "rating_score": 1,
                             "rating_feedback": "Auto-assigned due to No Show",
-                            "rated_at": datetime.now(timezone.utc).isoformat()
+                            "rated_at": get_ist_now().isoformat()
                         }).eq("job_assignment_id", assignment.get("job_assignment_id")).execute()
                         
                         # Recalculate average rating
@@ -625,12 +632,12 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
                 try:
                     from datetime import timezone
                     shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                    if datetime.now() > shift_datetime:
+                    if get_ist_now_naive() > shift_datetime:
                         supabase.table("worker_job_assignments").update({
                             "assignment_status": "no_show",
                             "rating_score": 1,
                             "rating_feedback": "Auto-assigned due to No Show",
-                            "rated_at": datetime.now(timezone.utc).isoformat()
+                            "rated_at": get_ist_now().isoformat()
                         }).eq("job_assignment_id", assignment_id).execute()
                         
                         # Recalculate average rating
@@ -709,7 +716,7 @@ async def manager_complete_job(
         if assignment_resp.data[0].get("assignment_status") != "started":
             raise HTTPException(status_code=400, detail="Only started shifts can be completed and rated")
             
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = get_ist_now().isoformat()
         
         # Update assignment to completed and save rating
         supabase.table("worker_job_assignments").update({
