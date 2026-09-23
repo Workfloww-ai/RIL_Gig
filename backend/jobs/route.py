@@ -54,7 +54,7 @@ async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = De
         requests = [r for r in response.data if str(r.get("approval_status")).lower() in ("approved", "confirmed")]
         
         import datetime
-        current_time = get_ist_now_naive()
+        current_time = datetime.datetime.now()
         
         valid_requests = []
         for r in requests:
@@ -141,7 +141,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
                     start_time_str += ":00"
                 try:
                     shift_dt = datetime.datetime.strptime(f"{shift_date_str} {start_time_str}", "%Y-%m-%d %H:%M:%S")
-                    time_diff = shift_dt - get_ist_now_naive()
+                    time_diff = shift_dt - datetime.datetime.now()
                     minutes_until_shift = time_diff.total_seconds() / 60.0
                     
                     if minutes_until_shift <= 90:
@@ -193,7 +193,7 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
             start_time = req_res.data[0].get("start_time")
             if shift_date and start_time:
                 shift_datetime = datetime.strptime(f"{shift_date} {start_time}", "%Y-%m-%d %H:%M:%S")
-                diff = shift_datetime - get_ist_now_naive()
+                diff = shift_datetime - datetime.now()
                 if diff.total_seconds() > 0 and diff.total_seconds() < 5400:
                     raise HTTPException(status_code=400, detail="Cannot cancel job less than 90 minutes before start time")
                     
@@ -259,7 +259,7 @@ async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str =
             ))
             
         import datetime
-        current_date_str = get_ist_now_naive().strftime("%Y-%m-%d")
+        current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
         
         filtered_jobs = []
         for j in jobs:
@@ -296,7 +296,7 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
             raise HTTPException(status_code=400, detail="You have not accepted this job")
             
         from datetime import datetime, timezone
-        now_iso = get_ist_now().isoformat()
+        now_iso = datetime.now(timezone.utc).isoformat()
         update_data = {}
         if step == 't90':
             update_data = {"t90_status": "confirmed", "t90_accepted_at": now_iso}
@@ -348,7 +348,7 @@ async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: st
         )
         
         import datetime
-        current_date_str = get_ist_now_naive().strftime("%Y-%m-%d")
+        current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
         
         # Execute 6 independent paginated queries
         queries = [
