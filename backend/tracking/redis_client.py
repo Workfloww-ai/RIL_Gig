@@ -29,7 +29,8 @@ async def get_redis():
             health_check_interval=10,
             socket_connect_timeout=5,
             socket_timeout=30,
-            retry_on_timeout=True
+            retry_on_timeout=True,
+            max_connections=100
         )
     return redis_client
 
@@ -48,6 +49,9 @@ async def update_worker_location(worker_id: str, job_id: str, lat: float, lng: f
     }
     # Set with 120 seconds TTL (stale connection detection)
     await client.setex(key, 120, json.dumps(data))
+    
+    # Push to persistence queue (List) for bulk inserting into DB later
+    await client.lpush("gps_persistence_queue", json.dumps({"worker_id": worker_id, **data}))
     
     # Also publish to a channel so WebSockets can pick it up and broadcast
     channel = f"job:{job_id}:location_updates"

@@ -230,7 +230,7 @@ export default function StoreManagerDashboard() {
         if (res.data.requests) {
           const newRequests = res.data.requests;
           setHasMore(res.data.has_more ?? newRequests.length >= 20);
-          
+
           if (res.data.counts) {
             setCounts(res.data.counts);
           }
@@ -416,7 +416,7 @@ export default function StoreManagerDashboard() {
     <View key={job.request_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: '#D32F2F', borderRightWidth: 4, borderRightColor: '#0B5B31', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
         <Text style={{ fontWeight: '700', color: '#1A1A1A', fontSize: 17, marginRight: 8 }}>{job.job_name}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => {
             setStatusModalContent({ title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', type: 'success' });
             setShowStatusModal(true);
@@ -471,12 +471,12 @@ export default function StoreManagerDashboard() {
     let isJobEnded = false;
     if (job.shift_date && job.start_time) {
       // Ensure the date is in YYYY-MM-DD format for reliable parsing
-      const formattedDate = String(job.shift_date).split('-')[0].length !== 4 
-        ? String(job.shift_date).split('-').reverse().join('-') 
+      const formattedDate = String(job.shift_date).split('-')[0].length !== 4
+        ? String(job.shift_date).split('-').reverse().join('-')
         : job.shift_date;
-        
+
       const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
-      
+
       if (shiftDateTime instanceof Date && !isNaN(shiftDateTime.getTime())) {
         if (new Date() >= shiftDateTime) {
           shiftHasStarted = true;
@@ -503,7 +503,7 @@ export default function StoreManagerDashboard() {
             <View style={{ flex: 1, marginRight: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                 <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginRight: 8 }}>{job.job_name}</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => {
                     setStatusModalContent({ title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', type: 'success' });
                     setShowStatusModal(true);
@@ -560,23 +560,30 @@ export default function StoreManagerDashboard() {
             ) : (
               acceptedWorkers.map((worker: any) => {
                 const statusInfo = getWorkerStatusDisplay(worker, job);
-                
+
                 // Calculate worker-specific job end time including accepted extensions
                 let workerJobEnded = false;
+                let showTracking = false;
                 if (job.shift_date && job.start_time) {
-                  const formattedDate = String(job.shift_date).split('-')[0].length !== 4 
-                    ? String(job.shift_date).split('-').reverse().join('-') 
+                  const formattedDate = String(job.shift_date).split('-')[0].length !== 4
+                    ? String(job.shift_date).split('-').reverse().join('-')
                     : job.shift_date;
                   const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
-                  
+
                   if (shiftDateTime instanceof Date && !isNaN(shiftDateTime.getTime())) {
                     const baseHours = Number(job.hours_duration) || 0;
                     const extHours = worker.extension_status === 'accepted' ? (Number(worker.extension_hours) || 0) : 0;
                     const totalHours = baseHours + extHours;
-                    
+
                     const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
-                    if (new Date() >= endDateTime) {
+                    const now = new Date();
+                    if (now >= endDateTime) {
                       workerJobEnded = true;
+                    }
+                    
+                    const trackingStartTime = new Date(shiftDateTime.getTime() - 15 * 60 * 1000);
+                    if (now >= trackingStartTime && now <= endDateTime && worker.status !== 'completed') {
+                      showTracking = true;
                     }
                   }
                 }
@@ -606,9 +613,11 @@ export default function StoreManagerDashboard() {
                                 <Feather name="phone" size={12} color="#0B5B31" />
                               </TouchableOpacity>
                             )}
-                            <TouchableOpacity onPress={() => router.push(`/store_manager/live_tracking?jobId=${job.request_id}&workerId=${worker.worker_id}` as any)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
-                              <Feather name="navigation" size={12} color="#0B5B31" />
-                            </TouchableOpacity>
+                            {showTracking && (
+                              <TouchableOpacity onPress={() => router.push(`/store_manager/live_tracking?jobId=${job.request_id}&workerId=${worker.worker_id}&workerName=${encodeURIComponent(worker.name || 'Worker')}` as any)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
+                                <Feather name="navigation" size={12} color="#0B5B31" />
+                              </TouchableOpacity>
+                            )}
                           </View>
                           <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
                         </View>
@@ -775,12 +784,12 @@ export default function StoreManagerDashboard() {
         </View>
 
         {/* TEMPORARY LIVE TRACKING TEST BUTTON */}
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           onPress={() => router.push('/store_manager/live_tracking?jobId=TEST-JOB-123' as any)}
           style={{ backgroundColor: '#0B5B31', padding: 12, borderRadius: 8, marginTop: 15, alignItems: 'center' }}
         >
           <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>🎯 Test Live Tracking</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Decorative Brand Line - Absolute Bottom */}
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row' }}>
@@ -793,9 +802,9 @@ export default function StoreManagerDashboard() {
       </View>
 
       {/* ==================== 2. MAIN SCROLLABLE BODY CONTENT ==================== */}
-      <ScrollView 
-        style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }} 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         onScroll={({ nativeEvent }) => {
           if (isCloseToBottom(nativeEvent)) {
@@ -983,7 +992,7 @@ export default function StoreManagerDashboard() {
 
             {/* Declined Requests Accordion */}
             <TouchableOpacity
-              onPress={() => toggleSection('req_declined')}
+              onPress={() => toggleSection('declined')}
               style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -992,10 +1001,10 @@ export default function StoreManagerDashboard() {
                   <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>{counts.declined}</Text>
                 </View>
               </View>
-              <Feather name={expandedSections.req_declined ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
+              <Feather name={expandedSections.declined ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" />
             </TouchableOpacity>
 
-            {expandedSections.req_declined && (
+            {expandedSections.declined && (
               <View style={{ marginBottom: 16 }}>
                 {declinedJobs.length === 0 ? (
                   <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }}>

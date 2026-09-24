@@ -21,7 +21,7 @@ async def calculate_eta_google(origin_lat: float, origin_lng: float, dest_lat: f
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": GOOGLE_MAPS_SERVER_KEY,
-        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters"
+        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline"
     }
 
     payload = {
@@ -57,13 +57,15 @@ async def calculate_eta_google(origin_lat: float, origin_lng: float, dest_lat: f
             route = data["routes"][0]
             distance_meters = route.get("distanceMeters", 0)
             duration_str = route.get("duration", "0s")
+            polyline = route.get("polyline", {}).get("encodedPolyline", "")
             
             # Parse "780s" -> 780
             duration_seconds = int(duration_str.rstrip("s"))
             
             return {
                 "distance_meters": distance_meters,
-                "duration_seconds": duration_seconds
+                "duration_seconds": duration_seconds,
+                "polyline": polyline
             }
         except Exception as e:
             print(f"[ETA Service] Error calling Google Routes API: {e}")

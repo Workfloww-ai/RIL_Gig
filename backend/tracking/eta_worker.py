@@ -44,6 +44,7 @@ async def process_eta_queue():
             if eta_data:
                 duration_seconds = eta_data["duration_seconds"]
                 distance_meters = eta_data["distance_meters"]
+                polyline = eta_data.get("polyline", "")
                 
                 now = datetime.now(timezone.utc)
                 eta_timestamp = now + timedelta(seconds=duration_seconds)
@@ -61,7 +62,8 @@ async def process_eta_queue():
                     "distance_meters": distance_meters,
                     "status": status,
                     "eta_timestamp": eta_timestamp.isoformat(),
-                    "calculated_at": now.isoformat()
+                    "calculated_at": now.isoformat(),
+                    "polyline": polyline
                 }
                 
                 # Publish ETA update to WebSockets

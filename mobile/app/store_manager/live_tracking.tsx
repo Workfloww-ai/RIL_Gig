@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { API_URL } from '../../src/api/client';
 
 interface LocationData {
@@ -22,15 +22,59 @@ interface EtaData {
   distance_meters: number;
   status: string;
   eta_timestamp: string;
+  polyline?: string;
+}
+
+function decodePolyline(encoded: string) {
+  if (!encoded) return [];
+  const poly: {latitude: number, longitude: number}[] = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+
+    poly.push({ latitude: (lat / 1e5), longitude: (lng / 1e5) });
+  }
+  return poly;
 }
 
 export default function LiveTrackingScreen() {
-  const { jobId, workerId } = useLocalSearchParams<{ jobId: string, workerId?: string }>();
-  const [location, setLocation] = useState<LocationData | null>(null);
+  const { jobId, workerId, workerName } = useLocalSearchParams<{ jobId: string, workerId?: string, workerName?: string }>();
+  // Store locations for ALL workers on this job
+  const [locations, setLocations] = useState<Record<string, LocationData>>({});
   const [eta, setEta] = useState<EtaData | null>(null);
   const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
+  const router = useRouter();
   
   const mapRef = useRef<MapView>(null);
+
+  // Decode route coords from ETA (only applies to the selected worker)
+  const routeCoordinates = eta?.polyline ? decodePolyline(eta.polyline) : [];
+  
+  // Format the name for display (for the selected worker)
+  const displayName = workerName ? decodeURIComponent(workerName) : 'Worker';
+  const initial = displayName.charAt(0).toUpperCase();
+
+  // The primary worker we are focusing on for the ETA panel
+  const selectedLocation = workerId ? locations[workerId] : null;
 
   useEffect(() => {
     if (!jobId) return;
@@ -56,16 +100,20 @@ export default function LiveTrackingScreen() {
         const data = JSON.parse(event.data);
         const eventWorkerId = data.worker_id || data.workerId;
         
-        if (data.type === "worker_location_update") {
-          
-          setLocation({
-            ...data,
-            latitude: data.lat || data.latitude,
-            longitude: data.lng || data.longitude
-          });
+        if (data.type === "worker_location_update" && eventWorkerId) {
+          setLocations(prev => ({
+            ...prev,
+            [eventWorkerId]: {
+              ...data,
+              latitude: data.lat || data.latitude,
+              longitude: data.lng || data.longitude
+            }
+          }));
         } else if (data.type === "eta_update") {
-          
-          setEta(data);
+          // Only update the ETA if it belongs to the selected worker
+          if (eventWorkerId === workerId) {
+            setEta(data);
+          }
         }
       } catch (e) {
         console.error("[WebSocket] Failed to parse message", e);
@@ -80,7 +128,26 @@ export default function LiveTrackingScreen() {
     return () => {
       ws.close();
     };
-  }, [jobId]);
+  }, [jobId, workerId]);
+
+  // Auto-fit to all markers + route
+  useEffect(() => {
+    if (mapRef.current) {
+      const coords = [...routeCoordinates];
+      
+      // Add all worker locations to the bounding box
+      Object.values(locations).forEach(loc => {
+        coords.push({ latitude: loc.latitude, longitude: loc.longitude });
+      });
+      
+      if (coords.length > 0) {
+        mapRef.current.fitToCoordinates(coords, {
+          edgePadding: { top: 100, right: 50, bottom: 250, left: 50 },
+          animated: true,
+        });
+      }
+    }
+  }, [routeCoordinates, locations]);
 
   if (!jobId) {
     return (
@@ -90,16 +157,21 @@ export default function LiveTrackingScreen() {
     );
   }
 
+  // Use the selected worker's location for initial region if available, else first available
+  const initialLoc = selectedLocation || Object.values(locations)[0];
+
   return (
     <View style={styles.container}>
       {/* Map View */}
       <MapView
+        ref={mapRef}
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
-        region={location ? {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+        region={initialLoc ? {
+          latitude: initialLoc.latitude,
+          longitude: initialLoc.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
         } : {
           latitude: 20.5937, // Default center (India)
           longitude: 78.9629,
@@ -107,55 +179,78 @@ export default function LiveTrackingScreen() {
           longitudeDelta: 15.0,
         }}
       >
-        {location && (
-          <Marker
-            coordinate={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-            }}
-            title="Worker Location"
-            description={`Speed: ${(location.speed * 3.6).toFixed(1)} km/h`}
+        {/* Draw the route line (for selected worker only) */}
+        {routeCoordinates.length > 0 && (
+          <Polyline
+            coordinates={routeCoordinates}
+            strokeWidth={4}
+            strokeColor="#0B5B31"
           />
         )}
+        
+        {/* Store marker (the last point in the route) */}
+        {routeCoordinates.length > 0 && (
+          <Marker
+            coordinate={routeCoordinates[routeCoordinates.length - 1]}
+            title="Store Location"
+            pinColor="green"
+          />
+        )}
+
+        {/* Draw all assigned workers */}
+        {Object.values(locations).map(loc => (
+          <Marker
+            key={loc.worker_id}
+            coordinate={{
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+            }}
+            title={loc.worker_id === workerId ? `${displayName} Location` : "Other Worker"}
+            description={`Speed: ${(loc.speed * 3.6).toFixed(1)} km/h`}
+            pinColor={loc.worker_id === workerId ? "black" : "blue"}
+          />
+        ))}
       </MapView>
       
-      {!location && (
+      {!selectedLocation && (
         <View style={[StyleSheet.absoluteFill, styles.mapPlaceholder, { backgroundColor: 'rgba(255,255,255,0.7)' }]}>
           <ActivityIndicator size="large" color="#0B5B31" />
-          <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Waiting for worker GPS...</Text>
+          <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Waiting for {displayName}'s GPS...</Text>
         </View>
       )}
 
-      {/* Info Overlay Panel */}
+      {/* Floating Back Button */}
+      <View style={styles.backButtonContainer}>
+        <Text 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          ✕
+        </Text>
+      </View>
+
+      {/* Uber-like Info Overlay Panel */}
       <View style={styles.panel}>
-        <View style={styles.statusRow}>
-          <View style={[styles.dot, { backgroundColor: wsStatus === 'connected' ? 'green' : 'red' }]} />
-          <Text style={styles.statusText}>Gateway: {wsStatus}</Text>
+        <View style={styles.etaHeader}>
+          <Text style={styles.etaMainText}>
+            {eta ? `Arriving in ${eta.eta_minutes} min` : 'Calculating ETA...'}
+          </Text>
+          {eta && (
+            <Text style={styles.etaSubText}>
+              {(eta.distance_meters / 1000).toFixed(1)} km away • {eta.status.replace('_', ' ')}
+            </Text>
+          )}
         </View>
 
-        <View style={styles.infoGrid}>
-          <View style={styles.infoCol}>
-            <Text style={styles.label}>ETA STATUS</Text>
-            <Text style={[styles.value, { color: eta?.status === 'DELAYED' ? 'red' : 'green' }]}>
-              {eta ? eta.status : 'WAITING'}
-            </Text>
-            {eta && (
-              <Text style={styles.subtext}>
-                {eta.eta_minutes} mins ({(eta.distance_meters / 1000).toFixed(1)} km)
-              </Text>
-            )}
+        <View style={styles.workerInfo}>
+          <View style={styles.workerAvatar}>
+            <Text style={styles.workerAvatarText}>{initial}</Text>
           </View>
-
-          <View style={styles.infoCol}>
-            <Text style={styles.label}>CURRENT SPEED</Text>
-            <Text style={styles.value}>
-              {location ? `${(location.speed * 3.6).toFixed(1)} km/h` : '--'}
+          <View style={styles.workerDetails}>
+            <Text style={styles.workerName}>{displayName} En Route</Text>
+            <Text style={styles.workerSpeed}>
+              {selectedLocation ? `Driving at ${(selectedLocation.speed * 3.6).toFixed(0)} km/h` : 'Connecting to GPS...'}
             </Text>
-            {location && (
-              <Text style={styles.subtext}>
-                Updated: {new Date(location.timestamp).toLocaleTimeString()}
-              </Text>
-            )}
           </View>
         </View>
       </View>
@@ -174,14 +269,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   map: {
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   mapPlaceholder: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f5f5f5',
+  },
+  backButtonContainer: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    width: 44,
+    height: 44,
+    backgroundColor: 'white',
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  backButton: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
   },
   panel: {
     position: 'absolute',
@@ -197,43 +314,52 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  etaHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 15,
     marginBottom: 15,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
+  etaMainText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0B5B31',
   },
-  statusText: {
+  etaSubText: {
     fontSize: 14,
     color: '#666',
+    marginTop: 4,
     fontWeight: '500',
   },
-  infoGrid: {
+  workerInfo: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  infoCol: {
+  workerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0B5B31',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+  },
+  workerAvatarText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  workerDetails: {
     flex: 1,
   },
-  label: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 18,
-    fontWeight: '800',
+  workerName: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#333',
   },
-  subtext: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
+  workerSpeed: {
+    fontSize: 13,
+    color: '#888',
+    marginTop: 2,
   },
 });

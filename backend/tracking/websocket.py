@@ -41,26 +41,61 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# Background task to listen to Redis Pub/Sub and broadcast to WebSockets
-async def redis_listener(job_id: str):
-    redis_client = await get_redis()
-    pubsub = redis_client.pubsub()
-    channel = f"job:{job_id}:location_updates"
-    await pubsub.subscribe(channel)
-    print(f"[Redis Pub/Sub] Subscribed to {channel}")
-    
-    try:
-        async for message in pubsub.listen():
-            if message["type"] == "message":
-                data = json.loads(message["data"])
-                # Add type identifier for the client
-                data["type"] = "worker_location_update"
-                await manager.broadcast(job_id, data)
-    except asyncio.CancelledError:
-        print(f"[Redis Pub/Sub] Unsubscribing from {channel}")
-        await pubsub.unsubscribe(channel)
-    except Exception as e:
-        print(f"[Redis Pub/Sub] Error listening to channel {channel}: {e}")
+class GlobalRedisListener:
+    def __init__(self):
+        self.pubsub = None
+        self.task = None
+        self.subscribed_channels = set()
+        
+    async def get_pubsub(self):
+        if self.pubsub is None:
+            redis_client = await get_redis()
+            self.pubsub = redis_client.pubsub()
+        return self.pubsub
+        
+    async def start(self):
+        if self.task is None:
+            self.task = asyncio.create_task(self._listen())
+            
+    async def subscribe(self, channel: str):
+        ps = await self.get_pubsub()
+        if channel not in self.subscribed_channels:
+            await ps.subscribe(channel)
+            self.subscribed_channels.add(channel)
+            print(f"[GlobalRedisListener] Subscribed to {channel}")
+            # Ensure the listener loop is running
+            await self.start()
+            
+    async def unsubscribe(self, channel: str):
+        ps = await self.get_pubsub()
+        if channel in self.subscribed_channels:
+            await ps.unsubscribe(channel)
+            self.subscribed_channels.remove(channel)
+            print(f"[GlobalRedisListener] Unsubscribed from {channel}")
+            
+    async def _listen(self):
+        ps = await self.get_pubsub()
+        try:
+            async for message in ps.listen():
+                if message["type"] == "message":
+                    data = json.loads(message["data"])
+                    data["type"] = "worker_location_update"
+                    
+                    # Extract job_id from channel (job:{job_id}:location_updates)
+                    channel = message["channel"]
+                    if isinstance(channel, bytes):
+                        channel = channel.decode()
+                    
+                    parts = channel.split(":")
+                    if len(parts) >= 2:
+                        job_id = parts[1]
+                        await manager.broadcast(job_id, data)
+        except Exception as e:
+            print(f"[GlobalRedisListener] Error listening to pubsub: {e}")
+            self.pubsub = None
+            self.task = None
+
+global_listener = GlobalRedisListener()
 
 @router.websocket("/ws/job/{job_id}")
 async def websocket_endpoint(websocket: WebSocket, job_id: str):
@@ -77,14 +112,12 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
             await websocket.send_json(eta_data)
             
         # 2. Send last known Location
-        # Since locations are keyed by worker_id, we need to find the one matching this job_id
         keys = await redis_client.keys("worker:*:location")
         for key in keys:
             loc_str = await redis_client.get(key)
             if loc_str:
                 loc_data = json.loads(loc_str)
                 if loc_data.get("job_id") == job_id:
-                    # worker:123:location -> 123
                     key_str = key.decode() if isinstance(key, bytes) else key
                     worker_id = key_str.split(":")[1]
                     await websocket.send_json({
@@ -100,21 +133,18 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
     except Exception as e:
         print(f"[WebSocket] Error sending initial state: {e}")
         
-    # Start the Redis listener for this job if it's the first connection
-    # Note: In a production environment with many workers, 
-    # it might be better to have a single listener reading all channels
-    # to avoid creating too many async tasks, but this works for isolation.
-    listener_task = None
+    # Subscribe via the global listener if it's the first connection
+    channel = f"job:{job_id}:location_updates"
     if len(manager.active_connections[job_id]) == 1:
-        listener_task = asyncio.create_task(redis_listener(job_id))
+        await global_listener.subscribe(channel)
     
     try:
         while True:
             # We don't expect the client to send data, but we must keep the connection open
             data = await websocket.receive_text()
-            # Handle Ping/Pong if necessary
     except WebSocketDisconnect:
         manager.disconnect(websocket, job_id)
     finally:
-        if listener_task and job_id not in manager.active_connections:
-            listener_task.cancel()
+        # Unsubscribe if it's the last connection
+        if job_id not in manager.active_connections:
+            await global_listener.unsubscribe(channel)
