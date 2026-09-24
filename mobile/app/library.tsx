@@ -423,24 +423,8 @@ export default function LibraryScreen() {
       // ONLY track when they are commuting. Stop immediately when OTP is verified (status becomes 'started').
       if (job.assignment_status !== 'accepted') return false;
       
-      let isWithinTrackingWindow = false;
-
-      if (job.shift_date && job.start_time) {
-        const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
-        const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
-        
-        // Tracking starts exactly 15 minutes before the shift
-        const trackingStartDateTime = new Date(shiftDateTime.getTime() - 15 * 60 * 1000);
-        
-        const now = new Date();
-        
-        // As long as it is past the 15-minute mark, track them until OTP is verified.
-        // Even if they are late, we keep tracking until they actually arrive and verify OTP.
-        if (now >= trackingStartDateTime) {
-          isWithinTrackingWindow = true;
-        }
-      }
-      return isWithinTrackingWindow;
+      // For testing: we track all accepted jobs immediately regardless of time.
+      return true;
     });
 
     if (activeJob) {

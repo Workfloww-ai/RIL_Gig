@@ -14,14 +14,14 @@ async def process_eta_queue():
     
     while True:
         try:
-            # BRPOP blocks until an item is available, timeout=0 means block indefinitely
-            # Using 5 seconds timeout to allow graceful shutdown checks if needed
-            result = await client.brpop("eta_calculation_queue", timeout=5)
+            # Upstash drops idle connections silently, so BRPOP can hang indefinitely.
+            # Using LPOP with a short sleep is safer for serverless Redis.
+            payload_str = await client.lpop("eta_calculation_queue")
             
-            if not result:
+            if not payload_str:
+                await asyncio.sleep(1)
                 continue
                 
-            _, payload_str = result
             payload = json.loads(payload_str)
             
             job_id = payload["job_id"]
