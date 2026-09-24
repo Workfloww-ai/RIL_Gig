@@ -45,6 +45,17 @@ async def receive_location(
     print(f"[Backend] Worker: {worker_id}, Job: {payload.job_id}")
     print(f"==================================================")
     
+    from utils.supabase_client import supabase
+    try:
+        wja_resp = supabase.table("worker_job_assignments").select("assignment_status").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
+        if wja_resp.data and len(wja_resp.data) > 0:
+            status = wja_resp.data[0].get("assignment_status")
+            if status != "accepted":
+                print(f"[Backend] Job {payload.job_id} is no longer accepted (status: {status}). Telling mobile to STOP.")
+                return {"message": "Stop tracking", "stop": True}
+    except Exception as e:
+        print(f"[Tracking] Error checking assignment status: {e}")
+    
     # Push to Redis for realtime broadcast
     await update_worker_location(
         worker_id=worker_id,

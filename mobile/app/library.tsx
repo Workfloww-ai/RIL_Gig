@@ -423,8 +423,26 @@ export default function LibraryScreen() {
       // ONLY track when they are commuting. Stop immediately when OTP is verified (status becomes 'started').
       if (job.assignment_status !== 'accepted') return false;
       
-      // For testing: we track all accepted jobs immediately regardless of time.
-      return true;
+      let isWithinTrackingWindow = false;
+
+      if (job.shift_date && job.start_time) {
+        const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
+        const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+        
+        // Tracking starts 24 hours before the shift for testing purposes
+        const trackingStartDateTime = new Date(shiftDateTime.getTime() - 24 * 60 * 60 * 1000);
+        
+        const now = new Date();
+        
+        // Strict expiration: A job expires 30 minutes after start time. This ensures 
+        // older "stuck" jobs don't take priority over the new upcoming job.
+        const expirationDateTime = new Date(shiftDateTime.getTime() + 30 * 60 * 1000);
+        
+        if (now >= trackingStartDateTime && now <= expirationDateTime) {
+          isWithinTrackingWindow = true;
+        }
+      }
+      return isWithinTrackingWindow;
     });
 
     if (activeJob) {

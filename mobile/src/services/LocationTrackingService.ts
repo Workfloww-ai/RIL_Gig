@@ -34,7 +34,15 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
           timestamp: new Date(location.timestamp).toISOString(),
         };
 
-        await apiClient.post('/tracking/location', payload);
+        const res = await apiClient.post('/tracking/location', payload);
+        
+        if (res.data && res.data.stop) {
+          console.log(`[LocationTask] Backend commanded stop for job ${jobId}. Terminating tracking.`);
+          await AsyncStorage.removeItem('active_tracking_job_id');
+          await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+          return;
+        }
+        
         console.log(`[LocationTask] Sent location for job ${jobId}`);
       } catch (err) {
         console.error('[LocationTask] Failed to send location', err);
