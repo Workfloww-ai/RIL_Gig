@@ -4,9 +4,12 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../src/api/client';
+import { useAuthStore } from '../../src/store/authStore';
 
 export default function SuperadminDashboard() {
   const router = useRouter();
+  const selectedOrganizationId = useAuthStore(state => state.selectedOrganizationId);
+  const role = useAuthStore(state => state.role);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,11 +57,20 @@ export default function SuperadminDashboard() {
   const fetchRequests = async (loadMore = false) => {
     if (loadMore && (!hasMore || loadingMore)) return;
     try {
+      if (role === 'superadmin' && !selectedOrganizationId) {
+        setRequestsList([]);
+        setCounts({ pending: 0, approved: 0, declined: 0 });
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
+      
       if (loadMore) setLoadingMore(true);
       else setLoading(true);
 
       const currentOffset = loadMore ? offset + 20 : 0;
-      const res = await apiClient.get(`/superadmin/requests?limit=20&offset=${currentOffset}`);
+      const orgParam = (role === 'superadmin' && selectedOrganizationId) ? `&organization_id=${selectedOrganizationId}` : '';
+      const res = await apiClient.get(`/superadmin/requests?limit=20&offset=${currentOffset}${orgParam}`);
       
       if (res.data && res.data.requests) {
         const newRequests = res.data.requests;
@@ -99,7 +111,7 @@ export default function SuperadminDashboard() {
   useEffect(() => {
     fetchRequests();
     fetchDeclineReasons();
-  }, []);
+  }, [selectedOrganizationId, role]);
 
   const handleAction = async (requestId: string, action: 'approve' | 'reject', reason?: string) => {
     setProcessingId(requestId);

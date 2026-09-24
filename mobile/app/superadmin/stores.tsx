@@ -22,7 +22,8 @@ const storeSchema = z.object({
   state: z.string().min(2, "State is required"),
   pincode: z.string().length(6, "PIN Code must be 6 digits"),
   google_map_link: z.string().url("Must be a valid URL").optional().or(z.literal('')),
-  store_type: z.string().min(2, "Store type is required")
+  store_type: z.string().min(2, "Store type is required"),
+  tenant_id: z.string().optional()
 });
 
 type StoreFormData = z.infer<typeof storeSchema>;
@@ -31,6 +32,7 @@ export default function SuperadminStores() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const role = useAuthStore(state => state.role);
+  const selectedOrganizationId = useAuthStore(state => state.selectedOrganizationId);
   
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,8 @@ export default function SuperadminStores() {
   const [showStateModal, setShowStateModal] = useState(false);
   const [showCityModal, setShowCityModal] = useState(false);
   const [showStoreTypeModal, setShowStoreTypeModal] = useState(false);
+  const [showTenantModal, setShowTenantModal] = useState(false);
+  const [tenants, setTenants] = useState<{tenant_id: string, tenant_name: string}[]>([]);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   const [selectedStateCode, setSelectedStateCode] = useState('');
@@ -61,14 +65,21 @@ export default function SuperadminStores() {
       state: '',
       pincode: '',
       google_map_link: '',
-      store_type: ''
+      store_type: '',
+      tenant_id: ''
     }
   });
 
   const fetchStores = async () => {
+    if (role === 'superadmin' && !selectedOrganizationId) {
+      setStores([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const storesRes = await apiClient.get('/superadmin/stores');
+      const orgParam = (role === 'superadmin' && selectedOrganizationId) ? `?organization_id=${selectedOrganizationId}` : '';
+      const storesRes = await apiClient.get(`/superadmin/stores${orgParam}`);
       if (storesRes?.data?.stores) setStores(storesRes.data.stores);
     } catch (err) {
       console.error('Failed to fetch stores data:', err);
@@ -79,7 +90,14 @@ export default function SuperadminStores() {
 
   useEffect(() => {
     fetchStores();
-  }, []);
+    if (role === 'superadmin' && selectedOrganizationId) {
+      apiClient.get(`/superadmin/organizations/${selectedOrganizationId}/tenants`)
+        .then(res => {
+          if (res.data?.tenants) setTenants(res.data.tenants);
+        })
+        .catch(console.error);
+    }
+  }, [selectedOrganizationId, role]);
 
   const handleStateSelect = (stateObj: any) => {
     setValue('state', stateObj.name, { shouldValidate: true });
@@ -94,6 +112,11 @@ export default function SuperadminStores() {
   };
 
   const onSubmit = async (data: StoreFormData) => {
+    if (role === 'superadmin' && !data.tenant_id) {
+      setStatusModalContent({ title: 'Error', message: 'Please select a company.', type: 'error' });
+      setShowStatusModal(true);
+      return;
+    }
     setSubmitting(true);
     try {
       await apiClient.post('/superadmin/stores', data);
@@ -214,6 +237,26 @@ export default function SuperadminStores() {
             </View>
 
             <KeyboardAwareScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
+              {role === 'superadmin' && (
+                <Controller
+                  control={control}
+                  name="tenant_id"
+                  render={({ field: { value } }) => (
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 13, marginBottom: 8, marginLeft: 4 }}>Select Company</Text>
+                      <TouchableOpacity 
+                        onPress={() => setShowTenantModal(true)}
+                        style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.tenant_id ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                      >
+                        <Text style={{ color: value ? '#111827' : '#9CA3AF' }}>{tenants.find(t => t.tenant_id === value)?.tenant_name || "Select a Company"}</Text>
+                        <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+                      </TouchableOpacity>
+                      {errors.tenant_id && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.tenant_id.message}</Text>}
+                    </View>
+                  )}
+                />
+              )}
+
               <Controller
                 control={control}
                 name="store_name"
@@ -383,6 +426,35 @@ export default function SuperadminStores() {
                   style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', flexDirection: 'row', justifyContent: 'space-between' }}
                 >
                   <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Tenant Modal */}
+      <Modal visible={showTenantModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowTenantModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '60%' }} onStartShouldSetResponder={() => true}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Select Company</Text>
+              <TouchableOpacity onPress={() => setShowTenantModal(false)}>
+                <Text style={{ color: '#6B7280', fontWeight: '600' }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={tenants}
+              keyExtractor={item => item.tenant_id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  onPress={() => {
+                    setValue('tenant_id', item.tenant_id, { shouldValidate: true });
+                    setShowTenantModal(false);
+                  }}
+                  style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', flexDirection: 'row', justifyContent: 'space-between' }}
+                >
+                  <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>{item.tenant_name}</Text>
                 </TouchableOpacity>
               )}
             />

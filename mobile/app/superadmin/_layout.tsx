@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, Platform, Image, BackHandler } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, Platform, Image, BackHandler, Modal, FlatList, ActivityIndicator } from 'react-native';
 import { Slot, useRouter, usePathname, useFocusEffect } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,8 @@ export default function SuperadminLayout() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const role = useAuthStore(state => state.role);
+  const selectedOrganizationId = useAuthStore(state => state.selectedOrganizationId);
+  const setSelectedOrganizationId = useAuthStore(state => state.setSelectedOrganizationId);
 
   useFocusEffect(
     useCallback(() => {
@@ -26,6 +28,9 @@ export default function SuperadminLayout() {
   );
 
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; tenant_name?: string } | null>(null);
+  const [orgs, setOrgs] = useState<{organization_id: string, name: string}[]>([]);
+  const [orgModalVisible, setOrgModalVisible] = useState(false);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -38,6 +43,25 @@ export default function SuperadminLayout() {
     };
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (role === 'superadmin') {
+      const fetchOrgs = async () => {
+        try {
+          setLoadingOrgs(true);
+          const res = await apiClient.get('/superadmin/organizations');
+          if (res?.data?.organizations) {
+            setOrgs(res.data.organizations);
+          }
+        } catch(e) {
+          console.error('Failed to fetch organizations', e);
+        } finally {
+          setLoadingOrgs(false);
+        }
+      }
+      fetchOrgs();
+    }
+  }, [role]);
 
   if (pathname === '/superadmin/profile') {
     return (
@@ -65,15 +89,24 @@ export default function SuperadminLayout() {
             <Text style={{ fontSize: 26, fontWeight: '800', color: '#3C3C3B', letterSpacing: -0.5 }}>
               Hi, {userProfile?.first_name ? userProfile.first_name.charAt(0).toUpperCase() + userProfile.first_name.slice(1) : 'Admin'}
             </Text>
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit={true}
-              minimumFontScale={0.8}
-              style={{ fontSize: 12, fontWeight: '600', marginTop: 2 }}
-            >
-              <Text style={{ color: '#0B5B31' }}>{userProfile?.tenant_name || 'SahYogi'}</Text>{' '}
-              <Text style={{ color: '#D32F2F' }}>{role === 'admin' ? 'Approver' : 'Superadmin'}</Text>
-            </Text>
+            {role === 'admin' ? (
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit={true}
+                minimumFontScale={0.8}
+                style={{ fontSize: 12, fontWeight: '600', marginTop: 2 }}
+              >
+                <Text style={{ color: '#0B5B31' }}>{userProfile?.tenant_name || 'SahYogi'}</Text>{' '}
+                <Text style={{ color: '#D32F2F' }}>Approver</Text>
+              </Text>
+            ) : (
+              <TouchableOpacity onPress={() => setOrgModalVisible(true)} style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, alignSelf: 'flex-start' }} activeOpacity={0.7}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#4B5563', marginRight: 4 }}>
+                  {orgs.find(o => o.organization_id === selectedOrganizationId)?.name || 'Select Organization'}
+                </Text>
+                <Feather name="chevron-down" size={16} color="#4B5563" />
+              </TouchableOpacity>
+            )}
           </View>
           <Image
             source={require('../../assets/images/newlogo.png')}
@@ -93,7 +126,18 @@ export default function SuperadminLayout() {
 
       {/* Main Content Slot */}
       <View style={{ flex: 1 }}>
-        <Slot />
+        {role === 'superadmin' && !selectedOrganizationId ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <Feather name="briefcase" size={48} color="#9CA3AF" style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#374151', textAlign: 'center', marginBottom: 8 }}>No Organization Selected</Text>
+            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>Please select an organization from the top dropdown to view its data.</Text>
+            <TouchableOpacity onPress={() => setOrgModalVisible(true)} style={{ backgroundColor: '#0B5B31', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>Select Organization</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <Slot />
+        )}
       </View>
 
       {/* Bottom Navigation */}
@@ -128,7 +172,6 @@ export default function SuperadminLayout() {
           <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
 
-
         <TouchableOpacity onPress={() => router.push('/superadmin')} style={{ alignItems: 'center', flex: 1 }} activeOpacity={0.7}>
           <Ionicons name="clipboard-outline" size={22} color={pathname === '/superadmin' ? '#D32F2F' : '#9CA3AF'} />
           <Text style={{ fontSize: 11, marginTop: 4, fontWeight: '600', color: pathname === '/superadmin' ? '#D32F2F' : '#9CA3AF' }}>Requests</Text>
@@ -151,6 +194,56 @@ export default function SuperadminLayout() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Organization Selector Modal */}
+      <Modal visible={orgModalVisible} animationType="slide" transparent={true} onRequestClose={() => setOrgModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Math.max(24, insets.bottom), maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>Select Organization</Text>
+              <TouchableOpacity onPress={() => setOrgModalVisible(false)} style={{ padding: 4 }}>
+                <Feather name="x" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingOrgs ? (
+              <ActivityIndicator size="large" color="#0B5B31" style={{ marginVertical: 40 }} />
+            ) : (
+              <FlatList
+                data={orgs}
+                keyExtractor={(item) => item.organization_id}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingVertical: 16,
+                      borderBottomWidth: 1,
+                      borderBottomColor: '#F3F4F6'
+                    }}
+                    onPress={() => {
+                      setSelectedOrganizationId(item.organization_id);
+                      setOrgModalVisible(false);
+                    }}
+                  >
+                    <Text style={{ fontSize: 16, fontWeight: selectedOrganizationId === item.organization_id ? '700' : '500', color: selectedOrganizationId === item.organization_id ? '#0B5B31' : '#374151' }}>
+                      {item.name}
+                    </Text>
+                    {selectedOrganizationId === item.organization_id && (
+                      <Feather name="check" size={20} color="#0B5B31" />
+                    )}
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={() => (
+                  <Text style={{ textAlign: 'center', color: '#6B7280', marginVertical: 20 }}>No organizations found.</Text>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
