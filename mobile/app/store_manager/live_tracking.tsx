@@ -67,14 +67,16 @@ export default function LiveTrackingScreen() {
   const mapRef = useRef<MapView>(null);
 
   // Decode route coords from ETA (only applies to the selected worker)
-  const routeCoordinates = eta?.polyline ? decodePolyline(eta.polyline) : [];
+  const routeCoordinates = React.useMemo(() => {
+    return eta?.polyline ? decodePolyline(eta.polyline) : [];
+  }, [eta?.polyline]);
   
   // Format the name for display (for the selected worker)
   const displayName = workerName ? decodeURIComponent(workerName) : 'Worker';
   const initial = displayName.charAt(0).toUpperCase();
 
-  // The primary worker we are focusing on for the ETA panel
-  const selectedLocation = workerId ? locations[workerId] : null;
+  const safeWorkerId = Array.isArray(workerId) ? workerId[0] : workerId;
+  const selectedLocation = safeWorkerId ? locations[safeWorkerId] : null;
 
   useEffect(() => {
     if (!jobId) return;
@@ -99,6 +101,7 @@ export default function LiveTrackingScreen() {
       try {
         const data = JSON.parse(event.data);
         const eventWorkerId = data.worker_id || data.workerId;
+        const safeWorkerId = Array.isArray(workerId) ? workerId[0] : workerId;
         
         if (data.type === "worker_location_update" && eventWorkerId) {
           setLocations(prev => ({
@@ -110,10 +113,9 @@ export default function LiveTrackingScreen() {
             }
           }));
         } else if (data.type === "eta_update") {
-          // Only update the ETA if it belongs to the selected worker
-          if (eventWorkerId === workerId) {
-            setEta(data);
-          }
+          console.log("[WebSocket] Received ETA Update:", data, "Bypassing workerId check for robustness.");
+          // Update the ETA regardless of the worker ID to handle headless token staleness
+          setEta(data);
         }
       } catch (e) {
         console.error("[WebSocket] Failed to parse message", e);
@@ -185,6 +187,10 @@ export default function LiveTrackingScreen() {
             coordinates={routeCoordinates}
             strokeWidth={4}
             strokeColor="#0B5B31"
+            zIndex={100}
+            geodesic={true}
+            lineJoin="round"
+            lineCap="round"
           />
         )}
         

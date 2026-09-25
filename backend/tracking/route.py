@@ -47,12 +47,42 @@ async def receive_location(
     
     from utils.supabase_client import supabase
     try:
-        wja_resp = supabase.table("worker_job_assignments").select("assignment_status").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
+        wja_resp = supabase.table("worker_job_assignments").select("assignment_status, arrival_status, manpower_requests(shift_date, start_time)").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
         if wja_resp.data and len(wja_resp.data) > 0:
             status = wja_resp.data[0].get("assignment_status")
+            arrival_status = wja_resp.data[0].get("arrival_status")
+            req_info = wja_resp.data[0].get("manpower_requests") or {}
+            
+            if isinstance(req_info, list) and len(req_info) > 0:
+                req_info = req_info[0]
+
             if status != "accepted":
                 print(f"[Backend] Job {payload.job_id} is no longer accepted (status: {status}). Telling mobile to STOP.")
                 return {"message": "Stop tracking", "stop": True}
+                
+            # Check if shift has already started and worker has not shown up
+            shift_date = req_info.get("shift_date")
+            start_time = req_info.get("start_time")
+            if shift_date and start_time and arrival_status != "arrived":
+                from datetime import datetime, timezone, timedelta
+                IST = timezone(timedelta(hours=5, minutes=30))
+                now = datetime.now(IST)
+                
+                if len(start_time.split(':')) == 2:
+                    start_time += ":00"
+                    
+                shift_dt_str = f"{shift_date} {start_time}"
+                try:
+                    shift_dt = datetime.strptime(shift_dt_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=IST)
+                    if now >= shift_dt:
+                        print(f"[Backend] Shift started at {shift_dt}, but worker arrival_status is '{arrival_status}'. Telling mobile to STOP.")
+                        return {"message": "Stop tracking", "stop": True}
+                except Exception as ex:
+                    print(f"[Tracking] Error parsing shift time: {ex}")
+        else:
+            # Worker is NOT assigned to this job (or job was deleted)!
+            print(f"[Backend] Worker {worker_id} has no active assignment for Job {payload.job_id}. Telling mobile to STOP.")
+            return {"message": "Stop tracking", "stop": True}
     except Exception as e:
         print(f"[Tracking] Error checking assignment status: {e}")
     

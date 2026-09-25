@@ -582,7 +582,15 @@ export default function StoreManagerDashboard() {
                     }
                     
                     const trackingStartTime = new Date(shiftDateTime.getTime() - 15 * 60 * 1000);
-                    if (now >= trackingStartTime && now <= endDateTime && worker.status !== 'completed') {
+                    if (
+                      now >= trackingStartTime &&
+                      now <= endDateTime &&
+                      worker.status !== 'completed' &&
+                      worker.status !== 'started' &&
+                      statusInfo.label !== 'No Show' &&
+                      statusInfo.label !== 'Cancelled' &&
+                      statusInfo.label !== 'Verified'
+                    ) {
                       showTracking = true;
                     }
                   }

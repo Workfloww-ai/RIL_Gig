@@ -78,8 +78,8 @@ export const LocationTrackingService = {
       console.error('[LocationTrackingService] Failed to notify backend of start', err);
     }
 
-    const isTaskRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
-    if (!isTaskRegistered) {
+    const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+    if (!hasStarted) {
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.Balanced,
         timeInterval: 10000, // Update every 10 seconds
