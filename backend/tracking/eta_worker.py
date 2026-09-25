@@ -42,6 +42,10 @@ async def process_eta_queue():
             )
             
             if eta_data:
+                with open("eta_debug.log", "a") as f:
+                    f.write(f"eta_data success!\n")
+                with open("eta_debug.log", "a") as f:
+                    f.write(f"eta_data success!\n")
                 duration_seconds = eta_data["duration_seconds"]
                 distance_meters = eta_data["distance_meters"]
                 polyline = eta_data.get("polyline", "")
@@ -49,8 +53,28 @@ async def process_eta_queue():
                 now = datetime.now(timezone.utc)
                 eta_timestamp = now + timedelta(seconds=duration_seconds)
                 
-                # Mock scheduled start time for now, in a real app fetch from DB or Redis
-                scheduled_start_time = now + timedelta(minutes=15) 
+                # Fetch real scheduled start time from DB
+                try:
+                    from utils.supabase_client import supabase
+                    req_resp = supabase.table("manpower_requests").select("shift_date, start_time").eq("request_id", job_id).execute()
+                    if req_resp.data and len(req_resp.data) > 0:
+                        shift_date_str = req_resp.data[0].get("shift_date")
+                        start_time_str = req_resp.data[0].get("start_time")
+                        if shift_date_str and start_time_str:
+                            from datetime import datetime
+                            # Parse it and convert to UTC aware (assuming IST +5:30 in DB for now)
+                            dt = datetime.strptime(f"{shift_date_str} {start_time_str}", "%Y-%m-%d %H:%M:%S")
+                            import pytz
+                            ist = pytz.timezone('Asia/Kolkata')
+                            localized_dt = ist.localize(dt)
+                            scheduled_start_time = localized_dt.astimezone(timezone.utc)
+                        else:
+                            scheduled_start_time = now + timedelta(minutes=15)
+                    else:
+                        scheduled_start_time = now + timedelta(minutes=15)
+                except Exception as e:
+                    print(f"[ETA Worker] DB Error fetching start time: {e}")
+                    scheduled_start_time = now + timedelta(minutes=15)
                 
                 status = await determine_eta_status(scheduled_start_time, eta_timestamp)
                 
@@ -81,4 +105,7 @@ async def process_eta_queue():
             break
         except Exception as e:
             print(f"[ETA Worker] Error processing ETA queue: {e}")
+            import traceback
+            with open("eta_error.log", "a") as f:
+                f.write(f"Error: {e}\n{traceback.format_exc()}\n")
             await asyncio.sleep(1) # Prevent tight loop on error
