@@ -14,6 +14,7 @@ export default function OTPScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const setToken = useAuthStore(state => state.setToken);
+  const setRefreshToken = useAuthStore(state => state.setRefreshToken);
   const setRole = useAuthStore(state => state.setRole);
 
   const formatMobileNumber = (num: string | string[]) => {
@@ -87,9 +88,12 @@ export default function OTPScreen() {
         });
       }
 
-      const { token, status, role } = response.data;
+      const { token, refresh_token, status, role } = response.data;
       if (status === 'login_success') {
         setToken(token);
+        if (refresh_token) {
+          setRefreshToken(refresh_token);
+        }
         setRole(role);
 
         if (role === 'superadmin' || role === 'admin') {

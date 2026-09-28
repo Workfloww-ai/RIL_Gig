@@ -4,10 +4,11 @@ from typing import List
 import random
 import os
 
-from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest
+from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest, RefreshTokenRequest
 from utils.sms import send_otp_sms
 from utils.supabase_client import supabase
-from utils.jwt_auth import create_access_token, get_current_user, SECRET_KEY
+from utils.jwt_auth import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
+import jwt
 from fastapi import Depends
 from db.auth_db import mark_user_verified
 import hmac
@@ -407,7 +408,8 @@ async def verify_otp(request: Request, payload: VerifyOTPRequest):
     mark_user_verified(user_id)
     
     access_token = create_access_token({"sub": user_id})
-    return {"status": "login_success", "token": access_token, "role": role_name}
+    refresh_token = create_refresh_token({"sub": user_id})
+    return {"status": "login_success", "token": access_token, "refresh_token": refresh_token, "role": role_name}
 
 
 # 5. POST /auth/verify-and-signup
@@ -583,7 +585,8 @@ async def verify_and_signup(
                 raise HTTPException(status_code=500, detail=f"Database operation failed for {meta.doc_name}: {str(e)}")
                 
     access_token = create_access_token({"sub": user_id})
-    return {"status": "login_success", "token": access_token, "user_id": user_id, "uploaded_documents": len(uploaded_docs), "role": "worker"}
+    refresh_token = create_refresh_token({"sub": user_id})
+    return {"status": "login_success", "token": access_token, "refresh_token": refresh_token, "user_id": user_id, "uploaded_documents": len(uploaded_docs), "role": "worker"}
 
 
 @router.post("/delete-account")
@@ -622,3 +625,45 @@ async def request_account_deletion(payload: DeleteAccountRequest, user_id: str =
         return {"status": "success", "message": "Account deletion requested successfully. Account deactivated."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process deletion request: {str(e)}")
+
+@router.post("/refresh")
+async def refresh_token(payload: RefreshTokenRequest):
+    try:
+        token_payload = jwt.decode(payload.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = token_payload.get("sub")
+        token_type: str = token_payload.get("token_type")
+        
+        if token_type != "refresh":
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token type. Expected refresh token.",
+            )
+            
+        if user_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Token does not contain a user ID",
+            )
+            
+        # Check if user is deactivated or doesn't exist anymore
+        user_response = supabase.table("users").select("is_deactivated").eq("user_id", user_id).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=401, detail="User not found")
+        if user_response.data[0].get("is_deactivated"):
+            raise HTTPException(status_code=401, detail="Account has been deactivated")
+            
+        # Generate new access token
+        new_access_token = create_access_token({"sub": user_id})
+        
+        return {"status": "success", "token": new_access_token}
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token has expired. Please log in again.",
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid refresh token",
+        )
