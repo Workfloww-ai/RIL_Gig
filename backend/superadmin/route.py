@@ -318,7 +318,43 @@ async def create_store(request: StoreCreateRequest, admin_info: dict = Depends(v
             target_tenant_id = my_tenant_id
             
         payload = request.model_dump(mode='json', exclude_none=True)
-        payload["tenant_id"] = target_tenant_id
+        
+        # 1. First, try to extract exact coordinates from the Google Maps link if provided
+        import os
+        import httpx
+        import re
+        from urllib.parse import quote
+        
+        google_link = payload.get("google_map_link", "")
+        extracted_from_link = False
+        
+        if google_link:
+            # Match patterns like @28.4595,77.0266
+            match = re.search(r'@(-?\d+\.\d+),(-?\d+\.\d+)', google_link)
+            if match:
+                payload["latitude"] = float(match.group(1))
+                payload["longitude"] = float(match.group(2))
+                extracted_from_link = True
+                
+        # 2. If no coordinates in link, fallback to geocoding the address string
+        if not extracted_from_link:
+            google_api_key = os.getenv("GOOGLE_MAPS_SERVER_KEY")
+            if google_api_key:
+                full_address = f"{request.address}, {request.city}, {request.state} {request.pincode}"
+                encoded_address = quote(full_address)
+                geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={encoded_address}&key={google_api_key}"
+                
+                try:
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.get(geocode_url)
+                        data = resp.json()
+                        if data.get("status") == "OK" and data.get("results"):
+                            location = data["results"][0]["geometry"]["location"]
+                            payload["latitude"] = location["lat"]
+                            payload["longitude"] = location["lng"]
+                except Exception as e:
+                    print(f"Error geocoding store address: {str(e)}")
+                
         res = supabase.table("stores").insert(payload).execute()
         
         if not res.data:

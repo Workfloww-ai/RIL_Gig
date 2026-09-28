@@ -29,6 +29,19 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+import time
+from fastapi import Request
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    
+    if request.url.path.startswith("/api/tracking"):
+        print(f"[Observability] {request.method} {request.url.path} - Status {response.status_code} - {process_time*1000:.2f}ms")
+    
+    return response
+
 scheduler = BackgroundScheduler()
 
 @app.on_event("startup")
@@ -37,6 +50,15 @@ def start_scheduler():
     scheduler.add_job(check_t90_voice_calls, 'interval', minutes=2)
     scheduler.start()
     print("[System] Background scheduler started T-90 Voice Worker every 2 mins")
+    
+    # Start ETA Worker
+    from tracking.eta_worker import process_eta_queue
+    import asyncio
+    asyncio.create_task(process_eta_queue())
+    
+    # Start Persistence Worker
+    from tracking.persistence_worker import process_persistence
+    asyncio.create_task(process_persistence())
 
 @app.on_event("shutdown")
 def shutdown_scheduler():
@@ -75,6 +97,13 @@ app.include_router(superadmin_router, prefix="/api/superadmin", tags=["Superadmi
 
 # Include the finance router
 app.include_router(finance_router, prefix="/api/finance", tags=["Finance"])
+
+from tracking.route import router as tracking_router
+from tracking.websocket import router as tracking_ws_router
+
+# Include the tracking routers
+app.include_router(tracking_router, prefix="/api/tracking", tags=["Tracking"])
+app.include_router(tracking_ws_router, tags=["Tracking WebSockets"])
 
 @app.get("/health")
 async def health():

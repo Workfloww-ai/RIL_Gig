@@ -4,7 +4,10 @@ import { useAuthStore } from '../store/authStore';
 // Update this to your machine's local IP (e.g., 192.168.1.5) if testing on a physical device.
 // 10.0.2.2 works for Android Emulator. localhost works for iOS Simulator.
 // Using the new localtunnel address
-export const API_URL = process.env.EXPO_PUBLIC_API_URL;
+// If the env variable already has /api, strip it so the interceptor can handle it
+export const API_URL = process.env.EXPO_PUBLIC_API_URL?.endsWith('/api') 
+  ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api$/, '') 
+  : process.env.EXPO_PUBLIC_API_URL;
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -16,6 +19,15 @@ export const apiClient = axios.create({
 // Add a request interceptor to automatically attach the JWT token
 apiClient.interceptors.request.use(
   (config) => {
+    // Automatically prepend /api if it's missing
+    if (config.url) {
+      if (config.url.startsWith('/') && !config.url.startsWith('/api')) {
+        config.url = `/api${config.url}`;
+      } else if (!config.url.startsWith('/') && !config.url.startsWith('api/')) {
+        config.url = `/api/${config.url}`;
+      }
+    }
+
     const token = useAuthStore.getState().token;
     if (token) {
       console.log(`[Network] Attaching JWT Token to ${config.url}`);
