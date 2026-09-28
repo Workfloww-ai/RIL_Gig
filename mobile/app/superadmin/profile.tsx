@@ -9,7 +9,7 @@ export default function SuperadminProfileScreen() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const [userProfile, setUserProfile] = useState<{ first_name: string; last_name: string; role_name?: string } | null>(null);
-  const [stats, setStats] = useState<{ total_stores: number; total_managers: number } | null>(null);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const handleLogout = () => {
@@ -86,21 +86,60 @@ export default function SuperadminProfileScreen() {
         {/* Stats Grid */}
         <View className="mx-5 mt-6 flex-row justify-between">
           <View className="bg-white flex-1 mr-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mb-3">
-              <Text className="text-blue-500 text-xl">🏢</Text>
+            <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center mb-3">
+              <Feather name="shopping-bag" size={20} color="#3B82F6" />
             </View>
-            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Stores</Text>
+            <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-1 text-center">Stores</Text>
             <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.total_stores || 0}</Text>
           </View>
-
-          <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
-            <View className="w-10 h-10 rounded-full bg-purple-50 items-center justify-center mb-3">
-              <Text className="text-purple-500 text-xl">👥</Text>
+          <View className="bg-white flex-1 mx-1 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+            <View className="w-12 h-12 rounded-full bg-purple-50 items-center justify-center mb-3">
+              <Feather name="users" size={20} color="#8B5CF6" />
             </View>
-            <Text className="text-gray-400 text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Managers</Text>
+            <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-1 text-center">Managers</Text>
             <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.total_managers || 0}</Text>
           </View>
+          <View className="bg-white flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-gray-100 items-center justify-center">
+            <View className="w-12 h-12 rounded-full bg-orange-50 items-center justify-center mb-3">
+              <Feather name="clock" size={20} color="#F97316" />
+            </View>
+            <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase mb-1 text-center">Pending</Text>
+            <Text className="text-2xl font-bold text-gray-900 text-center">{stats?.pending_requests || 0}</Text>
+          </View>
         </View>
+
+        {/* Organization Breakdown */}
+        {stats?.organization_breakdown && stats.organization_breakdown.length > 0 && (
+          <View className="mx-5 mt-8">
+            <Text className="text-lg font-bold text-gray-900 mb-4">Organization Insights</Text>
+            {stats.organization_breakdown.map((org: any, index: number) => (
+              <View key={index} className="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100">
+                <View className="flex-row items-center mb-1">
+                  <Feather name="briefcase" size={16} color="#4B5563" />
+                  <Text className="text-base font-bold text-gray-900 ml-2">{org.organization_name}</Text>
+                </View>
+                <Text className="text-xs font-medium text-gray-500 mb-5 ml-6">{org.tenant_name}</Text>
+                
+                <View className="flex-row justify-between bg-gray-50 p-4 rounded-xl">
+                  <View className="items-center flex-1">
+                    <Text className="text-lg font-bold text-gray-800">{org.total_stores}</Text>
+                    <Text className="text-[10px] uppercase font-bold tracking-wider text-gray-500 mt-1">Stores</Text>
+                  </View>
+                  <View className="h-full w-[1px] bg-gray-200" />
+                  <View className="items-center flex-1">
+                    <Text className="text-lg font-bold text-gray-800">{org.total_managers}</Text>
+                    <Text className="text-[10px] uppercase font-bold tracking-wider text-gray-500 mt-1">Managers</Text>
+                  </View>
+                  <View className="h-full w-[1px] bg-gray-200" />
+                  <View className="items-center flex-1">
+                    <Text className="text-lg font-bold text-[#D32F2F]">{org.pending_requests}</Text>
+                    <Text className="text-[10px] uppercase font-bold tracking-wider text-[#D32F2F] mt-1">Pending</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Logout Button */}
         <View className="mx-5 mb-10 mt-6">

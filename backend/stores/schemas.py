@@ -4,6 +4,7 @@ from typing import Optional, List
 class StoreResponse(BaseModel):
     store_id: str
     store_name: str
+    tenant_id: Optional[str] = None
     address: Optional[str] = None
     city: Optional[str] = None
 

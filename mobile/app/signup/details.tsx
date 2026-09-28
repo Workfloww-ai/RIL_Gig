@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, Modal, FlatList, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -128,6 +129,14 @@ export default function SignupDetailsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-sand pt-8">
+      {/* Decorative Brand Line - Top Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+      </View>
       <KeyboardAwareScrollView 
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 60 }}
@@ -397,6 +406,14 @@ export default function SignupDetailsScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Decorative Brand Line - Bottom Edge */}
+      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
+        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+      </View>
     </SafeAreaView>
   );
 }

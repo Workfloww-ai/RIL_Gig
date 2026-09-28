@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import * as Location from 'expo-location';
 import { View, Text, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable, Linking, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -9,7 +10,7 @@ import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { Watermark } from '../src/components/Watermark';
 import StatusModal from '../src/components/StatusModal';
-
+import { LocationTrackingService } from '../src/services/LocationTrackingService';
 interface Module {
   id: string;
   title: string;
@@ -414,6 +415,42 @@ export default function LibraryScreen() {
       setShowCongrats(true);
     }
   }, [justCompleted, isAllCompleted]);
+
+  // Background Location Tracking Effect
+  useEffect(() => {
+    // Find the first job that is 'started' and not yet ended
+    const activeJob = acceptedToday.find((job: any) => {
+      // ONLY track when they are commuting. Stop immediately when OTP is verified (status becomes 'started').
+      if (job.assignment_status !== 'accepted') return false;
+      
+      let isWithinTrackingWindow = false;
+
+      if (job.shift_date && job.start_time) {
+        const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
+        const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
+        
+        // Tracking starts 24 hours before the shift for testing purposes
+        const trackingStartDateTime = new Date(shiftDateTime.getTime() - 24 * 60 * 60 * 1000);
+        
+        const now = new Date();
+        
+        // Strict expiration: A job expires 30 minutes after start time. This ensures 
+        // older "stuck" jobs don't take priority over the new upcoming job.
+        const expirationDateTime = new Date(shiftDateTime.getTime() + 30 * 60 * 1000);
+        
+        if (now >= trackingStartDateTime && now <= expirationDateTime) {
+          isWithinTrackingWindow = true;
+        }
+      }
+      return isWithinTrackingWindow;
+    });
+
+    if (activeJob) {
+      LocationTrackingService.startTracking(activeJob.request_id);
+    } else {
+      LocationTrackingService.stopTracking();
+    }
+  }, [acceptedToday]);
 
   const totalAcceptedCount = acceptedToday.length + acceptedUpcoming.length + acceptedPast.length;
 

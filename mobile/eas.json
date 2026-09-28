@@ -16,7 +16,11 @@
       "developmentClient": true,
       "distribution": "internal"
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://sahyogi-backend-540529464663.asia-south2.run.app/api"
+      }
+    }
   },
   "submit": {
     "production": {}

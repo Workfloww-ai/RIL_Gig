@@ -14,6 +14,7 @@ export default function OTPScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const setToken = useAuthStore(state => state.setToken);
+  const setRefreshToken = useAuthStore(state => state.setRefreshToken);
   const setRole = useAuthStore(state => state.setRole);
 
   const formatMobileNumber = (num: string | string[]) => {
@@ -87,9 +88,12 @@ export default function OTPScreen() {
         });
       }
 
-      const { token, status, role } = response.data;
+      const { token, refresh_token, status, role } = response.data;
       if (status === 'login_success') {
         setToken(token);
+        if (refresh_token) {
+          setRefreshToken(refresh_token);
+        }
         setRole(role);
 
         if (role === 'superadmin' || role === 'admin') {
@@ -137,7 +141,7 @@ export default function OTPScreen() {
           <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
           <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
       </View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20} className="flex-1 px-8">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? undefined : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20} style={{ flex: 1, paddingHorizontal: 32 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
           <View className="mb-12 items-center">
