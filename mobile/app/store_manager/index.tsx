@@ -622,7 +622,7 @@ export default function StoreManagerDashboard() {
                               </TouchableOpacity>
                             )}
                             {showTracking && (
-                              <TouchableOpacity onPress={() => router.push(`/store_manager/live_tracking?jobId=${job.request_id}&workerId=${worker.worker_id}&workerName=${encodeURIComponent(worker.name || 'Worker')}` as any)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
+                              <TouchableOpacity onPress={() => router.push(`/store_manager/live_tracking?jobId=${job.request_id}&workerId=${worker.id}&workerName=${encodeURIComponent(worker.name || 'Worker')}` as any)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
                                 <Feather name="navigation" size={12} color="#0B5B31" />
                               </TouchableOpacity>
                             )}

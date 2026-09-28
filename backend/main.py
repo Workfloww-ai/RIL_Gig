@@ -54,11 +54,11 @@ def start_scheduler():
     # Start ETA Worker
     from tracking.eta_worker import process_eta_queue
     import asyncio
-    asyncio.create_task(process_eta_queue())
+    app.state.eta_task = asyncio.create_task(process_eta_queue())
     
     # Start Persistence Worker
     from tracking.persistence_worker import process_persistence
-    asyncio.create_task(process_persistence())
+    app.state.persistence_task = asyncio.create_task(process_persistence())
 
 @app.on_event("shutdown")
 def shutdown_scheduler():

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { API_URL } from '../../src/api/client';
 
 interface LocationData {
@@ -213,8 +214,40 @@ export default function LiveTrackingScreen() {
             }}
             title={loc.worker_id === workerId ? `${displayName} Location` : "Other Worker"}
             description={`Speed: ${(loc.speed * 3.6).toFixed(1)} km/h`}
-            pinColor={loc.worker_id === workerId ? "black" : "blue"}
-          />
+            anchor={{ x: 0.5, y: 0.5 }}
+            rotation={loc.heading || 0}
+            zIndex={1000}
+          >
+            {loc.worker_id === workerId ? (
+              <View style={{
+                backgroundColor: 'white',
+                padding: 4,
+                borderRadius: 25,
+                borderWidth: 2,
+                borderColor: '#0B5B31',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 3,
+                elevation: 5,
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 40,
+                height: 40
+              }}>
+                <Text style={{ fontSize: 22 }}>🏍️</Text>
+              </View>
+            ) : (
+              <View style={{
+                backgroundColor: 'blue',
+                width: 15,
+                height: 15,
+                borderRadius: 10,
+                borderWidth: 2,
+                borderColor: 'white'
+              }} />
+            )}
+          </Marker>
         ))}
       </MapView>
       
@@ -238,13 +271,28 @@ export default function LiveTrackingScreen() {
       {/* Uber-like Info Overlay Panel */}
       <View style={styles.panel}>
         <View style={styles.etaHeader}>
-          <Text style={styles.etaMainText}>
-            {eta ? `Arriving in ${eta.eta_minutes} min` : 'Calculating ETA...'}
-          </Text>
-          {eta && (
-            <Text style={styles.etaSubText}>
-              {(eta.distance_meters / 1000).toFixed(1)} km away • {eta.status.replace('_', ' ')}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.etaMainText}>
+              {eta ? `Arriving in ${eta.eta_minutes} min` : 'Calculating ETA...'}
             </Text>
+            {eta && (
+              <Text style={styles.etaSubText}>
+                {(eta.distance_meters / 1000).toFixed(1)} km away • {eta.status.replace('_', ' ')}
+              </Text>
+            )}
+          </View>
+          
+          {selectedLocation && (
+            <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+              <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                <Text style={{ color: '#166534', fontWeight: '800', fontSize: 16 }}>
+                  {Math.round(selectedLocation.speed * 3.6)} <Text style={{ fontSize: 10, fontWeight: '600' }}>km/h</Text>
+                </Text>
+              </View>
+              <Text style={{ color: '#9CA3AF', fontSize: 9, marginTop: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Live Speed
+              </Text>
+            </View>
           )}
         </View>
 
@@ -325,6 +373,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     paddingBottom: 15,
     marginBottom: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   etaMainText: {
     fontSize: 24,
