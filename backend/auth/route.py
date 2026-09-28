@@ -48,11 +48,18 @@ async def check_mobile(payload: MobileCheckRequest):
 @router.get("/me")
 async def get_my_profile(user_id: str = Depends(get_current_user)):
     from db.jobs_db import get_recent_activity
-    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id, ratings, shifts_completed, address, city, state, dob, created_at").eq("user_id", user_id).execute()
+    response = supabase.table("users").select("first_name, last_name, email, mobile_number, role_id, ratings, shifts_completed, address, city, state, dob, created_at, tenant_id, tenants(tenant_name)").eq("user_id", user_id).execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="User not found")
     
     user_data = response.data[0]
+    tenant_info = user_data.pop("tenants", None)
+    if tenant_info:
+        if isinstance(tenant_info, list) and len(tenant_info) > 0:
+            user_data["tenant_name"] = tenant_info[0].get("tenant_name")
+        else:
+            user_data["tenant_name"] = tenant_info.get("tenant_name")
+            
     if user_data.get("role_id"):
         role_resp = supabase.table("roles").select("role_name").eq("role_id", user_data["role_id"]).execute()
         user_data["role_name"] = role_resp.data[0]["role_name"].lower() if role_resp.data else "worker"

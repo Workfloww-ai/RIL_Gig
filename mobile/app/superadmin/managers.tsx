@@ -21,7 +21,8 @@ const managerSchema = z.object({
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
   role: z.string().min(2, "Role is required"),
-  store_id: z.string().min(2, "Assigned store is required")
+  store_id: z.string().min(2, "Assigned store is required"),
+  tenant_id: z.string().optional()
 });
 
 type ManagerFormData = z.infer<typeof managerSchema>;
@@ -29,6 +30,7 @@ type ManagerFormData = z.infer<typeof managerSchema>;
 export default function SuperadminManagers() {
   const insets = useSafeAreaInsets();
   const role = useAuthStore(state => state.role);
+  const selectedOrganizationId = useAuthStore(state => state.selectedOrganizationId);
   
   const [managers, setManagers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +46,8 @@ export default function SuperadminManagers() {
   const [showStoreModal, setShowStoreModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showTenantModal, setShowTenantModal] = useState(false);
+  const [tenants, setTenants] = useState<{tenant_id: string, tenant_name: string}[]>([]);
   const [statusModalContent, setStatusModalContent] = useState({ title: '', message: '', type: 'success' });
   
   const [selectedStateCode, setSelectedStateCode] = useState('');
@@ -58,16 +62,24 @@ export default function SuperadminManagers() {
       city: '',
       state: '',
       role: '',
-      store_id: ''
+      store_id: '',
+      tenant_id: ''
     }
   });
 
   const fetchData = async () => {
+    if (role === 'superadmin' && !selectedOrganizationId) {
+      setManagers([]);
+      setStores([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
+      const orgParam = (role === 'superadmin' && selectedOrganizationId) ? `?organization_id=${selectedOrganizationId}` : '';
       const [managersRes, storesRes] = await Promise.all([
-        apiClient.get('/superadmin/managers'),
-        apiClient.get('/superadmin/stores')
+        apiClient.get(`/superadmin/managers${orgParam}`),
+        apiClient.get(`/superadmin/stores${orgParam}`)
       ]);
       if (managersRes?.data?.managers) setManagers(managersRes.data.managers);
       if (storesRes?.data?.stores) setStores(storesRes.data.stores);
@@ -80,7 +92,14 @@ export default function SuperadminManagers() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    if (role === 'superadmin' && selectedOrganizationId) {
+      apiClient.get(`/superadmin/organizations/${selectedOrganizationId}/tenants`)
+        .then(res => {
+          if (res.data?.tenants) setTenants(res.data.tenants);
+        })
+        .catch(console.error);
+    }
+  }, [selectedOrganizationId, role]);
 
   const handleStateSelect = (stateObj: any) => {
     setValue('state', stateObj.name, { shouldValidate: true });
@@ -95,6 +114,21 @@ export default function SuperadminManagers() {
   };
 
   const onSubmit = async (data: ManagerFormData) => {
+    if (role === 'superadmin') {
+      if (!data.tenant_id) {
+        setStatusModalContent({ title: 'Error', message: 'Please select a company.', type: 'error' });
+        setShowStatusModal(true);
+        return;
+      }
+      const selectedStore = stores.find(s => s.store_id === data.store_id);
+      if (!selectedStore) {
+        setStatusModalContent({ title: 'Error', message: 'Selected store is invalid.', type: 'error' });
+        setShowStatusModal(true);
+        return;
+      }
+      // Ensure the backend gets the correct tenant_id
+      data.tenant_id = data.tenant_id || selectedStore.tenant_id;
+    }
     setSubmitting(true);
     try {
       await apiClient.post('/superadmin/managers', data);
@@ -221,6 +255,26 @@ export default function SuperadminManagers() {
 
             <KeyboardAwareScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
               
+              {role === 'superadmin' && (
+                <Controller
+                  control={control}
+                  name="tenant_id"
+                  render={({ field: { value } }) => (
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 13, marginBottom: 8, marginLeft: 4 }}>Select Company</Text>
+                      <TouchableOpacity 
+                        onPress={() => setShowTenantModal(true)}
+                        style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.tenant_id ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                      >
+                        <Text style={{ color: value ? '#111827' : '#9CA3AF' }}>{tenants.find(t => t.tenant_id === value)?.tenant_name || "Select a Company"}</Text>
+                        <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+                      </TouchableOpacity>
+                      {errors.tenant_id && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.tenant_id.message}</Text>}
+                    </View>
+                  )}
+                />
+              )}
+
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Controller
@@ -426,7 +480,8 @@ export default function SuperadminManagers() {
             <FlatList
               data={stores.filter(store => 
                 (!watch('state') || store.state === watch('state')) && 
-                (!watch('city') || store.city === watch('city'))
+                (!watch('city') || store.city === watch('city')) &&
+                (role !== 'superadmin' || !watch('tenant_id') || store.tenant_id === watch('tenant_id'))
               )}
               keyExtractor={item => item.store_id}
               renderItem={({ item }) => (
@@ -444,6 +499,37 @@ export default function SuperadminManagers() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Tenant Modal */}
+      <Modal visible={showTenantModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowTenantModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '60%' }} onStartShouldSetResponder={() => true}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Select Company</Text>
+              <TouchableOpacity onPress={() => setShowTenantModal(false)}>
+                <Text style={{ color: '#6B7280', fontWeight: '600' }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={tenants}
+              keyExtractor={item => item.tenant_id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  onPress={() => {
+                    setValue('tenant_id', item.tenant_id, { shouldValidate: true });
+                    setValue('store_id', ''); // Reset store when tenant changes
+                    setShowTenantModal(false);
+                  }}
+                  style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', flexDirection: 'row', justifyContent: 'space-between' }}
+                >
+                  <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>{item.tenant_name}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      
       <Modal visible={showInfoModal} animationType="fade" transparent={true}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowInfoModal(false)}>
           <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, paddingLeft: 32, paddingRight: 32, width: '80%', alignItems: 'center', overflow: 'hidden' }} onStartShouldSetResponder={() => true}>
