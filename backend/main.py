@@ -30,17 +30,50 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 import time
+import asyncio
+import traceback
 from fastapi import Request
+from fastapi.responses import JSONResponse
+from utils.logger import log_error_to_supabase
+
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests_and_errors(request: Request, call_next):
     start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    
-    if request.url.path.startswith("/api/tracking"):
-        print(f"[Observability] {request.method} {request.url.path} - Status {response.status_code} - {process_time*1000:.2f}ms")
-    
-    return response
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        if request.url.path.startswith("/api/tracking"):
+            print(f"[Observability] {request.method} {request.url.path} - Status {response.status_code} - {process_time*1000:.2f}ms")
+            
+        # If the request failed (4xx or 5xx), log it asynchronously to Supabase
+        if response.status_code >= 400:
+            asyncio.create_task(log_error_to_supabase(
+                request=request, 
+                status_code=response.status_code, 
+                error_message=f"HTTP Error {response.status_code}"
+            ))
+            
+        return response
+        
+    except Exception as exc:
+        # Catch unhandled server crashes (500 errors)
+        process_time = time.time() - start_time
+        error_detail = f"{str(exc)}\n{traceback.format_exc()}"
+        print(f"[CRITICAL 500] {request.method} {request.url.path}: {error_detail}")
+        
+        # Log the crash to Supabase asynchronously
+        asyncio.create_task(log_error_to_supabase(
+            request=request, 
+            status_code=500, 
+            error_message=str(exc)
+        ))
+        
+        # Return a safe error response to the user
+        return JSONResponse(
+            status_code=500, 
+            content={"detail": "Internal Server Error. The incident has been logged."}
+        )
 
 scheduler = BackgroundScheduler()
 
