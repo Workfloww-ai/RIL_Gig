@@ -34,7 +34,7 @@ export default function DocumentsScreen() {
   const requiredDocs = [
     { key: 'Aadhar Card', name: 'Aadhar Card', placeholder: 'Aadhar Number' },
     { key: 'PAN Card', name: 'PAN Card', placeholder: 'PAN Number' },
-    { key: 'Certification/Marksheet', name: 'Certification/Marksheet', placeholder: 'Certificate Number (Optional)' },
+    { key: 'Certification/Marksheet', name: 'Certification/Marksheet', placeholder: 'Certificate Number' },
     { key: 'Live Photo', name: 'Live Photo', placeholder: 'N/A' }
   ];
 

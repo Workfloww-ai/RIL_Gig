@@ -119,14 +119,14 @@ const AudioWaveform = ({ player }: { player: any }) => {
 };
 
 export default function StudioScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, moduleData } = useLocalSearchParams();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'video' | 'audio'>('video');
   const [language, setLanguage] = useState<'english' | 'hinglish' | 'bengali'>('english');
   const [showLangDropdown, setShowLangDropdown] = useState(false);
-  const [module, setModule] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [module, setModule] = useState<any>(moduleData ? JSON.parse(moduleData as string) : null);
+  const [loading, setLoading] = useState(moduleData ? false : true);
   const currentVideoUrl = language === 'english' ? module?.video_url : module?.[`video_url_${language}`] || module?.video_url;
   const currentPodcastUrl = language === 'english' ? module?.podcast_url : module?.[`podcast_url_${language}`] || module?.podcast_url;
   const currentTitle = language === 'english' ? module?.title : module?.[`title_${language}`] || module?.title;
@@ -170,6 +170,8 @@ export default function StudioScreen() {
   // Calculate completion percentage moved to PlayerProgress
 
   useEffect(() => {
+    if (moduleData) return; // Prevent unnecessary fetching if data is passed
+
     // In a real app, we would fetch the specific module by ID
     // For now we fetch all and filter since we don't have a GET /module/:id endpoint yet
     const fetchModule = async () => {
@@ -196,7 +198,7 @@ export default function StudioScreen() {
 
   if (loading || !module) {
     return (
-      <SafeAreaView className="flex-1 bg-cream items-center justify-center pt-8">
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F7F8F9', paddingTop: 8 }} className="items-center justify-center">
         <ActivityIndicator size="large" color="#0B5B31" />
       </SafeAreaView>
     );
