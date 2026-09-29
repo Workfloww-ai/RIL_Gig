@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +26,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function BankDetailsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { mobile, userDetails } = useLocalSearchParams() as { mobile: string; userDetails: string };
 
@@ -65,7 +66,7 @@ export default function BankDetailsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-cream pt-8">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-cream pt-8">
       {/* Decorative Brand Line - Top Edge */}
       <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
         <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
@@ -81,7 +82,7 @@ export default function BankDetailsScreen() {
         className="flex-1 px-8"
       >
         <ScrollView 
-          contentContainerStyle={{ flexGrow: 1, paddingVertical: 32 }} 
+          contentContainerStyle={{ flexGrow: 1, paddingTop: 32, paddingBottom: 32 + insets.bottom }} 
           showsVerticalScrollIndicator={false} 
           keyboardShouldPersistTaps="handled"
         >

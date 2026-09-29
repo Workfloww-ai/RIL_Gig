@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +31,7 @@ type SignupFormData = z.infer<typeof signupSchema>;
 const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
 
 export default function SignupDetailsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { mobile } = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
@@ -128,7 +129,7 @@ export default function SignupDetailsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-sand pt-8">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-sand pt-8">
       {/* Decorative Brand Line - Top Edge */}
       <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
         <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
@@ -139,7 +140,7 @@ export default function SignupDetailsScreen() {
       </View>
       <KeyboardAwareScrollView 
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 60 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 60 + insets.bottom }}
         showsVerticalScrollIndicator={false}
         enableOnAndroid={true}
         extraScrollHeight={20}
