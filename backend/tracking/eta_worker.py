@@ -89,15 +89,16 @@ async def process_eta_queue():
                     "polyline": polyline
                 }
                 
-                # Publish ETA update to WebSockets
-                await manager.broadcast(job_id, eta_result)
+                # Publish ETA update to WebSockets via Redis Pub/Sub to support multiple instances
+                channel = f"job:{job_id}:location_updates"
+                await client.publish(channel, json.dumps(eta_result))
                 
                 # Also save the latest ETA to Redis
                 eta_key = f"job:{job_id}:latest_eta"
                 await client.setex(eta_key, 600, json.dumps(eta_result))
                 
                 # Note: A background process (Phase 9) should occasionally persist this to Supabase
-                print(f"[ETA Worker] Broadcasted new ETA for job {job_id}: {status} ({duration_seconds // 60} mins)")
+                print(f"[ETA Worker] Broadcasted new ETA for job {job_id} via Pub/Sub: {status} ({duration_seconds // 60} mins)")
                 
         except asyncio.CancelledError:
             print("[ETA Worker] Stopping consumer...")
