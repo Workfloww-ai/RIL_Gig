@@ -314,7 +314,7 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     if len(recent_otps.data) >= 3:
         raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 120 seconds. Please try again later.")
         
-    otp_code = "000000" 
+    otp_code = "111111" 
     # otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
     
     # Calculate expiration time (e.g., 5 minutes from now)
