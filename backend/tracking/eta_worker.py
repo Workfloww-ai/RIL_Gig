@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime, timezone, timedelta
+import datetime as dt_lib
 from .redis_client import get_redis
 from .eta_service import calculate_eta_google, determine_eta_status
 from .websocket import manager
@@ -50,8 +50,8 @@ async def process_eta_queue():
                 distance_meters = eta_data["distance_meters"]
                 polyline = eta_data.get("polyline", "")
                 
-                now = datetime.now(timezone.utc)
-                eta_timestamp = now + timedelta(seconds=duration_seconds)
+                now = dt_lib.datetime.now(dt_lib.timezone.utc)
+                eta_timestamp = now + dt_lib.timedelta(seconds=duration_seconds)
                 
                 # Fetch real scheduled start time from DB
                 try:
@@ -61,20 +61,19 @@ async def process_eta_queue():
                         shift_date_str = req_resp.data[0].get("shift_date")
                         start_time_str = req_resp.data[0].get("start_time")
                         if shift_date_str and start_time_str:
-                            from datetime import datetime
                             # Parse it and convert to UTC aware (assuming IST +5:30 in DB for now)
-                            dt = datetime.strptime(f"{shift_date_str} {start_time_str}", "%Y-%m-%d %H:%M:%S")
+                            dt = dt_lib.datetime.strptime(f"{shift_date_str} {start_time_str}", "%Y-%m-%d %H:%M:%S")
                             import pytz
                             ist = pytz.timezone('Asia/Kolkata')
                             localized_dt = ist.localize(dt)
-                            scheduled_start_time = localized_dt.astimezone(timezone.utc)
+                            scheduled_start_time = localized_dt.astimezone(dt_lib.timezone.utc)
                         else:
-                            scheduled_start_time = now + timedelta(minutes=15)
+                            scheduled_start_time = now + dt_lib.timedelta(minutes=15)
                     else:
-                        scheduled_start_time = now + timedelta(minutes=15)
+                        scheduled_start_time = now + dt_lib.timedelta(minutes=15)
                 except Exception as e:
                     print(f"[ETA Worker] DB Error fetching start time: {e}")
-                    scheduled_start_time = now + timedelta(minutes=15)
+                    scheduled_start_time = now + dt_lib.timedelta(minutes=15)
                 
                 status = await determine_eta_status(scheduled_start_time, eta_timestamp)
                 
@@ -90,15 +89,16 @@ async def process_eta_queue():
                     "polyline": polyline
                 }
                 
-                # Publish ETA update to WebSockets
-                await manager.broadcast(job_id, eta_result)
+                # Publish ETA update to WebSockets via Redis Pub/Sub to support multiple instances
+                channel = f"job:{job_id}:location_updates"
+                await client.publish(channel, json.dumps(eta_result))
                 
                 # Also save the latest ETA to Redis
                 eta_key = f"job:{job_id}:latest_eta"
                 await client.setex(eta_key, 600, json.dumps(eta_result))
                 
                 # Note: A background process (Phase 9) should occasionally persist this to Supabase
-                print(f"[ETA Worker] Broadcasted new ETA for job {job_id}: {status} ({duration_seconds // 60} mins)")
+                print(f"[ETA Worker] Broadcasted new ETA for job {job_id} via Pub/Sub: {status} ({duration_seconds // 60} mins)")
                 
         except asyncio.CancelledError:
             print("[ETA Worker] Stopping consumer...")
