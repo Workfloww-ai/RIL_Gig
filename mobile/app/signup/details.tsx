@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +14,7 @@ import { Input } from '../../src/components/Input';
 
 const signupSchema = z.object({
   first_name: z.string().min(2, "First name is required"),
-  last_name: z.string().optional(),
+  last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   address: z.string().min(5, "Address is required"),
   city: z.string().min(2, "City is required"),
@@ -22,7 +22,7 @@ const signupSchema = z.object({
   pincode: z.string().length(6, "Pincode must be 6 digits"),
   dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD").min(1, "Date of birth is required"),
   gender: z.string().min(1, "Gender is required"),
-  upi_id: z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@(okicici|ybl|upi|okaxis|okhdfcbank|oksbi|paytm|apl|axl|ibl|amazonpay|kotak|fam|postbank|icici)$/i, "Invalid UPI ID. Must end with a valid handle (e.g., @okicici, @ybl, @paytm)").min(1, "UPI ID is required"),
+  // upi_id: z.string().regex(/^[a-zA-Z0-9.\-_]{2,256}@(okicici|ybl|upi|okaxis|okhdfcbank|oksbi|paytm|apl|axl|ibl|amazonpay|kotak|fam|postbank|icici)$/i, "Invalid UPI ID. Must end with a valid handle (e.g., @okicici, @ybl, @paytm)").min(1, "UPI ID is required"),
   alternate_number: z.string().regex(/^\d{10}$/, "Must be exactly 10 digits").or(z.literal('')),
 });
 
@@ -31,6 +31,7 @@ type SignupFormData = z.infer<typeof signupSchema>;
 const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
 
 export default function SignupDetailsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { mobile } = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
@@ -128,7 +129,7 @@ export default function SignupDetailsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-sand pt-8">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-sand pt-8">
       {/* Decorative Brand Line - Top Edge */}
       <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
         <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
@@ -139,7 +140,7 @@ export default function SignupDetailsScreen() {
       </View>
       <KeyboardAwareScrollView 
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 60 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 60 + insets.bottom }}
         showsVerticalScrollIndicator={false}
         enableOnAndroid={true}
         extraScrollHeight={20}
@@ -165,7 +166,7 @@ export default function SignupDetailsScreen() {
             control={control}
             name="last_name"
             render={({ field: { onChange, value } }) => (
-              <Input label="Last Name" placeholder="Doe" value={value} onChangeText={onChange} error={errors.last_name?.message} />
+              <Input label="Last Name *" placeholder="Doe" value={value} onChangeText={onChange} error={errors.last_name?.message} />
             )}
           />
           <Controller
@@ -290,7 +291,7 @@ export default function SignupDetailsScreen() {
           />
         </View>
 
-        <Text className="text-lg font-bold text-slate mb-4 ml-1">Payment Details</Text>
+        {/* <Text className="text-lg font-bold text-slate mb-4 ml-1">Payment Details</Text>
         <View className="bg-cream p-5 rounded-3xl shadow-sm border border-sage/10 mb-8">
           <Controller
             control={control}
@@ -300,7 +301,7 @@ export default function SignupDetailsScreen() {
             )}
           />
           <Text className="text-sage text-xs ml-1 -mt-2 mb-2">Used for quick payouts.</Text>
-        </View>
+        </View> */}
 
         <View className="mb-12">
           <Button title="Continue to Account Details" onPress={handleSubmit(onSubmit)} loading={loading} />

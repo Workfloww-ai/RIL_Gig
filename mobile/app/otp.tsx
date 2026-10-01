@@ -65,7 +65,7 @@ export default function OTPScreen() {
         }
 
         // React Native Axios has known bugs with FormData file uploads, so we use native fetch
-        const fetchResponse = await fetch(`${apiClient.defaults.baseURL}/auth/verify-and-signup`, {
+        const fetchResponse = await fetch(`${apiClient.defaults.baseURL}/api/auth/verify-and-signup`, {
           method: 'POST',
           body: formData,
           headers: {

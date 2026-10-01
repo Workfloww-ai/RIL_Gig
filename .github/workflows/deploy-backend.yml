@@ -12,7 +12,7 @@ on:
 env:
   PROJECT_ID: '${{secrets.GCP_PROJECT_ID}}' 
   SERVICE: 'sahyogi-backend'
-  REGION: 'asia-south1'
+  REGION: 'asia-south2'
 
 jobs:
   deploy:
