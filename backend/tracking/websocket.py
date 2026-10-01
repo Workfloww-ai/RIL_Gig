@@ -79,7 +79,9 @@ class GlobalRedisListener:
             async for message in ps.listen():
                 if message["type"] == "message":
                     data = json.loads(message["data"])
-                    data["type"] = "worker_location_update"
+                    # Allow ETA updates to pass through their correct type
+                    if "type" not in data:
+                        data["type"] = "worker_location_update"
                     
                     # Extract job_id from channel (job:{job_id}:location_updates)
                     channel = message["channel"]

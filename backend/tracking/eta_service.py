@@ -60,7 +60,7 @@ async def calculate_eta_google(origin_lat: float, origin_lng: float, dest_lat: f
             polyline = route.get("polyline", {}).get("encodedPolyline", "")
             
             # Parse "780s" -> 780
-            duration_seconds = int(duration_str.rstrip("s"))
+            duration_seconds = int(float(duration_str.rstrip("s")))
             
             return {
                 "distance_meters": distance_meters,
