@@ -433,9 +433,8 @@ async def verify_and_signup(
     test_otp = os.getenv("TEST_OTP", "").strip("'\"")
     
     is_bypass = False
-    if test_otp and otp == test_otp:
-        is_bypass = True
-    elif test_mobile and clean == test_mobile:
+    # Bypass ONLY if it's the test mobile number AND they entered the test OTP
+    if test_mobile and test_otp and clean == test_mobile and otp == test_otp:
         is_bypass = True
         
     if is_bypass:
