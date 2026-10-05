@@ -299,20 +299,25 @@ async def upload_documents(
 
 # 3. POST /auth/send-otp
 @router.post("/send-otp")
-@limiter.limit("5/minute")
 async def send_otp(request: Request, payload: SendOTPRequest):
     clean_mobile, with_plus = get_mobile_variations(payload.mobile_number)
     
+    # --- Supabase Rate Limiting for Phone Number ---
+    # Check DB limit: max 3 OTP requests per phone per 10 minutes (600 seconds)
+    ten_mins_ago = (datetime.now(timezone.utc) - timedelta(seconds=600)).isoformat()
+    try:
+        recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", ten_mins_ago).execute()
+        if len(recent_otps.data) >= 3:
+            raise HTTPException(status_code=429, detail="Phone rate limit exceeded: Maximum 3 OTP requests per 10 minutes.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Warning] Failed to check OTP rate limit in Supabase: {e}")
+
     # --- BYPASS FOR SPECIFIC USER FROM ENV ---
     test_mobile = os.getenv("TEST_MOBILE_NUMBER")
     if test_mobile and clean_mobile == test_mobile:
         return {"status": "otp_sent"}
-    # Check DB limit: max 3 OTPs per phone per 120 second (for testing)
-    onetwenty_sec_ago = (datetime.now(timezone.utc) - timedelta(seconds=120)).isoformat()
-    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", onetwenty_sec_ago).execute()
-    
-    if len(recent_otps.data) >= 3:
-        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 120 seconds. Please try again later.")
         
     otp_code = "111111" 
     # otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
