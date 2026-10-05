@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 interface AuthState {
   token: string | null;
@@ -15,6 +15,19 @@ interface AuthState {
   setSelectedOrganizationId: (id: string | null) => void;
   logout: () => void;
 }
+
+// Custom storage adapter for SecureStore
+const secureStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    return await SecureStore.getItemAsync(name);
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    await SecureStore.setItemAsync(name, value);
+  },
+  removeItem: async (name: string): Promise<void> => {
+    await SecureStore.deleteItemAsync(name);
+  },
+};
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -33,7 +46,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => secureStorage),
     }
   )
 );
