@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from typing import Optional
+from utils.jwt_auth import get_current_user
 
 router = APIRouter()
 
@@ -17,13 +18,42 @@ class StartTrackingSchema(BaseModel):
     job_id: str
 
 @router.post("/session/start")
-async def start_tracking_session(payload: StartTrackingSchema, request: Request):
-    # TODO: Authenticate user, validate job assignment, start session in Supabase
+async def start_tracking_session(
+    payload: StartTrackingSchema, 
+    request: Request,
+    worker_id: str = Depends(get_current_user)
+):
+    from utils.supabase_client import supabase
+    try:
+        # Validate job assignment
+        wja_resp = supabase.table("worker_job_assignments").select("assignment_status").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
+        if not wja_resp.data or wja_resp.data[0].get("assignment_status") != "accepted":
+            raise HTTPException(status_code=403, detail="Worker not assigned to this job or job not accepted.")
+            
+        # Optional: Log session start or update status to en_route
+        # supabase.table("worker_job_assignments").update({"arrival_status": "en_route"}).eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
     return {"message": "Tracking session started", "job_id": payload.job_id}
 
 @router.post("/session/stop")
-async def stop_tracking_session(payload: StartTrackingSchema, request: Request):
-    # TODO: Authenticate user, end session in Supabase
+async def stop_tracking_session(
+    payload: StartTrackingSchema, 
+    request: Request,
+    worker_id: str = Depends(get_current_user)
+):
+    from utils.supabase_client import supabase
+    try:
+        # Verify assignment exists
+        wja_resp = supabase.table("worker_job_assignments").select("id").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
+        if not wja_resp.data:
+            raise HTTPException(status_code=403, detail="Worker not assigned to this job.")
+            
+        # Optional: End session logic
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
     return {"message": "Tracking session stopped", "job_id": payload.job_id}
 
 from .redis_client import update_worker_location, get_redis
@@ -149,6 +179,47 @@ async def receive_location(
     return {"message": "Location received"}
 
 @router.get("/job/{job_id}")
-async def get_tracking_state(job_id: str):
-    # TODO: Fetch current state (active, ETA, etc.)
-    return {"job_id": job_id, "status": "active", "eta": "TBD"}
+async def get_tracking_state(
+    job_id: str,
+    user_id: str = Depends(get_current_user)
+):
+    from utils.supabase_client import supabase
+    
+    # 1. Authorize: User must be worker assigned to job, or an admin/store manager
+    try:
+        is_authorized = False
+        
+        # Check if user is the assigned worker
+        wja_resp = supabase.table("worker_job_assignments").select("id").eq("request_id", job_id).eq("worker_id", user_id).execute()
+        if wja_resp.data:
+            is_authorized = True
+        else:
+            # Check if user is admin or store manager for this job
+            req_resp = supabase.table("manpower_requests").select("store_id").eq("request_id", job_id).execute()
+            if req_resp.data:
+                store_id = req_resp.data[0].get("store_id")
+                # Check user store assignment
+                usa_resp = supabase.table("user_store_assignment").select("id").eq("user_id", user_id).eq("store_id", store_id).execute()
+                if usa_resp.data:
+                    is_authorized = True
+                else:
+                    # Check admin role
+                    user_role_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
+                    if user_role_resp.data and user_role_resp.data[0].get("role_id"):
+                        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_role_resp.data[0]["role_id"]).execute()
+                        if role_resp.data and role_resp.data[0]["role_name"].lower() in ["superadmin", "finance"]:
+                            is_authorized = True
+                            
+        if not is_authorized:
+            raise HTTPException(status_code=403, detail="Not authorized to view tracking for this job.")
+            
+        # Currently skipping Redis ETA fetch as per requirements
+        return {
+            "job_id": job_id, 
+            "status": "active", 
+            "eta_data": None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
