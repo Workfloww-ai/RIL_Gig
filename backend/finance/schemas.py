@@ -10,6 +10,8 @@ class PaymentRecord(BaseModel):
     worker_name: str
     worker_phone: str
     worker_upi_id: Optional[str] = None
+    worker_bank_account_number: Optional[str] = None
+    worker_ifsc_code: Optional[str] = None
     job_name: str
     store_name: str
     shift_date: str

@@ -14,6 +14,8 @@ import hmac
 import hashlib
 from utils.limiter import limiter
 from datetime import datetime, timedelta, timezone
+import logging
+logger = logging.getLogger(__name__)
 
 def hash_otp(otp: str) -> str:
     """Creates an HMAC-SHA256 hash of the OTP to prevent trivial brute force."""
@@ -78,7 +80,7 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
             if user_doc.data:
                 user_data["profile_pic_url"] = user_doc.data[0]["doc_url"]
     except Exception as e:
-        print(f"Error fetching profile pic: {e}")
+        logger.error(f"Error fetching profile pic: {e}")
         
     return user_data
 
@@ -181,7 +183,7 @@ async def get_my_stats(month: str = None, user_id: str = Depends(get_current_use
             "rating": 5.0
         }
     except Exception as e:
-        print(f"Error fetching stats: {str(e)}")
+        logger.error(f"Error fetching stats: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # 1. POST /auth/signup

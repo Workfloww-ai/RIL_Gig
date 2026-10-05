@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Copy, Check, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, IndianRupee } from 'lucide-react';
+import { Copy, Check, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, IndianRupee, Download } from 'lucide-react';
 import { getDashboardStats, getPendingPayments, processPayment } from '@/lib/api';
 import currency from 'currency.js';
 import StatusModal from '@/components/StatusModal';
@@ -21,6 +21,8 @@ type Payment = {
   worker_name: string;
   worker_phone: string;
   worker_upi_id: string;
+  worker_bank_account_number?: string;
+  worker_ifsc_code?: string;
   job_name: string;
   store_name: string;
   shift_date: string;
@@ -37,6 +39,8 @@ type GroupedPayment = {
   worker_phone: string;
   worker_name: string;
   worker_upi_id: string;
+  worker_bank_account_number?: string;
+  worker_ifsc_code?: string;
   total_amount: number;
   payments: Payment[];
   status: string;
@@ -235,6 +239,8 @@ export default function FinanceDashboard() {
           worker_name: curr.worker_name,
           worker_phone: curr.worker_phone,
           worker_upi_id: curr.worker_upi_id || 'N/A',
+          worker_bank_account_number: curr.worker_bank_account_number || '',
+          worker_ifsc_code: curr.worker_ifsc_code || '',
           total_amount: 0,
           payments: [],
           status: curr.payment_status
@@ -248,6 +254,54 @@ export default function FinanceDashboard() {
       return acc;
     }, {} as Record<string, GroupedPayment>);
     return Object.values(grouped);
+  };
+
+  const handleDownloadBankFormat = () => {
+    const grouped = groupPayments(filteredPayments);
+    
+    const headers = [
+      "PYMT_PROD_TYPE_CODE", "PYMT_MODE", "DEBIT_ACC_NO", "BENE_NAME", 
+      "BENE_ACC_NO", "BENE_IFSC", "AMOUNT", "DEBIT_NARR", "CREDIT_NARR", 
+      "MOBILE_NUM", "EMAIL_ID", "REMARK", "PYMT_DATE", "REF_NO", 
+      "ADDL_INFO1", "ADDL_INFO2", "ADDL_INFO3", "ADDL_INFO4", "ADDL_INFO5"
+    ];
+
+    const today = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+    
+    const rows = grouped.map((g, index) => {
+      const pymtMode = g.total_amount > 200000 ? "RTGS" : "NEFT";
+      return [
+        "PAB_VENDOR",
+        pymtMode,
+        "123456789012",
+        g.worker_name,
+        g.worker_bank_account_number || (g.worker_upi_id !== 'N/A' ? g.worker_upi_id : ""),
+        g.worker_ifsc_code || "BKID0000047",
+        g.total_amount.toString(),
+        "", 
+        "", 
+        g.worker_phone,
+        "", 
+        "Salary Payment",
+        today,
+        `PAY-${Date.now()}-${index}`,
+        "", "", "", "", ""
+      ];
+    });
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell || ''}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Bank_Payment_Format_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const presentPayments = filteredPayments.filter(p => isPresentJob(p));
@@ -428,6 +482,13 @@ export default function FinanceDashboard() {
               <option value="pending">Pending</option>
               <option value="processing">Processing</option>
             </select>
+            <button
+              onClick={handleDownloadBankFormat}
+              className="flex items-center gap-2 rounded-lg bg-moss px-4 py-2 text-sm font-medium text-white hover:bg-moss/90 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Download Bank Format
+            </button>
           </div>
         </div>
       </div>

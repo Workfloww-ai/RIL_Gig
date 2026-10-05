@@ -3,6 +3,8 @@ from typing import Dict, List
 import asyncio
 import json
 from .redis_client import get_redis
+import logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -17,26 +19,26 @@ class ConnectionManager:
         if job_id not in self.active_connections:
             self.active_connections[job_id] = []
         self.active_connections[job_id].append(websocket)
-        print(f"[WebSocket] Client connected to job {job_id}")
+        logger.info(f"[WebSocket] Client connected to job {job_id}")
 
     def disconnect(self, websocket: WebSocket, job_id: str):
         if job_id in self.active_connections:
             self.active_connections[job_id].remove(websocket)
             if not self.active_connections[job_id]:
                 del self.active_connections[job_id]
-        print(f"[WebSocket] Client disconnected from job {job_id}")
+        logger.info(f"[WebSocket] Client disconnected from job {job_id}")
 
     async def broadcast(self, job_id: str, message: dict):
         if job_id in self.active_connections:
             # We must iterate over a copy of the list as it may change during iteration
             clients_count = len(self.active_connections[job_id])
             msg_type = message.get("type", "unknown")
-            print(f"[WebSocket] Broadcasting {msg_type} to {clients_count} Store Manager(s) for job {job_id}")
+            logger.info(f"[WebSocket] Broadcasting {msg_type} to {clients_count} Store Manager(s) for job {job_id}")
             for connection in self.active_connections[job_id][:]:
                 try:
                     await connection.send_json(message)
                 except Exception as e:
-                    print(f"[WebSocket] Error sending message to client: {e}")
+                    logger.error(f"[WebSocket] Error sending message to client: {e}")
                     self.disconnect(connection, job_id)
 
 manager = ConnectionManager()
@@ -62,7 +64,7 @@ class GlobalRedisListener:
         if channel not in self.subscribed_channels:
             await ps.subscribe(channel)
             self.subscribed_channels.add(channel)
-            print(f"[GlobalRedisListener] Subscribed to {channel}")
+            logger.info(f"[GlobalRedisListener] Subscribed to {channel}")
             # Ensure the listener loop is running
             await self.start()
             
@@ -71,7 +73,7 @@ class GlobalRedisListener:
         if channel in self.subscribed_channels:
             await ps.unsubscribe(channel)
             self.subscribed_channels.remove(channel)
-            print(f"[GlobalRedisListener] Unsubscribed from {channel}")
+            logger.info(f"[GlobalRedisListener] Unsubscribed from {channel}")
             
     async def _listen(self):
         ps = await self.get_pubsub()
@@ -91,7 +93,7 @@ class GlobalRedisListener:
                         job_id = parts[1]
                         await manager.broadcast(job_id, data)
         except Exception as e:
-            print(f"[GlobalRedisListener] Error listening to pubsub: {e}")
+            logger.error(f"[GlobalRedisListener] Error listening to pubsub: {e}")
             self.pubsub = None
             self.task = None
 
@@ -131,7 +133,7 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
                         "timestamp": loc_data.get("timestamp")
                     })
     except Exception as e:
-        print(f"[WebSocket] Error sending initial state: {e}")
+        logger.error(f"[WebSocket] Error sending initial state: {e}")
         
     # Subscribe via the global listener if it's the first connection
     channel = f"job:{job_id}:location_updates"
