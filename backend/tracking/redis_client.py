@@ -9,9 +9,9 @@ async def get_redis():
     global redis_client
     if redis_client is None:
         # User has upstash credentials like: redis-cli --tls -u redis://default:xxx@xxx.upstash.io:6379
-        raw_url = os.getenv("UPSTASH_REDIS_REST_URL")
+        raw_url = os.getenv("REDIS_URL")
         if not raw_url:
-            raise ValueError("UPSTASH_REDIS_REST_URL environment variable is not set")
+            raise ValueError("REDIS_URL environment variable is not set")
             
         # Extract the actual URL part
         redis_url = raw_url
@@ -21,17 +21,22 @@ async def get_redis():
             if "--tls" in raw_url and redis_url.startswith("redis://"):
                 redis_url = redis_url.replace("redis://", "rediss://", 1)
                 
+        kwargs = {
+            "decode_responses": True,
+            "socket_keepalive": True,
+            "health_check_interval": 10,
+            "socket_connect_timeout": 5,
+            "socket_timeout": 30,
+            "retry_on_timeout": True,
+            "max_connections": 100
+        }
+        
+        # Upstash requires disabling cert verification on some systems
+        if redis_url.startswith("rediss://"):
+            kwargs["ssl_cert_reqs"] = "none"
+
         # Add connection parameters to prevent Upstash timeouts
-        redis_client = redis.from_url(
-            redis_url,
-            decode_responses=True,
-            socket_keepalive=True,
-            health_check_interval=10,
-            socket_connect_timeout=5,
-            socket_timeout=30,
-            retry_on_timeout=True,
-            max_connections=100
-        )
+        redis_client = redis.from_url(redis_url, **kwargs)
     return redis_client
 
 async def update_worker_location(worker_id: str, job_id: str, lat: float, lng: float, accuracy: float, speed: float, heading: float, timestamp: str):

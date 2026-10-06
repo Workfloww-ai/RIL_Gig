@@ -10,10 +10,12 @@ load_dotenv()
 
 # Load securely from .env file
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
-ALGORITHM = os.environ.get("JWT_ALGORITHM")
+if not SECRET_KEY:
+    raise ValueError("FATAL ERROR: JWT_SECRET_KEY is missing from environment variables.")
+ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 # Standard enterprise access token expiration is usually short (15-60 mins). 
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("JWT_REFRESH_EXPIRE_DAYS"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES", "30"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("JWT_REFRESH_EXPIRE_DAYS", "7"))
 
 security = HTTPBearer()
 

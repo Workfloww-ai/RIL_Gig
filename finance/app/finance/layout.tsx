@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, History, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, History, LogOut, Menu, X, Settings } from 'lucide-react';
 import { getCurrentUser } from '@/lib/api';
 
 export default function FinanceLayout({
@@ -71,7 +71,14 @@ export default function FinanceLayout({
           })}
         </nav>
 
-        <div className="p-4 border-t border-green-800">
+        <div className="p-4 border-t border-green-800 space-y-2">
+          <Link
+            href="/change-password"
+            className="flex w-full items-center gap-3 rounded-lg bg-green-700/30 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700/60"
+          >
+            <Settings className="h-5 w-5" />
+            Change Password
+          </Link>
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg bg-clay px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-clay/90"
@@ -145,7 +152,15 @@ export default function FinanceLayout({
                   );
                 })}
               </nav>
-              <div className="p-4 border-t border-green-800">
+              <div className="p-4 border-t border-green-800 space-y-2">
+                <Link
+                  href="/change-password"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex w-full items-center gap-3 rounded-lg bg-green-700/30 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700/60"
+                >
+                  <Settings className="h-5 w-5" />
+                  Change Password
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="flex w-full items-center gap-3 rounded-lg bg-clay px-4 py-3 text-sm font-medium text-white hover:bg-clay/90"

@@ -4,18 +4,20 @@ from typing import List
 import random
 import os
 
-from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest, RefreshTokenRequest
+from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest, RefreshTokenRequest, LoginPasswordRequest, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest
 from utils.sms import send_otp_sms
 from utils.supabase_client import supabase
 from utils.jwt_auth import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
 import jwt
 from fastapi import Depends
 from db.auth_db import mark_user_verified
+from utils.email import send_password_reset_email
 import hmac
 import hashlib
 from utils.limiter import limiter
 from datetime import datetime, timedelta, timezone
 import uuid
+import binascii
 
 def get_secure_file_extension(file_bytes: bytes) -> str:
     """Returns the true file extension by verifying magic bytes, or raises ValueError."""
@@ -32,6 +34,22 @@ def hash_otp(otp: str) -> str:
     """Creates an HMAC-SHA256 hash of the OTP to prevent trivial brute force."""
     key = SECRET_KEY.encode('utf-8') if SECRET_KEY else b'default_secret_key_123'
     return hmac.new(key, str(otp).encode('utf-8'), hashlib.sha256).hexdigest()
+
+def hash_password(password: str) -> str:
+    """Hash a password for storing."""
+    salt = hashlib.sha256(os.urandom(60)).hexdigest().encode('ascii')
+    pwdhash = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'), salt, 100000)
+    pwdhash = binascii.hexlify(pwdhash)
+    return (salt + pwdhash).decode('ascii')
+
+def verify_password(stored_password: str, provided_password: str) -> bool:
+    """Verify a stored password against one provided by user"""
+    if len(stored_password) < 64: return False
+    salt = stored_password[:64].encode('ascii')
+    stored_hash = stored_password[64:]
+    pwdhash = hashlib.pbkdf2_hmac('sha512', provided_password.encode('utf-8'), salt, 100000)
+    pwdhash = binascii.hexlify(pwdhash).decode('ascii')
+    return pwdhash == stored_hash
 
 router = APIRouter()
 
@@ -717,3 +735,143 @@ async def refresh_token(payload: RefreshTokenRequest):
             status_code=401,
             detail="Invalid refresh token",
         )
+
+@router.post("/login-password")
+@limiter.limit("10/minute")
+async def login_with_password(request: Request, payload: LoginPasswordRequest):
+    identifier = payload.identifier.strip()
+    
+    if "@" in identifier:
+        user_response = supabase.table("users").select("*").eq("email", identifier).execute()
+    else:
+        clean, with_plus = get_mobile_variations(identifier)
+        user_response = supabase.table("users").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
+        
+    if not user_response.data:
+        raise HTTPException(status_code=400, detail="User account not found.")
+        
+    user_data = user_response.data[0]
+    if user_data.get("is_deactivated"):
+        raise HTTPException(status_code=403, detail="Account has been deactivated. Please contact support.")
+        
+    # Temporary password logic until column is added in Supabase
+    stored_password = user_data.get("password_hash")
+    if stored_password:
+        if not verify_password(stored_password, payload.password): 
+            raise HTTPException(status_code=400, detail="Incorrect password.")
+    else:
+        if payload.password != "admin123":
+            raise HTTPException(status_code=400, detail="Incorrect password. (Try 'admin123' for test accounts without password_hash)")
+
+    user_id = user_data["user_id"]
+    
+    role_name = "worker"
+    if user_data.get("role_id"):
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", user_data["role_id"]).execute()
+        if role_resp.data:
+            role_name = role_resp.data[0]["role_name"].lower()
+    
+    mark_user_verified(user_id)
+    
+    access_token = create_access_token({"sub": user_id})
+    refresh_token = create_refresh_token({"sub": user_id})
+    return {"status": "login_success", "token": access_token, "refresh_token": refresh_token, "role": role_name}
+
+
+@router.post("/forgot-password")
+@limiter.limit("5/minute")
+async def forgot_password(request: Request, payload: ForgotPasswordRequest):
+    identifier = payload.identifier.strip()
+    if "@" in identifier:
+        user_response = supabase.table("users").select("user_id, email, role_id").eq("email", identifier).execute()
+    else:
+        clean, with_plus = get_mobile_variations(identifier)
+        user_response = supabase.table("users").select("user_id, email, role_id").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
+
+    if not user_response.data:
+        raise HTTPException(status_code=400, detail="Account not found with this email or mobile number.")
+    
+    user_data = user_response.data[0]
+    user_id = user_data["user_id"]
+    email = user_data.get("email")
+    role_id = user_data.get("role_id")
+    
+    is_finance = False
+    if role_id:
+        role_resp = supabase.table("roles").select("role_name").eq("role_id", role_id).execute()
+        if role_resp.data and role_resp.data[0]["role_name"].lower() == "finance":
+            is_finance = True
+            
+    if not is_finance:
+        raise HTTPException(status_code=403, detail="Only Finance users can reset their password here.")
+        
+    if not email:
+        raise HTTPException(status_code=400, detail="No email address associated with this account. Please contact support.")
+    
+    # Create a 15-minute reset token
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode = {"sub": user_id, "exp": expire, "token_type": "reset_password"}
+    reset_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    
+    # Determine the frontend URL based on the request host/origin
+    # Fallback to local dev if not present
+    origin = request.headers.get("origin")
+    if origin:
+        reset_link = f"{origin}/reset-password?token={reset_token}"
+    else:
+        # Assuming frontend is on port 3000 locally
+        reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
+    
+    # Send actual SMTP email
+    send_password_reset_email(email, reset_link)
+    
+    return {"status": "success", "message": f"Password reset link has been sent to {email}."}
+
+@router.post("/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(request: Request, payload: ResetPasswordRequest):
+    try:
+        token_payload = jwt.decode(payload.token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = token_payload.get("sub")
+        token_type: str = token_payload.get("token_type")
+        
+        if token_type != "reset_password":
+            raise HTTPException(status_code=401, detail="Invalid token type.")
+            
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Reset token has expired.")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid reset token.")
+        
+    hashed_pwd = hash_password(payload.new_password)
+    
+    try:
+        supabase.table("users").update({"password_hash": hashed_pwd}).eq("user_id", user_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update password: {str(e)}")
+        
+    return {"status": "success", "message": "Password reset successfully. You can now login."}
+
+@router.post("/change-password")
+async def change_password(payload: ChangePasswordRequest, user_id: str = Depends(get_current_user)):
+    user_response = supabase.table("users").select("password_hash").eq("user_id", user_id).execute()
+    if not user_response.data:
+        raise HTTPException(status_code=404, detail="User not found.")
+        
+    stored_password = user_response.data[0].get("password_hash")
+    
+    if stored_password:
+        if not verify_password(stored_password, payload.current_password):
+            raise HTTPException(status_code=400, detail="Incorrect current password.")
+    else:
+        if payload.current_password != "admin123":
+            raise HTTPException(status_code=400, detail="Incorrect current password.")
+            
+    hashed_pwd = hash_password(payload.new_password)
+    
+    try:
+        supabase.table("users").update({"password_hash": hashed_pwd}).eq("user_id", user_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update password: {str(e)}")
+        
+    return {"status": "success", "message": "Password changed successfully."}
