@@ -106,6 +106,6 @@ async def process_eta_queue():
         except Exception as e:
             print(f"[ETA Worker] Error processing ETA queue: {e}")
             import traceback
-            with open("eta_error.log", "a") as f:
-                f.write(f"Error: {e}\n{traceback.format_exc()}\n")
+            # with open("eta_error.log", "a") as f:
+            #     f.write(f"Error: {e}\n{traceback.format_exc()}\n")
             await asyncio.sleep(60) # Prevent tight loop on error
