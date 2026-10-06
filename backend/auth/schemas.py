@@ -37,3 +37,19 @@ class DeleteAccountRequest(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+class LoginPasswordRequest(BaseModel):
+    identifier: str
+    password: str
+
+class ForgotPasswordRequest(BaseModel):
+    identifier: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+

@@ -44,6 +44,23 @@ export const verifyOtp = (mobile_number: string, otp: string) => {
   return api.post('/api/auth/verify-otp', { mobile_number, otp });
 };
 
+export const loginWithPassword = (identifier: string, password: string) => {
+  return api.post('/api/auth/login-password', { identifier, password });
+};
+
+export const forgotPassword = (identifier: string) => {
+  return api.post('/api/auth/forgot-password', { identifier });
+};
+
+export const resetPassword = (token: string, new_password: string) => {
+  return api.post('/api/auth/reset-password', { token, new_password });
+};
+
+export const changePassword = (current_password: string, new_password: string) => {
+  return api.post('/api/auth/change-password', { current_password, new_password });
+};
+
+
 export const getDashboardStats = () => {
   return api.get('/api/finance/dashboard-stats');
 };

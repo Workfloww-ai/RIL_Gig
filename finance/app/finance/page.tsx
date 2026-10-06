@@ -23,6 +23,7 @@ type Payment = {
   worker_upi_id: string;
   worker_bank_account_number?: string;
   worker_ifsc_code?: string;
+  worker_email?: string;
   job_name: string;
   store_name: string;
   shift_date: string;
@@ -41,6 +42,7 @@ type GroupedPayment = {
   worker_upi_id: string;
   worker_bank_account_number?: string;
   worker_ifsc_code?: string;
+  worker_email?: string;
   total_amount: number;
   payments: Payment[];
   status: string;
@@ -193,43 +195,32 @@ export default function FinanceDashboard() {
     return matchesSearch && matchesStatus;
   });
 
-  const getLocalYYYYMMDD = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  const getPaymentCycleDates = () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const daysSinceLastFriday = dayOfWeek === 5 ? 7 : (dayOfWeek + 2) % 7; 
+    
+    const lastFriday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    lastFriday.setDate(now.getDate() - daysSinceLastFriday);
+    lastFriday.setHours(23, 59, 59, 999);
+    
+    const nextFriday = new Date(lastFriday);
+    nextFriday.setDate(lastFriday.getDate() + 7);
+    nextFriday.setHours(23, 59, 59, 999);
+    
+    return { lastFriday, nextFriday };
   };
-  const todayStr = getLocalYYYYMMDD();
 
-  // Present = job completed (created_at) today before 20:00 (8 PM)
-  // Fallback if no created_at: shift_date >= todayStr
   const isPresentJob = (p: Payment) => {
-    if (!p.created_at) {
-      return p.shift_date >= todayStr;
-    }
-    const createdAt = new Date(p.created_at);
-    const today = new Date();
-    const isToday = createdAt.getDate() === today.getDate() &&
-      createdAt.getMonth() === today.getMonth() &&
-      createdAt.getFullYear() === today.getFullYear();
-
-    // completed today AND before 20:00 local time
-    if (isToday && createdAt.getHours() < 20) {
-      return true;
-    }
-    return false;
+    const { lastFriday, nextFriday } = getPaymentCycleDates();
+    const jobDate = p.created_at ? new Date(p.created_at) : new Date(p.shift_date);
+    return jobDate > lastFriday && jobDate <= nextFriday;
   };
 
   const isPastJob = (p: Payment) => {
-    if (!p.created_at) {
-      return p.shift_date < todayStr;
-    }
-    const createdAt = new Date(p.created_at);
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-    return createdAt < startOfToday;
+    const { lastFriday } = getPaymentCycleDates();
+    const jobDate = p.created_at ? new Date(p.created_at) : new Date(p.shift_date);
+    return jobDate <= lastFriday;
   };
 
   const groupPayments = (paymentList: Payment[]) => {
@@ -241,6 +232,7 @@ export default function FinanceDashboard() {
           worker_upi_id: curr.worker_upi_id || 'N/A',
           worker_bank_account_number: curr.worker_bank_account_number || '',
           worker_ifsc_code: curr.worker_ifsc_code || '',
+          worker_email: curr.worker_email || '',
           total_amount: 0,
           payments: [],
           status: curr.payment_status
@@ -269,20 +261,21 @@ export default function FinanceDashboard() {
     const today = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
     
     const rows = grouped.map((g, index) => {
-      const pymtMode = g.total_amount > 200000 ? "RTGS" : "NEFT";
+      const ifsc = g.worker_ifsc_code || "";
+      const pymtMode = (ifsc === "ICICI0000011" || ifsc === "ICIC0000011") ? "FT" : "BENF";
       return [
         "PAB_VENDOR",
         pymtMode,
         "123456789012",
-        g.worker_name,
-        g.worker_bank_account_number || (g.worker_upi_id !== 'N/A' ? g.worker_upi_id : ""),
-        g.worker_ifsc_code || "BKID0000047",
-        g.total_amount.toString(),
-        "", 
-        "", 
+        g.worker_name.toUpperCase(),
+        g.worker_bank_account_number || "",
+        ifsc,
+        g.total_amount.toFixed(2),
+        "SALARY PAYOUT", 
+        "SAHYOGI PAYOUT", 
         g.worker_phone,
-        "", 
-        "Salary Payment",
+        g.worker_email || "", 
+        "SALARY PAYMENT",
         today,
         `PAY-${Date.now()}-${index}`,
         "", "", "", "", ""
@@ -348,19 +341,35 @@ export default function FinanceDashboard() {
             </div>
           </td>
           <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs">{group.worker_upi_id}</span>
-              <button
-                onClick={() => handleCopyUpi(group.worker_upi_id)}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-moss transition-colors relative"
-                title="Copy UPI ID"
-              >
-                {copiedUpi === group.worker_upi_id ? (
-                  <Check className="h-3.5 w-3.5 text-green-600" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </button>
+            <div className="flex flex-col gap-1.5">
+              {group.worker_bank_account_number && (
+                <div className="text-xs">
+                  <span className="font-medium text-slate">Acct: </span>
+                  <span className="text-gray-600">{group.worker_bank_account_number}</span>
+                  <span className="mx-1 text-gray-300">|</span>
+                  <span className="font-medium text-slate">IFSC: </span>
+                  <span className="text-gray-600">{group.worker_ifsc_code || 'N/A'}</span>
+                </div>
+              )}
+              {group.worker_upi_id && group.worker_upi_id !== 'N/A' && (
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-gray-500">UPI: {group.worker_upi_id}</span>
+                  <button
+                    onClick={() => handleCopyUpi(group.worker_upi_id)}
+                    className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-moss transition-colors relative"
+                    title="Copy UPI ID"
+                  >
+                    {copiedUpi === group.worker_upi_id ? (
+                      <Check className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
+              )}
+              {(!group.worker_bank_account_number && (!group.worker_upi_id || group.worker_upi_id === 'N/A')) && (
+                <span className="text-xs text-sage italic">No payment details</span>
+              )}
             </div>
           </td>
           <td className="px-6 py-4">
@@ -434,7 +443,7 @@ export default function FinanceDashboard() {
         </div>
 
         <div className="rounded-xl bg-cream p-6 shadow-sm border-l-4 border-clay">
-          <h3 className="text-sm font-medium text-sage">Processed Today</h3>
+          <h3 className="text-sm font-medium text-sage">Processed This Week</h3>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate">{stats ? formatCurrency(stats.processed_today_amount) : '₹0.00'}</span>
           </div>
@@ -496,7 +505,7 @@ export default function FinanceDashboard() {
       {/* Present Jobs Section */}
       <div className="rounded-xl bg-cream shadow-sm border border-gray-100 overflow-hidden mt-6">
         <div className="bg-sand border-b border-gray-200 p-3 px-4 flex items-center justify-between">
-          <h3 className="font-semibold text-moss">Today's Jobs</h3>
+          <h3 className="font-semibold text-moss">This Week's Jobs</h3>
           <span className="text-xs font-medium bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full">{presentGroups.length} SahYogi</span>
         </div>
         <div className="overflow-x-auto">
@@ -504,7 +513,7 @@ export default function FinanceDashboard() {
             <thead className="bg-gray-50 text-xs uppercase text-sage border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3">SahYogi Details</th>
-                <th className="px-6 py-3">UPI ID</th>
+                <th className="px-6 py-3">Payment Details</th>
                 <th className="px-6 py-3">Jobs Summary</th>
                 <th className="px-6 py-3">Total Amount</th>
                 <th className="px-6 py-3">Status</th>
@@ -512,7 +521,7 @@ export default function FinanceDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {renderTableRows(presentGroups, "No present jobs completed today before 8 PM.")}
+              {renderTableRows(presentGroups, "No jobs for the current payment week.")}
             </tbody>
           </table>
         </div>
@@ -529,7 +538,7 @@ export default function FinanceDashboard() {
             <thead className="bg-gray-50 text-xs uppercase text-sage border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3">SahYogi Details</th>
-                <th className="px-6 py-3">UPI ID</th>
+                <th className="px-6 py-3">Payment Details</th>
                 <th className="px-6 py-3">Jobs Summary</th>
                 <th className="px-6 py-3">Total Amount</th>
                 <th className="px-6 py-3">Status</th>
@@ -537,7 +546,7 @@ export default function FinanceDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {renderTableRows(pastGroups, "No past or rollover jobs pending.")}
+              {renderTableRows(pastGroups, "No pending jobs from previous weeks.")}
             </tbody>
           </table>
         </div>

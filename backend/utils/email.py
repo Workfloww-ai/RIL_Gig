@@ -1,6 +1,8 @@
 import os
 import requests
-
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 def send_welcome_email(to_email: str, manager_name: str, role: str, store_name: str, store_address: str, google_map_link: str):
     """
     Sends a welcome email to the newly created manager/supervisor using Resend API.
@@ -63,3 +65,48 @@ def send_welcome_email(to_email: str, manager_name: str, role: str, store_name: 
             
     except Exception as e:
         print(f"Exception occurred while sending email: {e}")
+
+def send_password_reset_email(to_email: str, reset_link: str):
+    """Sends a password reset email using Resend API."""
+    resend_api_key = os.getenv("RESEND_API_KEY")
+    sender_email = os.getenv("SENDER_EMAIL")
+    
+    if not resend_api_key or not sender_email:
+        print(f"RESEND_API_KEY or SENDER_EMAIL is not set. Cannot send email to {to_email}. Reset link: {reset_link}")
+        return
+        
+    subject = "Password Reset Request - SahYogi Finance"
+    
+    body = f"""<p>Hello,</p>
+<p>We received a request to reset your password for your SahYogi Finance account.</p>
+<br>
+<p>Click the link below to set a new password. This link will expire in 15 minutes.</p>
+<p><a href="{reset_link}">{reset_link}</a></p>
+<br>
+<p>If you didn't request this, please ignore this email or contact support.</p>
+<br>
+<p>Best regards,<br>SahYogi Team</p>
+"""
+
+    try:
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {resend_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": sender_email,
+                "to": [to_email],
+                "subject": subject,
+                "html": body
+            }
+        )
+        
+        if response.status_code >= 400:
+            print(f"Failed to send email via Resend: {response.status_code} - {response.text}")
+        else:
+            print(f"Successfully sent password reset email to {to_email}")
+            
+    except Exception as e:
+        print(f"Exception occurred while sending password reset email: {e}")
