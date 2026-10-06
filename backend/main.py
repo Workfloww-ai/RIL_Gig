@@ -30,16 +30,82 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 import time
+import asyncio
+import traceback
 from fastapi import Request
+from fastapi.responses import JSONResponse
+from utils.logger import log_error_to_supabase
+
+from fastapi.exceptions import RequestValidationError
+from fastapi import HTTPException
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    # Log 4xx/5xx to Supabase if desired, or let middleware handle the generic log
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error_type": "HTTPException",
+            "message": exc.detail,
+            "path": request.url.path
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "error_type": "ValidationError",
+            "message": "Invalid request parameters",
+            "details": exc.errors(),
+            "path": request.url.path
+        }
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_detail = f"{str(exc)}\n{traceback.format_exc()}"
+    print(f"[CRITICAL 500] {request.method} {request.url.path}: {error_detail}")
+    
+    # Log the crash to Supabase asynchronously
+    asyncio.create_task(log_error_to_supabase(
+        request=request, 
+        status_code=500, 
+        error_message=str(exc)
+    ))
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error_type": "InternalServerError",
+            "message": "An unexpected error occurred. The incident has been logged.",
+            "path": request.url.path
+        }
+    )
+
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests_and_errors(request: Request, call_next):
     start_time = time.time()
+    
+    # Execute request
     response = await call_next(request)
     process_time = time.time() - start_time
     
     if request.url.path.startswith("/api/tracking"):
         print(f"[Observability] {request.method} {request.url.path} - Status {response.status_code} - {process_time*1000:.2f}ms")
-    
+        
+    # Log non-500 HTTP errors to Supabase (500s are handled by the global exception handler)
+    if 400 <= response.status_code < 500:
+        asyncio.create_task(log_error_to_supabase(
+            request=request, 
+            status_code=response.status_code, 
+            error_message=f"HTTP Error {response.status_code}"
+        ))
+        
     return response
 
 scheduler = BackgroundScheduler()
@@ -67,14 +133,14 @@ def shutdown_scheduler():
 
 
 # Configure CORS
-# allowed_origins = os.getenv(
-#     "ALLOWED_ORIGINS", 
-#     "http://localhost:3000,http://localhost:8081,http://[IP_ADDRESS]"
-# ).split(",")
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:3000,http://localhost:8081"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

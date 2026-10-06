@@ -310,8 +310,8 @@ export default function LibraryScreen() {
     fetchData();
   }, []);
 
-  const handleStartLesson = (moduleId: string) => {
-    router.push({ pathname: '/studio', params: { id: moduleId } });
+  const handleStartLesson = (module: Module) => {
+    router.push({ pathname: '/studio', params: { id: module.id, moduleData: JSON.stringify(module) } });
   };
 
   const completedCount = modules.filter(m => m.status === 'quiz_passed').length;
@@ -865,7 +865,7 @@ export default function LibraryScreen() {
                       <TouchableOpacity
                         onPress={() => {
                           if (module.status !== 'locked') {
-                            handleStartLesson(module.id);
+                            handleStartLesson(module);
                           }
                         }}
                         activeOpacity={module.status === 'locked' ? 1 : 0.7}

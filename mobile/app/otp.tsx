@@ -14,6 +14,7 @@ export default function OTPScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const setToken = useAuthStore(state => state.setToken);
+  const setRefreshToken = useAuthStore(state => state.setRefreshToken);
   const setRole = useAuthStore(state => state.setRole);
 
   const formatMobileNumber = (num: string | string[]) => {
@@ -64,7 +65,7 @@ export default function OTPScreen() {
         }
 
         // React Native Axios has known bugs with FormData file uploads, so we use native fetch
-        const fetchResponse = await fetch(`${apiClient.defaults.baseURL}/auth/verify-and-signup`, {
+        const fetchResponse = await fetch(`${apiClient.defaults.baseURL}/api/auth/verify-and-signup`, {
           method: 'POST',
           body: formData,
           headers: {
@@ -87,9 +88,12 @@ export default function OTPScreen() {
         });
       }
 
-      const { token, status, role } = response.data;
+      const { token, refresh_token, status, role } = response.data;
       if (status === 'login_success') {
         setToken(token);
+        if (refresh_token) {
+          setRefreshToken(refresh_token);
+        }
         setRole(role);
 
         if (role === 'superadmin' || role === 'admin') {

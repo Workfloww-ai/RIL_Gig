@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Platform, StatusBar, ScrollView, Alert, Modal, TouchableOpacity, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../src/components/Button';
@@ -16,6 +16,7 @@ interface DocumentEntry {
 }
 
 export default function DocumentsScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user_id, mobile, userDetails } = useLocalSearchParams() as { user_id?: string, mobile: string, userDetails?: string };
   const [documents, setDocuments] = useState<DocumentEntry[]>([]);
@@ -28,13 +29,14 @@ export default function DocumentsScreen() {
   const [consentAadhar, setConsentAadhar] = useState(false);
   const [consentPan, setConsentPan] = useState(false);
   const [consentPrivacy, setConsentPrivacy] = useState(false);
+  const [consentLocation, setConsentLocation] = useState(false);
 
-  const allConsented = consentAadhar && consentPan && consentPrivacy;
+  const allConsented = consentAadhar && consentPan && consentPrivacy && consentLocation;
 
   const requiredDocs = [
     { key: 'Aadhar Card', name: 'Aadhar Card', placeholder: 'Aadhar Number' },
     { key: 'PAN Card', name: 'PAN Card', placeholder: 'PAN Number' },
-    { key: 'Certification/Marksheet', name: 'Certification/Marksheet', placeholder: 'Certificate Number (Optional)' },
+    { key: 'Certification/Marksheet', name: 'Certification/Marksheet', placeholder: 'Certificate Number' },
     { key: 'Live Photo', name: 'Live Photo', placeholder: 'N/A' }
   ];
 
@@ -162,7 +164,7 @@ export default function DocumentsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-cream pt-8">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-cream pt-8">
       {/* Decorative Brand Line - Top Edge */}
       <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
         <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
@@ -171,7 +173,7 @@ export default function DocumentsScreen() {
           <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
           <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
       </View>
-      <ScrollView className="flex-1 px-8 pt-8" contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-8 pt-8" contentContainerStyle={{ paddingBottom: 60 + insets.bottom }} showsVerticalScrollIndicator={false}>
         <Text className="text-4xl font-bold text-slate mb-3 tracking-tight">Documents</Text>
         <Text className="text-sage mb-8 text-lg font-medium">Upload your KYC documents.</Text>
 
@@ -246,7 +248,7 @@ export default function DocumentsScreen() {
                     {consentAadhar && <Text className="text-white text-xs font-bold">✓</Text>}
                   </View>
                   <View className="flex-1 flex-row flex-wrap items-center">
-                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to use my Aadhaar number and details for identity verification and e-KYC purposes in accordance with UIDAI guidelines. </Text>
+                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to use my<Text className="font-bold"> Aadhaar number and details</Text> for identity verification and e-KYC purposes in accordance with UIDAI guidelines. </Text>
                     
                   </View>
                 </TouchableOpacity>
@@ -257,8 +259,18 @@ export default function DocumentsScreen() {
                     {consentPan && <Text className="text-white text-xs font-bold">✓</Text>}
                   </View>
                   <View className="flex-1 flex-row flex-wrap items-center">
-                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to fetch and verify my PAN details with the Income Tax Department database for onboarding and compliance purposes. </Text>
+                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to fetch and <Text className="font-bold"> verify my PAN details</Text> with the Income Tax Department database for onboarding and compliance purposes. </Text>
                     
+                  </View>
+                </TouchableOpacity>
+              </View>
+              <View className="mb-2">
+                <TouchableOpacity onPress={() => setConsentLocation(!consentLocation)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
+                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentLocation ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
+                    {consentLocation && <Text className="text-white text-xs font-bold">✓</Text>}
+                  </View>
+                  <View className="flex-1 flex-row flex-wrap items-center">
+                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to collect and process my <Text className="font-bold">Location</Text> data for assignment and tracking purposes.</Text>
                   </View>
                 </TouchableOpacity>
               </View>

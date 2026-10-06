@@ -87,7 +87,7 @@ export default function LiveTrackingScreen() {
     // Convert http(s) API_URL to ws(s)
     let wsUrlBase = 'ws://localhost:8000';
     if (API_URL) {
-      wsUrlBase = API_URL.replace('http://', 'ws://').replace('https://', 'wss://');
+      wsUrlBase = API_URL.replace('http://', 'ws://').replace('https://', 'wss://').replace('/api', '');
     }
     
     const wsUrl = `${wsUrlBase}/ws/job/${jobId}`;
@@ -251,7 +251,7 @@ export default function LiveTrackingScreen() {
         ))}
       </MapView>
       
-      {!selectedLocation && (
+      {!selectedLocation && routeCoordinates.length === 0 && (
         <View style={[StyleSheet.absoluteFill, styles.mapPlaceholder, { backgroundColor: 'rgba(255,255,255,0.7)' }]}>
           <ActivityIndicator size="large" color="#0B5B31" />
           <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Waiting for {displayName}'s GPS...</Text>

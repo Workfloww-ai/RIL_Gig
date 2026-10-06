@@ -34,3 +34,6 @@ class VerifyOTPRequest(BaseModel):
 
 class DeleteAccountRequest(BaseModel):
     reason: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
