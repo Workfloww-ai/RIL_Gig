@@ -73,7 +73,7 @@ async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = De
                         supabase.table("manpower_requests").update({"request_status": "closed"}).eq("request_id", r["request_id"]).execute()
                         continue
                 except Exception as e:
-                    print(f"Error parsing date/time for request {r['request_id']}: {e}")
+                    logger.error(f"Error parsing date/time for request {r['request_id']}: {e}")
             
             valid_requests.append(r)
             
@@ -118,7 +118,7 @@ async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = De
         final_jobs = jobs[offset:offset+limit]
         return AvailableJobsResponse(status="success", jobs=final_jobs)
     except Exception as e:
-        print(f"Error fetching available jobs: {str(e)}")
+        logger.error(f"Error fetching available jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 import datetime
@@ -150,7 +150,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
                     if minutes_until_shift <= 45:
                         t45_status = "confirmed"
                 except Exception as e:
-                    print(f"Error parsing date for accept_job bypass: {e}")
+                    logger.error(f"Error parsing date for accept_job bypass: {e}")
         else:
             raise HTTPException(status_code=404, detail="Job not found")
 
@@ -174,7 +174,7 @@ async def accept_job(request_id: str, user_id: str = Depends(get_current_user)):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error accepting job: {str(e)}")
+        logger.error(f"Error accepting job: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/cancel/{request_id}")
@@ -205,7 +205,7 @@ async def cancel_job(request_id: str, user_id: str = Depends(get_current_user)):
         
         return {"status": "success", "message": "Job successfully cancelled"}
     except Exception as e:
-        print(f"Error cancelling job: {str(e)}")
+        logger.error(f"Error cancelling job: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/accepted", response_model=MyAcceptedJobsResponse)
@@ -276,7 +276,7 @@ async def get_accepted_jobs(limit: int = 20, offset: int = 0, time_filter: str =
         final_jobs = filtered_jobs[offset:offset+limit]
         return MyAcceptedJobsResponse(status="success", jobs=final_jobs)
     except Exception as e:
-        print(f"Error fetching accepted jobs: {str(e)}")
+        logger.error(f"Error fetching accepted jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 from pydantic import BaseModel
@@ -309,7 +309,7 @@ async def confirm_job_step(request_id: str, payload: ConfirmJobRequest, user_id:
         
         return {"status": "success", "message": f"Job step {step} confirmed"}
     except Exception as e:
-        print(f"Error confirming job step: {str(e)}")
+        logger.error(f"Error confirming job step: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 @router.get("/manager/requests")
 async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: str = None, user_id: str = Depends(get_current_user)):
@@ -457,7 +457,7 @@ async def get_manager_requests(limit: int = 20, offset: int = 0, time_filter: st
 
         return {"status": "success", "requests": requests, "store_name": store_name, "counts": counts, "has_more": has_more}
     except Exception as e:
-        print(f"Error fetching manager requests: {str(e)}")
+        logger.error(f"Error fetching manager requests: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 class CancelReasonRequest(BaseModel):
@@ -509,11 +509,13 @@ async def manager_cancel_and_replace(
         
         return {"status": "success", "message": "Worker cancelled and shift re-opened for urgent replacement."}
     except Exception as e:
-        print(f"Error in cancel_and_replace: {str(e)}")
+        logger.error(f"Error in cancel_and_replace: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 import random
 import string
+import logging
+logger = logging.getLogger(__name__)
 
 class VerifyOtpRequest(BaseModel):
     otp_code: str
@@ -570,7 +572,7 @@ async def generate_start_otp(request_id: str, user_id: str = Depends(get_current
                 except HTTPException:
                     raise
                 except Exception as e:
-                    print(f"Error parsing date in start-otp: {e}")
+                    logger.error(f"Error parsing date in start-otp: {e}")
 
         otp_code = ''.join(random.choices(string.digits, k=4))
         
@@ -591,7 +593,7 @@ async def generate_start_otp(request_id: str, user_id: str = Depends(get_current
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error generating OTP: {str(e)}")
+        logger.error(f"Error generating OTP: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/manager/jobs/assignment/{assignment_id}/verify-otp")
@@ -656,7 +658,7 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
                 except HTTPException:
                     raise
                 except Exception as e:
-                    print(f"Error parsing date in verify-otp: {e}")
+                    logger.error(f"Error parsing date in verify-otp: {e}")
 
         otp_resp = supabase.table("job_start_otps").select("id, otp_code, is_verified").eq("request_id", request_id).eq("worker_id", payload.worker_id).execute()
         
@@ -679,7 +681,7 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error verifying OTP: {str(e)}")
+        logger.error(f"Error verifying OTP: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/manager/jobs/assignment/{assignment_id}/complete")
@@ -780,7 +782,7 @@ async def manager_complete_job(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error completing job assignment: {str(e)}")
+        logger.error(f"Error completing job assignment: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/manager/jobs/assignment/{assignment_id}/extend")

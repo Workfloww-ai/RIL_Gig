@@ -22,9 +22,17 @@ def create_payment_record(job_assignment_id: str, worker_id: str, amount: float,
         "created_at": now_iso,
         "updated_at": now_iso
     }
-    result = supabase.table("payments").insert(payment_data).execute()
-    if result.data:
-        return result.data[0]
+    try:
+        result = supabase.table("payments").insert(payment_data).execute()
+        if result.data:
+            return result.data[0]
+    except Exception as e:
+        if "23505" in str(e) or "unique_payment_per_assignment" in str(e):
+            # Concurrency: another request inserted it just now
+            existing = supabase.table("payments").select("payment_id").eq("job_assignment_id", job_assignment_id).execute()
+            if existing.data:
+                return existing.data[0]
+        raise e
     return None
 
 def get_pending_payments(search: str = None, date_from: str = None, date_to: str = None, status: str = 'pending', page: int = 1, page_size: int = 20):

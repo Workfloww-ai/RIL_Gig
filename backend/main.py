@@ -36,44 +36,77 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from utils.logger import log_error_to_supabase
 
+from fastapi.exceptions import RequestValidationError
+from fastapi import HTTPException
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    # Log 4xx/5xx to Supabase if desired, or let middleware handle the generic log
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error_type": "HTTPException",
+            "message": exc.detail,
+            "path": request.url.path
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "error_type": "ValidationError",
+            "message": "Invalid request parameters",
+            "details": exc.errors(),
+            "path": request.url.path
+        }
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_detail = f"{str(exc)}\n{traceback.format_exc()}"
+    print(f"[CRITICAL 500] {request.method} {request.url.path}: {error_detail}")
+    
+    # Log the crash to Supabase asynchronously
+    asyncio.create_task(log_error_to_supabase(
+        request=request, 
+        status_code=500, 
+        error_message=str(exc)
+    ))
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error_type": "InternalServerError",
+            "message": "An unexpected error occurred. The incident has been logged.",
+            "path": request.url.path
+        }
+    )
+
 @app.middleware("http")
 async def log_requests_and_errors(request: Request, call_next):
     start_time = time.time()
-    try:
-        response = await call_next(request)
-        process_time = time.time() - start_time
+    
+    # Execute request
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    
+    if request.url.path.startswith("/api/tracking"):
+        print(f"[Observability] {request.method} {request.url.path} - Status {response.status_code} - {process_time*1000:.2f}ms")
         
-        if request.url.path.startswith("/api/tracking"):
-            print(f"[Observability] {request.method} {request.url.path} - Status {response.status_code} - {process_time*1000:.2f}ms")
-            
-        # If the request failed (4xx or 5xx), log it asynchronously to Supabase
-        if response.status_code >= 400:
-            asyncio.create_task(log_error_to_supabase(
-                request=request, 
-                status_code=response.status_code, 
-                error_message=f"HTTP Error {response.status_code}"
-            ))
-            
-        return response
-        
-    except Exception as exc:
-        # Catch unhandled server crashes (500 errors)
-        process_time = time.time() - start_time
-        error_detail = f"{str(exc)}\n{traceback.format_exc()}"
-        print(f"[CRITICAL 500] {request.method} {request.url.path}: {error_detail}")
-        
-        # Log the crash to Supabase asynchronously
+    # Log non-500 HTTP errors to Supabase (500s are handled by the global exception handler)
+    if 400 <= response.status_code < 500:
         asyncio.create_task(log_error_to_supabase(
             request=request, 
-            status_code=500, 
-            error_message=str(exc)
+            status_code=response.status_code, 
+            error_message=f"HTTP Error {response.status_code}"
         ))
         
-        # Return a safe error response to the user
-        return JSONResponse(
-            status_code=500, 
-            content={"detail": "Internal Server Error. The incident has been logged."}
-        )
+    return response
 
 scheduler = BackgroundScheduler()
 
@@ -100,14 +133,14 @@ def shutdown_scheduler():
 
 
 # Configure CORS
-# allowed_origins = os.getenv(
-#     "ALLOWED_ORIGINS", 
-#     "http://localhost:3000,http://localhost:8081,http://[IP_ADDRESS]"
-# ).split(",")
+allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:3000,http://localhost:8081"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

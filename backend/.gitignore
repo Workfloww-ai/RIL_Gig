@@ -40,3 +40,6 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+*.log
+eta_error.log

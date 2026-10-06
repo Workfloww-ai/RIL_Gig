@@ -19,7 +19,7 @@ async def process_eta_queue():
             payload_str = await client.lpop("eta_calculation_queue")
             
             if not payload_str:
-                await asyncio.sleep(1)
+                await asyncio.sleep(60)  # Polling every 1 minute instead of 1 second
                 continue
                 
             payload = json.loads(payload_str)
@@ -106,6 +106,6 @@ async def process_eta_queue():
         except Exception as e:
             print(f"[ETA Worker] Error processing ETA queue: {e}")
             import traceback
-            with open("eta_error.log", "a") as f:
-                f.write(f"Error: {e}\n{traceback.format_exc()}\n")
-            await asyncio.sleep(1) # Prevent tight loop on error
+            # with open("eta_error.log", "a") as f:
+            #     f.write(f"Error: {e}\n{traceback.format_exc()}\n")
+            await asyncio.sleep(60) # Prevent tight loop on error

@@ -15,6 +15,18 @@ import hmac
 import hashlib
 from utils.limiter import limiter
 from datetime import datetime, timedelta, timezone
+import uuid
+
+def get_secure_file_extension(file_bytes: bytes) -> str:
+    """Returns the true file extension by verifying magic bytes, or raises ValueError."""
+    if file_bytes.startswith(b'\xff\xd8\xff'):
+        return 'jpg'
+    elif file_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'png'
+    elif file_bytes.startswith(b'%PDF-'):
+        return 'pdf'
+    else:
+        raise ValueError("Invalid file signature. File may be malicious or unsupported.")
 
 def hash_otp(otp: str) -> str:
     """Creates an HMAC-SHA256 hash of the OTP to prevent trivial brute force."""
@@ -79,7 +91,7 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
             if user_doc.data:
                 user_data["profile_pic_url"] = user_doc.data[0]["doc_url"]
     except Exception as e:
-        print(f"Error fetching profile pic: {e}")
+        logger.error(f"Error fetching profile pic: {e}")
         
     return user_data
 
@@ -103,13 +115,24 @@ async def update_profile_pic(file: UploadFile = File(...), user_id: str = Depend
     doc_id = doc_type_resp.data[0]["doc_id"]
     
     file_bytes = await file.read()
-    file_path = f"users/{user_id}/profile_pic_{file.filename}"
+    
+    # 1. Verify Magic Bytes
+    try:
+        true_ext = get_secure_file_extension(file_bytes)
+        if true_ext not in ["jpg", "png"]:
+            raise HTTPException(status_code=400, detail="Invalid file signature for a profile picture. Allowed types: JPEG, JPG, PNG.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    # 2. Generate secure random filename
+    secure_filename = f"profile_pic_{uuid.uuid4().hex}.{true_ext}"
+    file_path = f"users/{user_id}/{secure_filename}"
     
     try:
         supabase.storage.from_("documents").upload(
             file_path, 
             file_bytes, 
-            file_options={"upsert": "true"}
+            file_options={"upsert": "true", "content-type": f"image/{'jpeg' if true_ext == 'jpg' else 'png'}"}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Storage upload failed: {str(e)}")
@@ -182,7 +205,7 @@ async def get_my_stats(month: str = None, user_id: str = Depends(get_current_use
             "rating": 5.0
         }
     except Exception as e:
-        print(f"Error fetching stats: {str(e)}")
+        logger.error(f"Error fetching stats: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # 1. POST /auth/signup
@@ -257,13 +280,24 @@ async def upload_documents(
             doc_id = doc_type_resp.data[0]["doc_id"]
             
             file_bytes = await file.read()
-            file_path = f"users/{user_id}/{file.filename}"
+            
+            # 1. Verify Magic Bytes
+            try:
+                true_ext = get_secure_file_extension(file_bytes)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+                
+            # 2. Generate secure random filename
+            secure_filename = f"{uuid.uuid4().hex}.{true_ext}"
+            file_path = f"users/{user_id}/{secure_filename}"
+            
+            content_type = "application/pdf" if true_ext == "pdf" else f"image/{'jpeg' if true_ext == 'jpg' else 'png'}"
             
             try:
                 supabase.storage.from_("documents").upload(
                     file_path, 
                     file_bytes, 
-                    file_options={"upsert": "true"}
+                    file_options={"upsert": "true", "content-type": content_type}
                 )
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Storage upload failed for {file.filename}: {str(e)}")
@@ -299,20 +333,25 @@ async def upload_documents(
 
 # 3. POST /auth/send-otp
 @router.post("/send-otp")
-@limiter.limit("5/minute")
 async def send_otp(request: Request, payload: SendOTPRequest):
     clean_mobile, with_plus = get_mobile_variations(payload.mobile_number)
     
+    # --- Supabase Rate Limiting for Phone Number ---
+    # Check DB limit: max 3 OTP requests per phone per 10 minutes (600 seconds)
+    ten_mins_ago = (datetime.now(timezone.utc) - timedelta(seconds=600)).isoformat()
+    try:
+        recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", ten_mins_ago).execute()
+        if len(recent_otps.data) >= 3:
+            raise HTTPException(status_code=429, detail="Phone rate limit exceeded: Maximum 3 OTP requests per 10 minutes.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Warning] Failed to check OTP rate limit in Supabase: {e}")
+
     # --- BYPASS FOR SPECIFIC USER FROM ENV ---
     test_mobile = os.getenv("TEST_MOBILE_NUMBER")
     if test_mobile and clean_mobile == test_mobile:
         return {"status": "otp_sent"}
-    # Check DB limit: max 3 OTPs per phone per 120 second (for testing)
-    onetwenty_sec_ago = (datetime.now(timezone.utc) - timedelta(seconds=120)).isoformat()
-    recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", onetwenty_sec_ago).execute()
-    
-    if len(recent_otps.data) >= 3:
-        raise HTTPException(status_code=429, detail="Maximum 3 OTPs allowed per 120 seconds. Please try again later.")
         
     # otp_code = "111111" 
     otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
@@ -433,9 +472,8 @@ async def verify_and_signup(
     test_otp = os.getenv("TEST_OTP", "").strip("'\"")
     
     is_bypass = False
-    if test_otp and otp == test_otp:
-        is_bypass = True
-    elif test_mobile and clean == test_mobile:
+    # Bypass ONLY if it's the test mobile number AND they entered the test OTP
+    if test_mobile and test_otp and clean == test_mobile and otp == test_otp:
         is_bypass = True
         
     if is_bypass:
@@ -552,13 +590,24 @@ async def verify_and_signup(
             
             doc_id = doc_type_resp.data[0]["doc_id"]
             file_bytes = await file.read()
-            file_path = f"users/{user_id}/{file.filename}"
+            
+            # 1. Verify Magic Bytes
+            try:
+                true_ext = get_secure_file_extension(file_bytes)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+                
+            # 2. Generate secure random filename
+            secure_filename = f"{uuid.uuid4().hex}.{true_ext}"
+            file_path = f"users/{user_id}/{secure_filename}"
+            
+            content_type = "application/pdf" if true_ext == "pdf" else f"image/{'jpeg' if true_ext == 'jpg' else 'png'}"
             
             try:
                 supabase.storage.from_("documents").upload(
                     file_path, 
                     file_bytes, 
-                    file_options={"upsert": "true"}
+                    file_options={"upsert": "true", "content-type": content_type}
                 )
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Storage upload failed for {file.filename}: {str(e)}")
