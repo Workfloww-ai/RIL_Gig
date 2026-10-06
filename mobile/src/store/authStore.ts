@@ -14,6 +14,8 @@ interface AuthState {
   setRole: (role: string) => void;
   setSelectedOrganizationId: (id: string | null) => void;
   logout: () => void;
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
 }
 
 // Custom storage adapter for SecureStore
@@ -37,12 +39,14 @@ export const useAuthStore = create<AuthState>()(
       userId: null,
       role: null,
       selectedOrganizationId: null,
+      _hasHydrated: false,
       setToken: (token) => set({ token }),
       setRefreshToken: (token) => set({ refreshToken: token }),
       setUserId: (id) => set({ userId: id }),
       setRole: (role) => set({ role }),
       setSelectedOrganizationId: (id) => set({ selectedOrganizationId: id }),
       logout: () => set({ token: null, refreshToken: null, userId: null, role: null, selectedOrganizationId: null }),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: 'auth-storage',
