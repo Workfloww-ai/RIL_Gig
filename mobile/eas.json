@@ -9,8 +9,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://sahyogi-backend-540529464663.asia-south2.run.app/api",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyBuyC6JNMwSLW17E-xgif_4JM60B5iKb2g"
+        "EXPO_PUBLIC_API_URL": "https://sahyogi-backend-540529464663.asia-south2.run.app/api"
       }
     },
     "development": {
@@ -19,8 +18,7 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://sahyogi-backend-540529464663.asia-south2.run.app/api",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyBuyC6JNMwSLW17E-xgif_4JM60B5iKb2g"
+        "EXPO_PUBLIC_API_URL": "https://sahyogi-backend-540529464663.asia-south2.run.app/api"
       }
     }
   },
