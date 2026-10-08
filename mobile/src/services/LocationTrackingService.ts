@@ -2,6 +2,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { apiClient } from '../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 const LOCATION_TASK_NAME = 'BACKGROUND_LOCATION_TASK';
 
@@ -55,8 +56,32 @@ export const LocationTrackingService = {
   async requestPermissions() {
     const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
     if (foregroundStatus === 'granted') {
-      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-      return backgroundStatus === 'granted';
+      const { status: existingBackgroundStatus } = await Location.getBackgroundPermissionsAsync();
+      if (existingBackgroundStatus === 'granted') {
+        return true;
+      }
+
+      return new Promise<boolean>((resolve) => {
+        Alert.alert(
+          "Background Location Required",
+          "Sahyogi collects location data to enable ETA tracking for store managers and verify your arrival at the job location, even when the app is closed or not in use.",
+          [
+            {
+              text: "Deny",
+              style: "cancel",
+              onPress: () => resolve(false)
+            },
+            {
+              text: "Accept",
+              onPress: async () => {
+                const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+                resolve(backgroundStatus === 'granted');
+              }
+            }
+          ],
+          { cancelable: false }
+        );
+      });
     }
     return false;
   },
