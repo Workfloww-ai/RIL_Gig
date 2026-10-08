@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: "Sahyogi",
     slug: "sahyogi",
-    version: "1.2.0",
+    version: "1.2.4",
     orientation: "portrait",
     icon: "./assets/images/newlogo.png",
     splash: {
@@ -16,7 +16,7 @@ module.exports = {
       icon: "./assets/images/newlogo.png"
     },
     android: {
-      versionCode: 4,
+      versionCode: 8,
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/newlogo.png",
@@ -31,11 +31,11 @@ module.exports = {
         }
       },
       permissions: [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
+        // "android.permission.ACCESS_COARSE_LOCATION",
+        // "android.permission.ACCESS_FINE_LOCATION",
+        // "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE"
+        // "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     web: {
@@ -55,15 +55,15 @@ module.exports = {
       "expo-video",
       "@react-native-community/datetimepicker",
       "expo-sharing",
-      [
-        "expo-location",
-        {
-          locationAlwaysAndWhenInUsePermission: "Allow Sahyogi to use your location to track your route during active jobs.",
-          locationAlwaysPermission: "Allow Sahyogi to track your location in the background so store managers can see your real-time ETA.",
-          isIosBackgroundLocationEnabled: true,
-          isAndroidBackgroundLocationEnabled: true
-        }
-      ],
+      // [
+      //   "expo-location",
+      //   {
+      //     locationAlwaysAndWhenInUsePermission: "Allow Sahyogi to use your location to track your route during active jobs.",
+      //     locationAlwaysPermission: "Allow Sahyogi to track your location in the background so store managers can see your real-time ETA.",
+      //     isIosBackgroundLocationEnabled: true,
+      //     isAndroidBackgroundLocationEnabled: true
+      //   }
+      // ],
       "expo-secure-store"
     ],
     experiments: {
