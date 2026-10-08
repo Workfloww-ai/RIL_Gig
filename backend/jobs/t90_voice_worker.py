@@ -20,7 +20,7 @@ from utils.hunar_ai import trigger_t90_voice_call
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("T90VoiceWorker")
 
-from tracking.redis_client import get_redis
+# from tracking.redis_client import get_redis
 
 async def process_t90_voice_calls():
     """
@@ -28,19 +28,19 @@ async def process_t90_voice_calls():
     for workers whose shift starts in approximately 90 minutes (between 60 and 95 mins).
     """
     # Distributed lock to prevent multiple API replicas from executing this simultaneously
-    try:
-        redis_client = await get_redis()
-        lock_key = "lock:t90_voice_worker"
-        # 110s TTL because the cron interval is 2 minutes (120s)
-        lock_acquired = await redis_client.set(lock_key, "locked", nx=True, ex=110)
-        if not lock_acquired:
-            logger.info("[T90VoiceWorker] Another replica is currently running the job. Skipping execution.")
-            return
-    except Exception as e:
-        logger.error(f"[T90VoiceWorker] Failed to acquire Redis lock: {e}")
-        # If Redis is down, we must skip or proceed? The requirement is to prevent duplication.
-        # If we skip, no calls happen. If we proceed, duplicates happen. Safe choice: return.
-        return
+    # try:
+    #     redis_client = await get_redis()
+    #     lock_key = "lock:t90_voice_worker"
+    #     # 110s TTL because the cron interval is 2 minutes (120s)
+    #     lock_acquired = await redis_client.set(lock_key, "locked", nx=True, ex=110)
+    #     if not lock_acquired:
+    #         logger.info("[T90VoiceWorker] Another replica is currently running the job. Skipping execution.")
+    #         return
+    # except Exception as e:
+    #     logger.error(f"[T90VoiceWorker] Failed to acquire Redis lock: {e}")
+    #     # If Redis is down, we must skip or proceed? The requirement is to prevent duplication.
+    #     # If we skip, no calls happen. If we proceed, duplicates happen. Safe choice: return.
+    #     return
 
     IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
     now = datetime.datetime.now(IST)

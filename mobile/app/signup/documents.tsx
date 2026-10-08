@@ -29,9 +29,9 @@ export default function DocumentsScreen() {
   const [consentAadhar, setConsentAadhar] = useState(false);
   const [consentPan, setConsentPan] = useState(false);
   const [consentPrivacy, setConsentPrivacy] = useState(false);
-  const [consentLocation, setConsentLocation] = useState(false);
+  // const [consentLocation, setConsentLocation] = useState(false);
 
-  const allConsented = consentAadhar && consentPan && consentPrivacy && consentLocation;
+  const allConsented = consentAadhar && consentPan && consentPrivacy; // && consentLocation;
 
   const requiredDocs = [
     { key: 'Aadhar Card', name: 'Aadhar Card', placeholder: 'Aadhar Number' },
@@ -264,7 +264,7 @@ export default function DocumentsScreen() {
                   </View>
                 </TouchableOpacity>
               </View>
-              <View className="mb-2">
+              {/* <View className="mb-2">
                 <TouchableOpacity onPress={() => setConsentLocation(!consentLocation)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
                   <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentLocation ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
                     {consentLocation && <Text className="text-white text-xs font-bold">✓</Text>}
@@ -273,7 +273,7 @@ export default function DocumentsScreen() {
                     <Text className="text-slate text-base">By checking this box, I authorize SahYogi to collect and process my <Text className="font-bold">Location</Text> data for assignment and tracking purposes.</Text>
                   </View>
                 </TouchableOpacity>
-              </View>
+              </View> */}
               <View className="mb-2">
                 <TouchableOpacity onPress={() => setConsentPrivacy(!consentPrivacy)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
                   <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPrivacy ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>

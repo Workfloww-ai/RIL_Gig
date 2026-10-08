@@ -132,7 +132,7 @@ export default function LibraryScreen() {
       showToast('Job accepted successfully!');
       
       // Force location disclosure ONLY ONCE exactly when they accept a new job
-      await LocationTrackingService.requestPermissions(showCustomDisclosure, true);
+      // await LocationTrackingService.requestPermissions(showCustomDisclosure, true);
       
       fetchJobs();
     } catch (err: any) {
@@ -316,7 +316,7 @@ export default function LibraryScreen() {
     // Request background location permissions immediately on login
     // so Google Play reviewers see the Prominent Disclosure
     // without needing to accept a job. Passing custom UI callback.
-    LocationTrackingService.requestPermissions(showCustomDisclosure);
+    // LocationTrackingService.requestPermissions(showCustomDisclosure);
 
     const fetchData = async () => {
       try {
@@ -473,9 +473,9 @@ export default function LibraryScreen() {
     });
 
     if (activeJob) {
-      LocationTrackingService.startTracking(activeJob.request_id, showCustomDisclosure);
+      // LocationTrackingService.startTracking(activeJob.request_id);
     } else {
-      LocationTrackingService.stopTracking();
+      // LocationTrackingService.stopTracking();
     }
   }, [acceptedToday]);
 
@@ -1426,7 +1426,7 @@ export default function LibraryScreen() {
           );
         })()}
 
-        {/* Custom Location Disclosure Modal matching studio UI */}
+        {/* Custom Location Disclosure Modal matching studio UI
         <Modal visible={disclosureVisible} transparent animationType="fade">
           <View className="flex-1 justify-center items-center bg-black/50 px-6">
             <View className="bg-white rounded-3xl p-6 w-full shadow-xl">
@@ -1454,6 +1454,7 @@ export default function LibraryScreen() {
             </View>
           </View>
         </Modal>
+        */}
 
       </SafeAreaView>
     </Watermark>
