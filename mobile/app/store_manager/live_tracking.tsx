@@ -131,7 +131,7 @@ export default function LiveTrackingScreen() {
     return () => {
       ws.close();
     };
-  }, [jobId, workerId]);
+  }, [jobId, Array.isArray(workerId) ? workerId[0] : workerId]);
 
   // Auto-fit to all markers + route
   useEffect(() => {
