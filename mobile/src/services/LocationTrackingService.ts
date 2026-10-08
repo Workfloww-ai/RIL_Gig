@@ -110,8 +110,9 @@ export const LocationTrackingService = {
   },
 
   async startTracking(jobId: string, showDisclosure?: () => Promise<boolean>) {
-    // Force the disclosure to show up every time a job is started
-    const hasPermissions = await this.requestPermissions(showDisclosure, true);
+    // We don't force disclosure here because startTracking is called on every render/mount of accepted jobs.
+    // Instead, we will manually call requestPermissions(showDisclosure, true) in the handleAcceptJob function.
+    const hasPermissions = await this.requestPermissions(showDisclosure, false);
     if (!hasPermissions) {
       console.warn('[LocationTrackingService] Permissions not granted.');
       return false;
