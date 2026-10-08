@@ -45,6 +45,24 @@ export default function LibraryScreen() {
     isError: false
   });
 
+  const [disclosureVisible, setDisclosureVisible] = useState(false);
+  const disclosureResolver = React.useRef<((value: boolean) => void) | null>(null);
+
+  const showCustomDisclosure = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      disclosureResolver.current = resolve;
+      setDisclosureVisible(true);
+    });
+  };
+
+  const handleDisclosureSelection = (agreed: boolean) => {
+    setDisclosureVisible(false);
+    if (disclosureResolver.current) {
+      disclosureResolver.current(agreed);
+      disclosureResolver.current = null;
+    }
+  };
+
   const certificateRef = React.useRef<any>(null);
 
   const shareCertificate = async () => {
@@ -291,6 +309,11 @@ export default function LibraryScreen() {
   );
 
   useEffect(() => {
+    // Request background location permissions immediately on login
+    // so Google Play reviewers see the Prominent Disclosure
+    // without needing to accept a job. Passing custom UI callback.
+    LocationTrackingService.requestPermissions(showCustomDisclosure);
+
     const fetchData = async () => {
       try {
         const [modulesRes, profileRes] = await Promise.all([
@@ -446,7 +469,7 @@ export default function LibraryScreen() {
     });
 
     if (activeJob) {
-      LocationTrackingService.startTracking(activeJob.request_id);
+      LocationTrackingService.startTracking(activeJob.request_id, showCustomDisclosure);
     } else {
       LocationTrackingService.stopTracking();
     }
@@ -1398,6 +1421,35 @@ export default function LibraryScreen() {
             </Modal>
           );
         })()}
+
+        {/* Custom Location Disclosure Modal matching studio UI */}
+        <Modal visible={disclosureVisible} transparent animationType="fade">
+          <View className="flex-1 justify-center items-center bg-black/50 px-6">
+            <View className="bg-white rounded-3xl p-6 w-full shadow-xl">
+              <View className="flex-row items-center mb-4">
+                <Feather name="map-pin" size={24} color="#0B5B31" className="mr-3" />
+                <Text className="text-xl font-extrabold text-gray-900 ml-2">Background Location</Text>
+              </View>
+              <Text className="text-sage text-base mb-6 leading-relaxed font-medium">
+                SahYogi collects location data to enable real-time ETA tracking for store managers even when the app is closed or not in use.
+              </Text>
+              <View className="flex-row justify-end space-x-3">
+                <TouchableOpacity
+                  onPress={() => handleDisclosureSelection(false)}
+                  className="px-6 py-3 rounded-xl bg-gray-100"
+                >
+                  <Text className="text-gray-700 font-bold text-base">Deny</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleDisclosureSelection(true)}
+                  className="px-6 py-3 rounded-xl bg-[#0B5B31] ml-3 shadow-md shadow-green-900/20"
+                >
+                  <Text className="text-white font-bold text-base">Accept</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
       </SafeAreaView>
     </Watermark>
