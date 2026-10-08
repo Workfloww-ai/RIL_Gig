@@ -469,7 +469,7 @@ export default function LibraryScreen() {
     });
 
     if (activeJob) {
-      LocationTrackingService.startTracking(activeJob.request_id);
+      LocationTrackingService.startTracking(activeJob.request_id, showCustomDisclosure);
     } else {
       LocationTrackingService.stopTracking();
     }
