@@ -53,13 +53,13 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 });
 
 export const LocationTrackingService = {
-  async requestPermissions(showDisclosure?: () => Promise<boolean>) {
+  async requestPermissions(showDisclosure?: () => Promise<boolean>, forceDisclosure: boolean = false) {
     console.log('[LocationTrackingService] Checking current permissions...');
     const { status: currentBackgroundStatus } = await Location.getBackgroundPermissionsAsync();
     console.log('[LocationTrackingService] Current Background Status:', currentBackgroundStatus);
     
-    // Show prominent disclosure ONLY if background permission is not already granted
-    if (currentBackgroundStatus !== 'granted') {
+    // Show prominent disclosure if not granted, OR if explicitly forced (like when accepting a job)
+    if (currentBackgroundStatus !== 'granted' || forceDisclosure) {
       console.log('[LocationTrackingService] Showing Prominent Disclosure Alert...');
       
       let userAgreed = false;
@@ -90,9 +90,16 @@ export const LocationTrackingService = {
     const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
     
     if (foregroundStatus === 'granted') {
-      if (currentBackgroundStatus === 'granted') {
+      if (currentBackgroundStatus === 'granted' && !forceDisclosure) {
+        // We already checked and it was granted, but since we forced disclosure, 
+        // we still request to ensure the flow is complete, but it's safe to return true here 
+        // if we just wanted the consent. Actually, let's just return true if granted.
         return true;
       }
+      // Even if forceDisclosure is true, if currentBackgroundStatus is granted, 
+      // OS won't show anything, but we can safely return true.
+      if (currentBackgroundStatus === 'granted') return true;
+
       console.log('[LocationTrackingService] Requesting Background Permission...');
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
       return backgroundStatus === 'granted';
@@ -102,8 +109,10 @@ export const LocationTrackingService = {
     return false;
   },
 
-  async startTracking(jobId: string) {
-    const hasPermissions = await this.requestPermissions();
+  async startTracking(jobId: string, showDisclosure?: () => Promise<boolean>) {
+    // We don't force disclosure here because startTracking is called on every render/mount of accepted jobs.
+    // Instead, we will manually call requestPermissions(showDisclosure, true) in the handleAcceptJob function.
+    const hasPermissions = await this.requestPermissions(showDisclosure, false);
     if (!hasPermissions) {
       console.warn('[LocationTrackingService] Permissions not granted.');
       return false;

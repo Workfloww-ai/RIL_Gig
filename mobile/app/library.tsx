@@ -130,6 +130,10 @@ export default function LibraryScreen() {
     try {
       await apiClient.post(`/jobs/accept/${request_id}`);
       showToast('Job accepted successfully!');
+      
+      // Force location disclosure ONLY ONCE exactly when they accept a new job
+      await LocationTrackingService.requestPermissions(showCustomDisclosure, true);
+      
       fetchJobs();
     } catch (err: any) {
       showToast(err.response?.data?.detail || 'Failed to accept job');
