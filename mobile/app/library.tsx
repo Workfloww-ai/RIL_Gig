@@ -132,7 +132,7 @@ export default function LibraryScreen() {
       showToast('Job accepted successfully!');
       
       // Force location disclosure ONLY ONCE exactly when they accept a new job
-      await LocationTrackingService.requestPermissions(showCustomDisclosure, true);
+      // await LocationTrackingService.requestPermissions(showCustomDisclosure, true);
       
       fetchJobs();
     } catch (err: any) {
