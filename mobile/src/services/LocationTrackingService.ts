@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { Alert } from 'react-native';
 import * as TaskManager from 'expo-task-manager';
 import { apiClient } from '../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -52,12 +53,52 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 });
 
 export const LocationTrackingService = {
-  async requestPermissions() {
+  async requestPermissions(showDisclosure?: () => Promise<boolean>) {
+    console.log('[LocationTrackingService] Checking current permissions...');
+    const { status: currentBackgroundStatus } = await Location.getBackgroundPermissionsAsync();
+    console.log('[LocationTrackingService] Current Background Status:', currentBackgroundStatus);
+    
+    // Show prominent disclosure ONLY if background permission is not already granted
+    if (currentBackgroundStatus !== 'granted') {
+      console.log('[LocationTrackingService] Showing Prominent Disclosure Alert...');
+      
+      let userAgreed = false;
+      if (showDisclosure) {
+        userAgreed = await showDisclosure();
+      } else {
+        userAgreed = await new Promise((resolve) => {
+          Alert.alert(
+            "Background Location Requirement",
+            "SahYogi collects location data to enable real-time ETA tracking for store managers even when the app is closed or not in use.",
+            [
+              { text: "Deny", onPress: () => resolve(false), style: "cancel" },
+              { text: "Accept", onPress: () => resolve(true) }
+            ],
+            { cancelable: false }
+          );
+        });
+      }
+
+      if (!userAgreed) {
+        console.log('[LocationTrackingService] User denied prominent disclosure.');
+        return false;
+      }
+    }
+
+    // Now request Foreground, then Background
+    console.log('[LocationTrackingService] Requesting Foreground Permission...');
     const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+    
     if (foregroundStatus === 'granted') {
+      if (currentBackgroundStatus === 'granted') {
+        return true;
+      }
+      console.log('[LocationTrackingService] Requesting Background Permission...');
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
       return backgroundStatus === 'granted';
     }
+    
+    console.log('[LocationTrackingService] Foreground permission denied.');
     return false;
   },
 
