@@ -67,6 +67,9 @@ async def calculate_eta_google(origin_lat: float, origin_lng: float, dest_lat: f
                 "duration_seconds": duration_seconds,
                 "polyline": polyline
             }
+        except httpx.HTTPStatusError as e:
+            print(f"[ETA Service] HTTP Error {e.response.status_code}: {e.response.text}")
+            return None
         except Exception as e:
             print(f"[ETA Service] Error calling Google Routes API: {e}")
             return None
