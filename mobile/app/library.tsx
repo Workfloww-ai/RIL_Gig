@@ -441,7 +441,7 @@ export default function LibraryScreen() {
 
   // Background Location Tracking Effect
   useEffect(() => {
-    // Find the first job that is 'started' and not yet ended
+    // Find the first job that is 'accepted' and within the tracking window
     const activeJob = acceptedToday.find((job: any) => {
       // ONLY track when they are commuting. Stop immediately when OTP is verified (status becomes 'started').
       if (job.assignment_status !== 'accepted') return false;
@@ -452,8 +452,8 @@ export default function LibraryScreen() {
         const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
         const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
         
-        // Tracking starts 24 hours before the shift for testing purposes
-        const trackingStartDateTime = new Date(shiftDateTime.getTime() - 24 * 60 * 60 * 1000);
+        // Tracking starts 15 minutes before the shift
+        const trackingStartDateTime = new Date(shiftDateTime.getTime() - 15 * 60 * 1000);
         
         const now = new Date();
         
@@ -473,6 +473,21 @@ export default function LibraryScreen() {
     } else {
       LocationTrackingService.stopTracking();
     }
+  }, [acceptedToday]);
+
+  // Poll to detect 15-min tracking window entrance and OTP verification status changes
+  useEffect(() => {
+    // If worker has any accepted job today, check periodically so:
+    // 1) Tracking starts right as the 15-min window arrives even if user stays on the screen
+    // 2) Tracking stops as soon as the store manager verifies OTP (status becomes 'started')
+    const hasTodayAcceptedJobs = acceptedToday.some((job: any) => job.assignment_status === 'accepted');
+    if (!hasTodayAcceptedJobs) return;
+
+    const pollInterval = setInterval(() => {
+      fetchAcceptedCategory('today');
+    }, 20000); // Check every 20 seconds
+
+    return () => clearInterval(pollInterval);
   }, [acceptedToday]);
 
   const totalAcceptedCount = acceptedToday.length + acceptedUpcoming.length + acceptedPast.length;

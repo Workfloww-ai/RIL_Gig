@@ -34,7 +34,8 @@ export default function LoginPage() {
       localStorage.setItem('finance_token', token);
       router.push('/finance');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid login credentials. Please try again.');
+      const msg = err.response?.data?.message || err.response?.data?.detail || (err.message === 'Network Error' ? 'Network or CORS error connecting to backend. Please check connection.' : err.message) || 'Invalid login credentials. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }

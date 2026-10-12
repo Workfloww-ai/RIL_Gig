@@ -12,7 +12,7 @@ load_dotenv()
 import asyncio
 import datetime
 import logging
-from db.jobs_db import get_pending_t90_call_assignments, update_t90_call_status
+from db.jobs_db import get_pending_t90_call_assignments, update_t90_call_status, claim_t90_assignment
 from utils.hunar_ai import trigger_t90_voice_call
 
 
@@ -20,28 +20,12 @@ from utils.hunar_ai import trigger_t90_voice_call
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("T90VoiceWorker")
 
-from tracking.redis_client import get_redis
-
 async def process_t90_voice_calls():
     """
     Evaluates all active worker assignments and triggers Hunar.ai voice calls
     for workers whose shift starts in approximately 90 minutes (between 60 and 95 mins).
+    Deduplication is handled at the DB level via atomic claim per assignment.
     """
-    # Distributed lock to prevent multiple API replicas from executing this simultaneously
-    try:
-        redis_client = await get_redis()
-        lock_key = "lock:t90_voice_worker"
-        # 110s TTL because the cron interval is 2 minutes (120s)
-        lock_acquired = await redis_client.set(lock_key, "locked", nx=True, ex=110)
-        if not lock_acquired:
-            logger.info("[T90VoiceWorker] Another replica is currently running the job. Skipping execution.")
-            return
-    except Exception as e:
-        logger.error(f"[T90VoiceWorker] Failed to acquire Redis lock: {e}")
-        # If Redis is down, we must skip or proceed? The requirement is to prevent duplication.
-        # If we skip, no calls happen. If we proceed, duplicates happen. Safe choice: return.
-        return
-
     IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
     now = datetime.datetime.now(IST)
     logger.info(f"[T90VoiceWorker] Checking DB at local system time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -105,6 +89,12 @@ async def process_t90_voice_calls():
                     if not mobile_number:
                         logger.warning(f"[T90VoiceWorker] No mobile number found for assignment {assignment_id}")
                         continue
+
+                    # Atomically claim this assignment at DB level to prevent duplicate calls across replicas
+                    claimed = claim_t90_assignment(assignment_id)
+                    if not claimed:
+                        logger.info(f"[T90VoiceWorker] Assignment {assignment_id} already claimed by another replica. Skipping.")
+                        continue
                         
                     masked_number = f"+91 ****{mobile_number[-4:]}" if mobile_number and len(mobile_number) >= 4 else "****"
                     masked_name = " ".join([p[0] + "***" for p in worker_name.split()])
@@ -112,9 +102,6 @@ async def process_t90_voice_calls():
                         f"[T90VoiceWorker] Triggering T-90 call for assignment {assignment_id} "
                         f"to {masked_name} ({masked_number}). Shift in {minutes_until_shift:.1f} mins."
                     )
-                    
-                    # Mark status as call_initiated first to avoid race conditions
-                    update_t90_call_status(assignment_id, new_status="call_initiated")
                     
                     # Trigger Hunar AI call
                     result = await trigger_t90_voice_call(

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import * as SecureStore from 'expo-secure-store';
 
 // Update this to your machine's local IP (e.g., 192.168.1.5) if testing on a physical device.
 // 10.0.2.2 works for Android Emulator. localhost works for iOS Simulator.
@@ -18,7 +19,7 @@ export const apiClient = axios.create({
 
 // Add a request interceptor to automatically attach the JWT token
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Automatically prepend /api if it's missing
     if (config.url) {
       if (config.url.startsWith('/') && !config.url.startsWith('/api')) {
@@ -28,7 +29,30 @@ apiClient.interceptors.request.use(
       }
     }
 
-    const token = useAuthStore.getState().token;
+    let token = useAuthStore.getState().token;
+
+    // Headless background tasks (like background location) might run before Zustand is hydrated from storage
+    if (!token) {
+      try {
+        const raw = await SecureStore.getItemAsync('auth-storage');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          token = parsed?.state?.token;
+          if (token) {
+            useAuthStore.getState().setToken(token);
+            if (parsed?.state?.refreshToken) {
+              useAuthStore.getState().setRefreshToken(parsed.state.refreshToken);
+            }
+            if (parsed?.state?.userId) {
+              useAuthStore.getState().setUserId(parsed.state.userId);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[Network] SecureStore fallback error:', err);
+      }
+    }
+
     if (token) {
       console.log(`[Network] Attaching JWT Token to ${config.url}`);
       config.headers.Authorization = `Bearer ${token}`;
@@ -84,7 +108,19 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
       
       try {
-        const { refreshToken, setToken, logout } = useAuthStore.getState();
+        let { refreshToken } = useAuthStore.getState();
+        const { setToken, logout } = useAuthStore.getState();
+
+        if (!refreshToken) {
+          try {
+            const raw = await SecureStore.getItemAsync('auth-storage');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              refreshToken = parsed?.state?.refreshToken;
+            }
+          } catch (_) {}
+        }
+
         console.log("[Interceptor] 401 caught. Refresh Token in store:", refreshToken ? "EXISTS" : "MISSING");
         
         if (!refreshToken) {

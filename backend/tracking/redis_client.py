@@ -55,6 +55,9 @@ async def update_worker_location(worker_id: str, job_id: str, lat: float, lng: f
     # Set with 120 seconds TTL (stale connection detection)
     await client.setex(key, 120, json.dumps(data))
     
+    # Store latest location by job_id for O(1) direct websocket/state lookup
+    await client.setex(f"job:{job_id}:latest_location", 120, json.dumps({"worker_id": worker_id, **data}))
+
     # Push to persistence queue (List) for bulk inserting into DB later
     await client.lpush("gps_persistence_queue", json.dumps({"worker_id": worker_id, **data}))
     
@@ -69,3 +72,21 @@ async def get_worker_location(worker_id: str) -> Optional[dict]:
     if data:
         return json.loads(data)
     return None
+
+async def clear_tracking_keys(worker_id: Optional[str] = None, job_id: Optional[str] = None):
+    """Clears location and ETA keys for stopped tracking sessions."""
+    try:
+        client = await get_redis()
+        keys_to_del = []
+        if worker_id:
+            keys_to_del.append(f"worker:{worker_id}:location")
+        if job_id:
+            keys_to_del.extend([
+                f"job:{job_id}:latest_location",
+                f"job:{job_id}:latest_eta",
+                f"job:{job_id}:last_eta_calc_time"
+            ])
+        if keys_to_del:
+            await client.delete(*keys_to_del)
+    except Exception as e:
+        print(f"[Redis] Error clearing tracking keys: {e}")
