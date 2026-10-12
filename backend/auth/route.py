@@ -972,17 +972,29 @@ async def kyc_aadhaar_send_otp(payload: AadhaarSendOTPRequest):
         "aadhaar_number": payload.aadhaar_number
     }
     
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=data)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            try:
-                error_data = response.json()
-                error_msg = error_data.get("message") or "Verification failed"
-            except:
-                error_msg = response.text
-            raise HTTPException(status_code=400, detail=error_msg)
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(url, headers=headers, json=data)
+            if response.status_code == 200:
+                res_data = response.json()
+                print(f"[CASHFREE AADHAAR OTP SUCCESS] Mobile (Signup/User): {payload.mobile_number or 'Not provided'} | Aadhaar: {payload.aadhaar_number} | Cashfree/UIDAI Response: {json.dumps(res_data)}")
+                return res_data
+            else:
+                print(f"[CASHFREE AADHAAR OTP ERROR] Mobile (Signup/User): {payload.mobile_number or 'Not provided'} | Aadhaar: {payload.aadhaar_number} | Status: {response.status_code} | URL: {url} | Body: {response.text}")
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get("message") or error_data.get("subCode") or "Verification failed"
+                except:
+                    error_msg = response.text
+                raise HTTPException(status_code=400, detail=f"Cashfree ({response.status_code}): {error_msg}")
+    except httpx.TimeoutException:
+        print(f"[CASHFREE AADHAAR OTP TIMEOUT] Request timed out contacting Cashfree/UIDAI at {url}")
+        raise HTTPException(status_code=504, detail="UIDAI / Cashfree service timed out. Please try again in a few moments.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CASHFREE AADHAAR OTP EXCEPTION] {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Aadhaar OTP request error: {str(e)}")
 
 @router.post("/kyc/aadhaar/verify-otp")
 async def kyc_aadhaar_verify_otp(payload: AadhaarVerifyOTPRequest):
@@ -1002,17 +1014,28 @@ async def kyc_aadhaar_verify_otp(payload: AadhaarVerifyOTPRequest):
         "ref_id": payload.ref_id
     }
     
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=data)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            try:
-                error_data = response.json()
-                error_msg = error_data.get("message") or "OTP Verification failed"
-            except:
-                error_msg = response.text
-            raise HTTPException(status_code=400, detail=error_msg)
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(url, headers=headers, json=data)
+            if response.status_code == 200:
+                print(f"[CASHFREE AADHAAR VERIFY SUCCESS] Status: {response.status_code} | Body: {response.text}")
+                return response.json()
+            else:
+                print(f"[CASHFREE AADHAAR VERIFY ERROR] Status: {response.status_code} | URL: {url} | Body: {response.text}")
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get("message") or error_data.get("subCode") or "OTP Verification failed"
+                except:
+                    error_msg = response.text
+                raise HTTPException(status_code=400, detail=f"Cashfree ({response.status_code}): {error_msg}")
+    except httpx.TimeoutException:
+        print(f"[CASHFREE AADHAAR VERIFY TIMEOUT] Request timed out contacting Cashfree/UIDAI at {url}")
+        raise HTTPException(status_code=504, detail="UIDAI verification service timed out while validating OTP. Please retry.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CASHFREE AADHAAR VERIFY EXCEPTION] {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Aadhaar verification error: {str(e)}")
 
 @router.post("/kyc/pan/verify")
 async def kyc_pan_verify(payload: PanVerifyRequest):
@@ -1033,17 +1056,29 @@ async def kyc_pan_verify(payload: PanVerifyRequest):
     if payload.name:
         data["name"] = payload.name.strip()
         
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=data)
-        if response.status_code == 200:
-            res_json = response.json()
-            if res_json.get("valid") is False or res_json.get("status") == "INVALID":
-                raise HTTPException(status_code=400, detail=res_json.get("message") or "Invalid PAN Card.")
-            return res_json
-        else:
-            try:
-                error_data = response.json()
-                error_msg = error_data.get("message") or "PAN verification failed"
-            except:
-                error_msg = response.text
-            raise HTTPException(status_code=400, detail=error_msg)
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(url, headers=headers, json=data)
+            if response.status_code == 200:
+                res_json = response.json()
+                print(f"[CASHFREE PAN SUCCESS] Status: {response.status_code} | Body: {response.text}")
+                if res_json.get("valid") is False or res_json.get("status") == "INVALID":
+                    raise HTTPException(status_code=400, detail=res_json.get("message") or "Invalid PAN Card.")
+                return res_json
+            else:
+                print(f"[CASHFREE PAN ERROR] Status: {response.status_code} | URL: {url} | Body: {response.text}")
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get("message") or error_data.get("subCode") or "PAN verification failed"
+                except:
+                    error_msg = response.text
+                raise HTTPException(status_code=400, detail=f"Cashfree ({response.status_code}): {error_msg}")
+    except httpx.TimeoutException:
+        print(f"[CASHFREE PAN TIMEOUT] Request timed out contacting Cashfree at {url}")
+        raise HTTPException(status_code=504, detail="Cashfree PAN verification timed out. Please retry.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[CASHFREE PAN EXCEPTION] {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PAN verification error: {str(e)}")
+

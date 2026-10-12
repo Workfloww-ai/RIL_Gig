@@ -79,7 +79,10 @@ export default function DocumentsScreen() {
     setAadhaarLoading(true);
     setErrors(prev => ({ ...prev, aadhaar: '' }));
     try {
-      const response = await apiClient.post('/auth/kyc/aadhaar/send-otp', { aadhaar_number: clean });
+      const response = await apiClient.post('/auth/kyc/aadhaar/send-otp', { 
+        aadhaar_number: clean,
+        mobile_number: mobile || ''
+      });
       setAadhaarRefId(response.data.ref_id);
       setShowAadhaarOtpInput(true);
       Alert.alert('OTP Sent', 'An OTP has been sent to your Aadhaar-registered mobile number.');

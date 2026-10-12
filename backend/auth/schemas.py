@@ -57,6 +57,8 @@ from typing import Optional
 
 class AadhaarSendOTPRequest(BaseModel):
     aadhaar_number: str
+    mobile_number: Optional[str] = None
+
 
 class AadhaarVerifyOTPRequest(BaseModel):
     otp: str
