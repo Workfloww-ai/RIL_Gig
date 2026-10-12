@@ -57,6 +57,7 @@ export default function OTPScreen() {
 
         // Append files using a for...of loop so we can await the blob fetch
         for (const doc of metadataList) {
+          if (!doc.uri) continue;
           const fileResp = await fetch(doc.uri);
           const blob = await fileResp.blob();
 

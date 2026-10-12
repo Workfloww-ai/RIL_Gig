@@ -4,7 +4,8 @@ from typing import List
 import random
 import os
 
-from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest, RefreshTokenRequest, LoginPasswordRequest, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest
+from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest, RefreshTokenRequest, LoginPasswordRequest, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, AadhaarSendOTPRequest, AadhaarVerifyOTPRequest, PanVerifyRequest
+import httpx
 from utils.sms import send_otp_sms
 from utils.supabase_client import supabase
 from utils.jwt_auth import create_access_token, create_refresh_token, get_current_user, SECRET_KEY, ALGORITHM
@@ -34,6 +35,13 @@ def hash_otp(otp: str) -> str:
     """Creates an HMAC-SHA256 hash of the OTP to prevent trivial brute force."""
     key = SECRET_KEY.encode('utf-8') if SECRET_KEY else b'default_secret_key_123'
     return hmac.new(key, str(otp).encode('utf-8'), hashlib.sha256).hexdigest()
+
+def hash_document_number(doc_number: str) -> str:
+    """Creates a deterministic SHA-256 hash of document numbers (Aadhaar / PAN) for secure storage and indexing."""
+    if not doc_number:
+        return ""
+    clean = str(doc_number).strip().upper()
+    return hashlib.sha256(clean.encode('utf-8')).hexdigest()
 
 def hash_password(password: str) -> str:
     """Hash a password for storing."""
@@ -322,6 +330,11 @@ async def upload_documents(
             
             doc_url = supabase.storage.from_("documents").get_public_url(file_path)
             
+            # Determine document number to store (hash Aadhaar and PAN for security)
+            doc_num_to_store = meta.doc_number
+            if meta.doc_name.lower() in ["aadhar card", "aadhaar card", "pan card"]:
+                doc_num_to_store = hash_document_number(meta.doc_number)
+
             # Manually check if document exists since there's no unique constraint for upsert
             try:
                 existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
@@ -329,7 +342,7 @@ async def upload_documents(
                 if len(existing.data) > 0:
                     # Update existing record
                     res = supabase.table("user_documents").update({
-                        "doc_number": meta.doc_number,
+                        "doc_number": doc_num_to_store,
                         "doc_url": doc_url
                     }).eq("user_id", user_id).eq("doc_id", doc_id).execute()
                 else:
@@ -337,7 +350,7 @@ async def upload_documents(
                     res = supabase.table("user_documents").insert({
                         "user_id": user_id,
                         "doc_id": doc_id,
-                        "doc_number": meta.doc_number,
+                        "doc_number": doc_num_to_store,
                         "doc_url": doc_url
                     }).execute()
                 
@@ -346,6 +359,36 @@ async def upload_documents(
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Database operation failed for {meta.doc_name}: {str(e)}")
             
+    uploaded_filenames = {f.filename for f in files}
+    for meta in parsed_metadata:
+        if meta.filename not in uploaded_filenames:
+            doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", meta.doc_name).execute()
+            if doc_type_resp.data:
+                doc_id = doc_type_resp.data[0]["doc_id"]
+                
+                doc_num_to_store = meta.doc_number
+                if meta.doc_name.lower() in ["aadhar card", "aadhaar card", "pan card"]:
+                    doc_num_to_store = hash_document_number(meta.doc_number)
+                    
+                try:
+                    existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
+                    if len(existing.data) > 0:
+                        res = supabase.table("user_documents").update({
+                            "doc_number": doc_num_to_store,
+                            "doc_url": "VERIFIED_DIGITALLY"
+                        }).eq("user_id", user_id).eq("doc_id", doc_id).execute()
+                    else:
+                        res = supabase.table("user_documents").insert({
+                            "user_id": user_id,
+                            "doc_id": doc_id,
+                            "doc_number": doc_num_to_store,
+                            "doc_url": "VERIFIED_DIGITALLY"
+                        }).execute()
+                    if res.data:
+                        uploaded_docs.append(res.data[0])
+                except Exception as e:
+                    print(f"Error recording verified doc {meta.doc_name}: {e}")
+
     return {"status": "success", "uploaded_documents": len(uploaded_docs)}
 
 
@@ -632,18 +675,23 @@ async def verify_and_signup(
             
             doc_url = supabase.storage.from_("documents").get_public_url(file_path)
             
+            # Determine document number to store (hash Aadhaar and PAN for security)
+            doc_num_to_store = meta.doc_number
+            if meta.doc_name.lower() in ["aadhar card", "aadhaar card", "pan card"]:
+                doc_num_to_store = hash_document_number(meta.doc_number)
+
             try:
                 existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
                 if len(existing.data) > 0:
                     res = supabase.table("user_documents").update({
-                        "doc_number": meta.doc_number,
+                        "doc_number": doc_num_to_store,
                         "doc_url": doc_url
                     }).eq("user_id", user_id).eq("doc_id", doc_id).execute()
                 else:
                     res = supabase.table("user_documents").insert({
                         "user_id": user_id,
                         "doc_id": doc_id,
-                        "doc_number": meta.doc_number,
+                        "doc_number": doc_num_to_store,
                         "doc_url": doc_url
                     }).execute()
                 
@@ -652,6 +700,37 @@ async def verify_and_signup(
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Database operation failed for {meta.doc_name}: {str(e)}")
                 
+    # Also record digitally verified documents (Aadhaar, PAN) that didn't have file uploads
+    uploaded_filenames = {f.filename for f in files}
+    for meta in parsed_metadata:
+        if meta.filename not in uploaded_filenames:
+            doc_type_resp = supabase.table("document_type").select("doc_id").ilike("name", meta.doc_name).execute()
+            if doc_type_resp.data:
+                doc_id = doc_type_resp.data[0]["doc_id"]
+                
+                doc_num_to_store = meta.doc_number
+                if meta.doc_name.lower() in ["aadhar card", "aadhaar card", "pan card"]:
+                    doc_num_to_store = hash_document_number(meta.doc_number)
+
+                try:
+                    existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
+                    if len(existing.data) > 0:
+                        res = supabase.table("user_documents").update({
+                            "doc_number": doc_num_to_store,
+                            "doc_url": "VERIFIED_DIGITALLY"
+                        }).eq("user_id", user_id).eq("doc_id", doc_id).execute()
+                    else:
+                        res = supabase.table("user_documents").insert({
+                            "user_id": user_id,
+                            "doc_id": doc_id,
+                            "doc_number": doc_num_to_store,
+                            "doc_url": "VERIFIED_DIGITALLY"
+                        }).execute()
+                    if res.data:
+                        uploaded_docs.append(res.data[0])
+                except Exception as e:
+                    print(f"Error recording verified document {meta.doc_name}: {e}")
+                    
     access_token = create_access_token({"sub": user_id})
     refresh_token = create_refresh_token({"sub": user_id})
     return {"status": "login_success", "token": access_token, "refresh_token": refresh_token, "user_id": user_id, "uploaded_documents": len(uploaded_docs), "role": "worker"}
@@ -875,3 +954,96 @@ async def change_password(payload: ChangePasswordRequest, user_id: str = Depends
         raise HTTPException(status_code=500, detail=f"Failed to update password: {str(e)}")
         
     return {"status": "success", "message": "Password changed successfully."}
+
+@router.post("/kyc/aadhaar/send-otp")
+async def kyc_aadhaar_send_otp(payload: AadhaarSendOTPRequest):
+    CASHFREE_CLIENT_ID = os.getenv("CASHFREE_CLIENT_ID", "")
+    CASHFREE_CLIENT_SECRET = os.getenv("CASHFREE_CLIENT_SECRET", "")
+    CASHFREE_BASE_URL = os.getenv("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/verification")
+    
+    url = f"{CASHFREE_BASE_URL}/offline-aadhaar/otp"
+    headers = {
+        "x-client-id": CASHFREE_CLIENT_ID.strip(),
+        "x-client-secret": CASHFREE_CLIENT_SECRET.strip(),
+        "x-api-version": "2023-10-10",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "aadhaar_number": payload.aadhaar_number
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("message") or "Verification failed"
+            except:
+                error_msg = response.text
+            raise HTTPException(status_code=400, detail=error_msg)
+
+@router.post("/kyc/aadhaar/verify-otp")
+async def kyc_aadhaar_verify_otp(payload: AadhaarVerifyOTPRequest):
+    CASHFREE_CLIENT_ID = os.getenv("CASHFREE_CLIENT_ID", "")
+    CASHFREE_CLIENT_SECRET = os.getenv("CASHFREE_CLIENT_SECRET", "")
+    CASHFREE_BASE_URL = os.getenv("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/verification")
+    
+    url = f"{CASHFREE_BASE_URL}/offline-aadhaar/verify"
+    headers = {
+        "x-client-id": CASHFREE_CLIENT_ID.strip(),
+        "x-client-secret": CASHFREE_CLIENT_SECRET.strip(),
+        "x-api-version": "2023-10-10",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "otp": payload.otp,
+        "ref_id": payload.ref_id
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("message") or "OTP Verification failed"
+            except:
+                error_msg = response.text
+            raise HTTPException(status_code=400, detail=error_msg)
+
+@router.post("/kyc/pan/verify")
+async def kyc_pan_verify(payload: PanVerifyRequest):
+    CASHFREE_CLIENT_ID = os.getenv("CASHFREE_CLIENT_ID", "")
+    CASHFREE_CLIENT_SECRET = os.getenv("CASHFREE_CLIENT_SECRET", "")
+    CASHFREE_BASE_URL = os.getenv("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/verification")
+    
+    url = f"{CASHFREE_BASE_URL}/pan"
+    headers = {
+        "x-client-id": CASHFREE_CLIENT_ID.strip(),
+        "x-client-secret": CASHFREE_CLIENT_SECRET.strip(),
+        "x-api-version": "2023-10-10",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "pan": payload.pan.strip().upper()
+    }
+    if payload.name:
+        data["name"] = payload.name.strip()
+        
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            res_json = response.json()
+            if res_json.get("valid") is False or res_json.get("status") == "INVALID":
+                raise HTTPException(status_code=400, detail=res_json.get("message") or "Invalid PAN Card.")
+            return res_json
+        else:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("message") or "PAN verification failed"
+            except:
+                error_msg = response.text
+            raise HTTPException(status_code=400, detail=error_msg)

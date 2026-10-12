@@ -53,3 +53,15 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
+from typing import Optional
+
+class AadhaarSendOTPRequest(BaseModel):
+    aadhaar_number: str
+
+class AadhaarVerifyOTPRequest(BaseModel):
+    otp: str
+    ref_id: str
+
+class PanVerifyRequest(BaseModel):
+    pan: str
+    name: Optional[str] = None
