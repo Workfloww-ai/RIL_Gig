@@ -621,11 +621,11 @@ export default function StoreManagerDashboard() {
                                 <Feather name="phone" size={12} color="#0B5B31" />
                               </TouchableOpacity>
                             )}
-                            {showTracking && (
+                            {/* showTracking && (
                               <TouchableOpacity onPress={() => router.push(`/store_manager/live_tracking?jobId=${job.request_id}&workerId=${worker.id}&workerName=${encodeURIComponent(worker.name || 'Worker')}` as any)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
                                 <Feather name="navigation" size={12} color="#0B5B31" />
                               </TouchableOpacity>
-                            )}
+                            ) */}
                           </View>
                           <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
                         </View>

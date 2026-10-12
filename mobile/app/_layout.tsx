@@ -3,7 +3,7 @@ import "../global.css"; // Note: For NativeWind v4
 import OfflineBanner from '../src/components/OfflineBanner';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import '../src/services/LocationTrackingService'; // Initialize global TaskManager
+// import '../src/services/LocationTrackingService'; // Initialize global TaskManager
 import { useAuthStore } from '../src/store/authStore';
 import { useEffect } from 'react';
 

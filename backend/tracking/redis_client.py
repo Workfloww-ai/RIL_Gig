@@ -3,11 +3,19 @@ import json
 import redis.asyncio as redis
 from typing import Optional
 
-redis_client: Optional[redis.Redis] = None
+import asyncio
+_redis_clients = {}
 
 async def get_redis():
-    global redis_client
-    if redis_client is None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # If no running loop, we can't reliably cache. This shouldn't happen in standard async context.
+        return None
+        
+    loop_id = id(loop)
+    
+    if loop_id not in _redis_clients:
         # User has upstash credentials like: redis-cli --tls -u redis://default:xxx@xxx.upstash.io:6379
         raw_url = os.getenv("REDIS_URL")
         if not raw_url:
@@ -36,8 +44,17 @@ async def get_redis():
             kwargs["ssl_cert_reqs"] = "none"
 
         # Add connection parameters to prevent Upstash timeouts
-        redis_client = redis.from_url(redis_url, **kwargs)
-    return redis_client
+        _redis_clients[loop_id] = redis.from_url(redis_url, **kwargs)
+        
+        # Clean up old closed event loops to prevent memory leak
+        dead_loops = [lid for lid in list(_redis_clients.keys()) if lid != loop_id and getattr(_redis_clients[lid], "_closed", False)]
+        for lid in dead_loops:
+            try:
+                del _redis_clients[lid]
+            except Exception:
+                pass
+
+    return _redis_clients[loop_id]
 
 async def update_worker_location(worker_id: str, job_id: str, lat: float, lng: float, accuracy: float, speed: float, heading: float, timestamp: str):
     """Stores the latest worker location in Redis with a TTL."""
