@@ -26,7 +26,8 @@ export default function ForgotPasswordPage() {
       const res = await forgotPassword(identifier);
       setMessage(res.data.message || 'If that account exists, a password reset link has been sent to its registered email.');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to request password reset. Please try again.');
+      const msg = err.response?.data?.message || err.response?.data?.detail || (err.message === 'Network Error' ? 'Network or CORS error connecting to backend. Please check connection.' : err.message) || 'Failed to request password reset. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,26 @@
 import axios from 'axios';
 
+// Get base URL: Fallback to production backend if not specified
+const getBaseUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || 'https://sahyogi-backend-540529464663.asia-south2.run.app';
+  // Strip trailing slashes and /api so /api/auth/... calls don't become /api/api/auth/...
+  return url.replace(/\/+$/, '').replace(/\/api$/, '');
+};
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: getBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {
+  // Normalize request URLs so they always start with /api
+  if (config.url) {
+    if (config.url.startsWith('/') && !config.url.startsWith('/api')) {
+      config.url = `/api${config.url}`;
+    } else if (!config.url.startsWith('/') && !config.url.startsWith('api/')) {
+      config.url = `/api/${config.url}`;
+    }
+  }
+
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('finance_token');
     if (token) {
@@ -20,11 +36,17 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       if (typeof window !== 'undefined') {
-        // Clear invalid or expired token
-        localStorage.removeItem('finance_token');
-        // Automatically redirect to login if not already there
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+        const url = error.config?.url || '';
+        const isAuthEndpoint = url.includes('/login-password') ||
+                               url.includes('/forgot-password') ||
+                               url.includes('/reset-password');
+
+        // Only redirect to login for protected resources, NOT public auth forms
+        if (!isAuthEndpoint) {
+          localStorage.removeItem('finance_token');
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
       }
     }

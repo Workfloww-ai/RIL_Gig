@@ -66,14 +66,15 @@ def send_welcome_email(to_email: str, manager_name: str, role: str, store_name: 
     except Exception as e:
         print(f"Exception occurred while sending email: {e}")
 
-def send_password_reset_email(to_email: str, reset_link: str):
+def send_password_reset_email(to_email: str, reset_link: str) -> tuple[bool, str]:
     """Sends a password reset email using Resend API."""
     resend_api_key = os.getenv("RESEND_API_KEY")
     sender_email = os.getenv("SENDER_EMAIL")
     
     if not resend_api_key or not sender_email:
-        print(f"RESEND_API_KEY or SENDER_EMAIL is not set. Cannot send email to {to_email}. Reset link: {reset_link}")
-        return
+        msg = "RESEND_API_KEY or SENDER_EMAIL environment variable is not configured."
+        print(f"[Email] {msg} Reset link: {reset_link}")
+        return False, msg
         
     subject = "Password Reset Request - SahYogi Finance"
     
@@ -104,9 +105,14 @@ def send_password_reset_email(to_email: str, reset_link: str):
         )
         
         if response.status_code >= 400:
-            print(f"Failed to send email via Resend: {response.status_code} - {response.text}")
+            err_msg = f"Resend API error: {response.status_code} - {response.text}"
+            print(f"[Email] Failed to send email via Resend: {err_msg}")
+            return False, err_msg
         else:
-            print(f"Successfully sent password reset email to {to_email}")
+            print(f"[Email] Successfully sent password reset email to {to_email}")
+            return True, "Email sent successfully"
             
     except Exception as e:
-        print(f"Exception occurred while sending password reset email: {e}")
+        err_msg = f"Exception sending email: {e}"
+        print(f"[Email] {err_msg}")
+        return False, err_msg
