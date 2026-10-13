@@ -84,6 +84,19 @@ def get_pending_t90_call_assignments():
     return response.data if response.data else []
 
 
+def claim_t90_assignment(job_assignment_id: str) -> bool:
+    """
+    Atomically claims a pending T90 assignment by updating t90_status from 'pending' to 'call_initiated'.
+    Returns True if this replica successfully claimed it (row was still 'pending'),
+    or False if another replica already claimed it.
+    This replaces the previous Redis distributed lock with a DB-level atomic guard.
+    """
+    response = supabase.table("worker_job_assignments").update({
+        "t90_status": "call_initiated"
+    }).eq("job_assignment_id", job_assignment_id).eq("t90_status", "pending").execute()
+    return bool(response.data)
+
+
 def update_t90_call_status(job_assignment_id: str, new_status: str = "call_initiated"):
     """
     Updates the t90_status or call status of a worker job assignment after a Hunar voice call dispatch.

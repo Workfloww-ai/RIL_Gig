@@ -44,7 +44,8 @@ function ResetPasswordForm() {
         router.push('/login');
       }, 3000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to reset password. Please try again.');
+      const msg = err.response?.data?.message || err.response?.data?.detail || (err.message === 'Network Error' ? 'Network or CORS error connecting to backend. Please check connection.' : err.message) || 'Failed to reset password. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }

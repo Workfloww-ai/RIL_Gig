@@ -45,8 +45,16 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         }
         
         console.log(`[LocationTask] Sent location for job ${jobId}`);
-      } catch (err) {
+      } catch (err: any) {
         console.error('[LocationTask] Failed to send location', err);
+        // If backend returned stop command or worker is unauthorized/completed
+        if (err.response?.data?.stop || err.response?.status === 403) {
+          console.log('[LocationTask] Backend rejected tracking (stop/forbidden). Terminating background updates.');
+          await AsyncStorage.removeItem('active_tracking_job_id');
+          try {
+            await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+          } catch (_) {}
+        }
       }
     }
   }
@@ -55,63 +63,76 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 export const LocationTrackingService = {
   async requestPermissions(showDisclosure?: () => Promise<boolean>, forceDisclosure: boolean = false) {
     console.log('[LocationTrackingService] Checking current permissions...');
-    const { status: currentBackgroundStatus } = await Location.getBackgroundPermissionsAsync();
-    console.log('[LocationTrackingService] Current Background Status:', currentBackgroundStatus);
-    
-    // Show prominent disclosure if not granted, OR if explicitly forced (like when accepting a job)
-    if (currentBackgroundStatus !== 'granted' || forceDisclosure) {
-      console.log('[LocationTrackingService] Showing Prominent Disclosure Alert...');
-      
-      let userAgreed = false;
-      if (showDisclosure) {
-        userAgreed = await showDisclosure();
-      } else {
-        userAgreed = await new Promise((resolve) => {
-          Alert.alert(
-            "Background Location Requirement",
-            "SahYogi collects location data to enable real-time ETA tracking for store managers even when the app is closed or not in use.",
-            [
-              { text: "Deny", onPress: () => resolve(false), style: "cancel" },
-              { text: "Accept", onPress: () => resolve(true) }
-            ],
-            { cancelable: false }
-          );
-        });
-      }
+    const fg = await Location.getForegroundPermissionsAsync();
+    const bg = await Location.getBackgroundPermissionsAsync();
+    console.log('[LocationTrackingService] Foreground:', fg.status, 'Background:', bg.status);
 
-      if (!userAgreed) {
-        console.log('[LocationTrackingService] User denied prominent disclosure.');
+    // If both already granted and not forced, we are good to go!
+    if (fg.status === 'granted' && bg.status === 'granted' && !forceDisclosure) {
+      return true;
+    }
+
+    // Step 1: Request Foreground Permission if not yet granted
+    if (fg.status !== 'granted') {
+      console.log('[LocationTrackingService] Requesting Foreground Permission...');
+      const { status: reqFgStatus } = await Location.requestForegroundPermissionsAsync();
+      if (reqFgStatus !== 'granted') {
+        console.log('[LocationTrackingService] Foreground permission denied.');
         return false;
       }
     }
 
-    // Now request Foreground, then Background
-    console.log('[LocationTrackingService] Requesting Foreground Permission...');
-    const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-    
-    if (foregroundStatus === 'granted') {
-      if (currentBackgroundStatus === 'granted' && !forceDisclosure) {
-        // We already checked and it was granted, but since we forced disclosure, 
-        // we still request to ensure the flow is complete, but it's safe to return true here 
-        // if we just wanted the consent. Actually, let's just return true if granted.
-        return true;
-      }
-      // Even if forceDisclosure is true, if currentBackgroundStatus is granted, 
-      // OS won't show anything, but we can safely return true.
-      if (currentBackgroundStatus === 'granted') return true;
-
-      console.log('[LocationTrackingService] Requesting Background Permission...');
-      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-      return backgroundStatus === 'granted';
+    // Check background again
+    const currentBg = await Location.getBackgroundPermissionsAsync();
+    if (currentBg.status === 'granted' && !forceDisclosure) {
+      return true;
     }
-    
-    console.log('[LocationTrackingService] Foreground permission denied.');
-    return false;
+
+    // Step 2: Show Prominent Disclosure before requesting background permission
+    console.log('[LocationTrackingService] Showing Prominent Disclosure Alert...');
+    let userAgreed = false;
+    if (showDisclosure) {
+      userAgreed = await showDisclosure();
+    } else {
+      userAgreed = await new Promise((resolve) => {
+        Alert.alert(
+          "Background Location Requirement",
+          "SahYogi collects location data to enable real-time ETA tracking for store managers even when the app is closed or not in use.",
+          [
+            { text: "Deny", onPress: () => resolve(false), style: "cancel" },
+            { text: "Accept", onPress: () => resolve(true) }
+          ],
+          { cancelable: false }
+        );
+      });
+    }
+
+    if (!userAgreed) {
+      console.log('[LocationTrackingService] User denied prominent disclosure.');
+      return false;
+    }
+
+    // Step 3: Request Background Permission
+    console.log('[LocationTrackingService] Requesting Background Permission...');
+    const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+    return backgroundStatus === 'granted';
   },
 
   async startTracking(jobId: string, showDisclosure?: () => Promise<boolean>) {
-    // We don't force disclosure here because startTracking is called on every render/mount of accepted jobs.
-    // Instead, we will manually call requestPermissions(showDisclosure, true) in the handleAcceptJob function.
+    // Check if already tracking this exact job
+    try {
+      const activeJobId = await AsyncStorage.getItem('active_tracking_job_id');
+      const isRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+      const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+      if (isRegistered && hasStarted && activeJobId === jobId) {
+        console.log(`[LocationTrackingService] Already tracking job ${jobId}`);
+        return true;
+      }
+    } catch (e) {
+      console.warn('[LocationTrackingService] State check error:', e);
+    }
+
+    // Only prompt disclosure if permissions are not yet granted
     const hasPermissions = await this.requestPermissions(showDisclosure, false);
     if (!hasPermissions) {
       console.warn('[LocationTrackingService] Permissions not granted.');
@@ -133,12 +154,13 @@ export const LocationTrackingService = {
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.Balanced,
         timeInterval: 10000, // Update every 10 seconds
-        distanceInterval: 0, // Set to 0 for testing so it updates even if you are sitting at a desk!
+        distanceInterval: 0, // Updates even if stationary
         deferredUpdatesInterval: 10000,
+        showsBackgroundLocationIndicator: true,
         foregroundService: {
-          notificationTitle: 'Tracking Active',
-          notificationBody: 'Your location is being tracked for the current job.',
-          notificationColor: '#0000FF',
+          notificationTitle: 'Live Job Tracking Active',
+          notificationBody: 'Sharing your real-time ETA with the store manager.',
+          notificationColor: '#0B5B31',
         },
       });
       console.log(`[LocationTrackingService] Tracking started for job ${jobId}`);
@@ -149,11 +171,21 @@ export const LocationTrackingService = {
   async stopTracking() {
     const jobId = await AsyncStorage.getItem('active_tracking_job_id');
     
+    // Always clear storage first to stop any pending background loop
+    await AsyncStorage.removeItem('active_tracking_job_id');
+
     // Stop the background task
-    const isTaskRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
-    if (isTaskRegistered) {
-      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      console.log('[LocationTrackingService] Tracking stopped.');
+    try {
+      const isTaskRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+      if (isTaskRegistered) {
+        const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+        if (hasStarted) {
+          await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+          console.log('[LocationTrackingService] Tracking stopped.');
+        }
+      }
+    } catch (e) {
+      console.warn('[LocationTrackingService] Error stopping location updates:', e);
     }
 
     // Notify backend that session is stopping
@@ -163,7 +195,6 @@ export const LocationTrackingService = {
       } catch (err) {
         console.error('[LocationTrackingService] Failed to notify backend of stop', err);
       }
-      await AsyncStorage.removeItem('active_tracking_job_id');
     }
   }
 };

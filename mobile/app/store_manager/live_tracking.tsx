@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -63,6 +63,7 @@ export default function LiveTrackingScreen() {
   const [locations, setLocations] = useState<Record<string, LocationData>>({});
   const [eta, setEta] = useState<EtaData | null>(null);
   const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
+  const [trackingEnded, setTrackingEnded] = useState<boolean>(false);
   const router = useRouter();
   
   const mapRef = useRef<MapView>(null);
@@ -102,7 +103,7 @@ export default function LiveTrackingScreen() {
       try {
         const data = JSON.parse(event.data);
         const eventWorkerId = data.worker_id || data.workerId;
-        const safeWorkerId = Array.isArray(workerId) ? workerId[0] : workerId;
+        const currentTargetId = Array.isArray(workerId) ? workerId[0] : workerId;
         
         if (data.type === "worker_location_update" && eventWorkerId) {
           setLocations(prev => ({
@@ -117,6 +118,18 @@ export default function LiveTrackingScreen() {
           console.log("[WebSocket] Received ETA Update:", data, "Bypassing workerId check for robustness.");
           // Update the ETA regardless of the worker ID to handle headless token staleness
           setEta(data);
+        } else if (data.type === "tracking_stopped") {
+          console.log("[WebSocket] Tracking stopped for job/worker:", data);
+          if (eventWorkerId) {
+            setLocations(prev => {
+              const updated = { ...prev };
+              delete updated[eventWorkerId];
+              return updated;
+            });
+          }
+          if (!eventWorkerId || eventWorkerId === currentTargetId) {
+            setTrackingEnded(true);
+          }
         }
       } catch (e) {
         console.error("[WebSocket] Failed to parse message", e);
@@ -270,43 +283,62 @@ export default function LiveTrackingScreen() {
 
       {/* Uber-like Info Overlay Panel */}
       <View style={styles.panel}>
-        <View style={styles.etaHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.etaMainText}>
-              {eta ? `Arriving in ${eta.eta_minutes} min` : 'Calculating ETA...'}
+        {trackingEnded ? (
+          <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+            <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 8 }}>
+              <Text style={{ color: '#15803D', fontWeight: '700', fontSize: 13 }}>✓ Shift Started / Arrived</Text>
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 }}>
+              OTP Verified — Tracking Concluded
             </Text>
-            {eta && (
-              <Text style={styles.etaSubText}>
-                {(eta.distance_meters / 1000).toFixed(1)} km away • {eta.status.replace('_', ' ')}
-              </Text>
-            )}
+            <Text style={{ fontSize: 13, color: '#666', textAlign: 'center', marginBottom: 14 }}>
+              {displayName} has started their shift. Live location tracking has automatically stopped.
+            </Text>
+            <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: '#0B5B31', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 }}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Return to Dashboard</Text>
+            </TouchableOpacity>
           </View>
-          
-          {selectedLocation && (
-            <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
-              <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#BBF7D0' }}>
-                <Text style={{ color: '#166534', fontWeight: '800', fontSize: 16 }}>
-                  {Math.round(selectedLocation.speed * 3.6)} <Text style={{ fontSize: 10, fontWeight: '600' }}>km/h</Text>
+        ) : (
+          <>
+            <View style={styles.etaHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.etaMainText}>
+                  {eta ? `Arriving in ${eta.eta_minutes} min` : 'Calculating ETA...'}
+                </Text>
+                {eta && (
+                  <Text style={styles.etaSubText}>
+                    {(eta.distance_meters / 1000).toFixed(1)} km away • {eta.status.replace('_', ' ')}
+                  </Text>
+                )}
+              </View>
+              
+              {selectedLocation && (
+                <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+                  <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                    <Text style={{ color: '#166534', fontWeight: '800', fontSize: 16 }}>
+                      {Math.round(selectedLocation.speed * 3.6)} <Text style={{ fontSize: 10, fontWeight: '600' }}>km/h</Text>
+                    </Text>
+                  </View>
+                  <Text style={{ color: '#9CA3AF', fontSize: 9, marginTop: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Live Speed
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.workerInfo}>
+              <View style={styles.workerAvatar}>
+                <Text style={styles.workerAvatarText}>{initial}</Text>
+              </View>
+              <View style={styles.workerDetails}>
+                <Text style={styles.workerName}>{displayName} En Route</Text>
+                <Text style={styles.workerSpeed}>
+                  {selectedLocation ? `Driving at ${(selectedLocation.speed * 3.6).toFixed(0)} km/h` : 'Connecting to GPS...'}
                 </Text>
               </View>
-              <Text style={{ color: '#9CA3AF', fontSize: 9, marginTop: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Live Speed
-              </Text>
             </View>
-          )}
-        </View>
-
-        <View style={styles.workerInfo}>
-          <View style={styles.workerAvatar}>
-            <Text style={styles.workerAvatarText}>{initial}</Text>
-          </View>
-          <View style={styles.workerDetails}>
-            <Text style={styles.workerName}>{displayName} En Route</Text>
-            <Text style={styles.workerSpeed}>
-              {selectedLocation ? `Driving at ${(selectedLocation.speed * 3.6).toFixed(0)} km/h` : 'Connecting to GPS...'}
-            </Text>
-          </View>
-        </View>
+          </>
+        )}
       </View>
     </View>
   );

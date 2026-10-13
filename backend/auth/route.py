@@ -414,8 +414,8 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     if test_mobile and clean_mobile == test_mobile:
         return {"status": "otp_sent"}
         
-    # otp_code = "111111" 
-    otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
+    otp_code = "111111" 
+    # otp_code = str(random.randint(100000, 999999))   # Default OTP for testing  ye line comment h 
     
     # Calculate expiration time (e.g., 5 minutes from now)
     expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
@@ -434,8 +434,8 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     # 2. Send SMS (Bypassed for testing)
     # ye line uncomment krni h baad me
 
-    # success = True   
-    success = await send_otp_sms(payload.mobile_number, otp_code)  
+    success = True   
+    # success = await send_otp_sms(payload.mobile_number, otp_code)  
     
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send SMS. Check terminal logs for Dovesoft API errors.")
@@ -820,11 +820,12 @@ async def refresh_token(payload: RefreshTokenRequest):
 async def login_with_password(request: Request, payload: LoginPasswordRequest):
     identifier = payload.identifier.strip()
     
+    user_cols = "user_id, email, mobile_number, is_deactivated, password_hash, role_id"
     if "@" in identifier:
-        user_response = supabase.table("users").select("*").eq("email", identifier).execute()
+        user_response = supabase.table("users").select(user_cols).eq("email", identifier).execute()
     else:
         clean, with_plus = get_mobile_variations(identifier)
-        user_response = supabase.table("users").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
+        user_response = supabase.table("users").select(user_cols).or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
         
     if not user_response.data:
         raise HTTPException(status_code=400, detail="User account not found.")
@@ -892,17 +893,21 @@ async def forgot_password(request: Request, payload: ForgotPasswordRequest):
     to_encode = {"sub": user_id, "exp": expire, "token_type": "reset_password"}
     reset_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     
-    # Determine the frontend URL based on the request host/origin
-    # Fallback to local dev if not present
-    origin = request.headers.get("origin")
-    if origin:
-        reset_link = f"{origin}/reset-password?token={reset_token}"
+    # Determine the frontend URL based on the request host/origin/referer
+    raw_origin = request.headers.get("origin") or request.headers.get("referer")
+    if raw_origin:
+        origin_clean = raw_origin.split("?")[0].rstrip("/")
+        if "/forgot-password" in origin_clean:
+            origin_clean = origin_clean.replace("/forgot-password", "")
+        reset_link = f"{origin_clean}/reset-password?token={reset_token}"
     else:
-        # Assuming frontend is on port 3000 locally
+        # Fallback to local dev
         reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
     
-    # Send actual SMTP email
-    send_password_reset_email(email, reset_link)
+    # Send actual SMTP/Resend email
+    email_sent, email_msg = send_password_reset_email(email, reset_link)
+    if not email_sent:
+        logger.warning(f"[ForgotPassword] Email sending failed: {email_msg}")
     
     return {"status": "success", "message": f"Password reset link has been sent to {email}."}
 

@@ -44,13 +44,28 @@ async def stop_tracking_session(
     worker_id: str = Depends(get_current_user)
 ):
     from utils.supabase_client import supabase
+    from .redis_client import clear_tracking_keys, get_redis
     try:
         # Verify assignment exists
-        wja_resp = supabase.table("worker_job_assignments").select("id").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
+        wja_resp = supabase.table("worker_job_assignments").select("job_assignment_id").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
         if not wja_resp.data:
             raise HTTPException(status_code=403, detail="Worker not assigned to this job.")
             
-        # Optional: End session logic
+        # Clean up Redis tracking keys and notify connected store managers via WebSocket
+        await clear_tracking_keys(worker_id=worker_id, job_id=payload.job_id)
+        try:
+            client = await get_redis()
+            channel = f"job:{payload.job_id}:location_updates"
+            await client.publish(channel, json.dumps({
+                "type": "tracking_stopped",
+                "worker_id": worker_id,
+                "job_id": payload.job_id,
+                "reason": "session_stopped"
+            }))
+        except Exception as r_err:
+            print(f"[Tracking] Error broadcasting stop: {r_err}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
@@ -87,7 +102,7 @@ async def receive_location(
                 req_info = req_info[0]
 
             if status != "accepted":
-                print(f"[Backend] Job {payload.job_id} is no longer accepted (status: {status}). Telling mobile to STOP.")
+                print(f"[Backend] Job {payload.job_id} is no longer in 'accepted' status (current: {status}). Telling mobile to STOP.")
                 return {"message": "Stop tracking", "stop": True}
                 
             # Check if shift has already started and worker has not shown up
@@ -190,7 +205,7 @@ async def get_tracking_state(
         is_authorized = False
         
         # Check if user is the assigned worker
-        wja_resp = supabase.table("worker_job_assignments").select("id").eq("request_id", job_id).eq("worker_id", user_id).execute()
+        wja_resp = supabase.table("worker_job_assignments").select("job_assignment_id").eq("request_id", job_id).eq("worker_id", user_id).execute()
         if wja_resp.data:
             is_authorized = True
         else:
@@ -199,7 +214,7 @@ async def get_tracking_state(
             if req_resp.data:
                 store_id = req_resp.data[0].get("store_id")
                 # Check user store assignment
-                usa_resp = supabase.table("user_store_assignment").select("id").eq("user_id", user_id).eq("store_id", store_id).execute()
+                usa_resp = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).eq("store_id", store_id).execute()
                 if usa_resp.data:
                     is_authorized = True
                 else:

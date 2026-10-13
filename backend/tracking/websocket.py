@@ -115,25 +115,21 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
             eta_data["type"] = "eta_update"
             await websocket.send_json(eta_data)
             
-        # 2. Send last known Location
-        keys = await redis_client.keys("worker:*:location")
-        for key in keys:
-            loc_str = await redis_client.get(key)
-            if loc_str:
-                loc_data = json.loads(loc_str)
-                if loc_data.get("job_id") == job_id:
-                    key_str = key.decode() if isinstance(key, bytes) else key
-                    worker_id = key_str.split(":")[1]
-                    await websocket.send_json({
-                        "type": "worker_location_update",
-                        "worker_id": worker_id,
-                        "latitude": loc_data.get("lat"),
-                        "longitude": loc_data.get("lng"),
-                        "accuracy": loc_data.get("accuracy", 0),
-                        "speed": loc_data.get("speed", 0),
-                        "heading": loc_data.get("heading", 0),
-                        "timestamp": loc_data.get("timestamp")
-                    })
+        # 2. Send last known Location (O(1) lookup, safe for production Redis)
+        loc_str = await redis_client.get(f"job:{job_id}:latest_location")
+        if loc_str:
+            loc_data = json.loads(loc_str)
+            worker_id = loc_data.get("worker_id", "")
+            await websocket.send_json({
+                "type": "worker_location_update",
+                "worker_id": worker_id,
+                "latitude": loc_data.get("lat"),
+                "longitude": loc_data.get("lng"),
+                "accuracy": loc_data.get("accuracy", 0),
+                "speed": loc_data.get("speed", 0),
+                "heading": loc_data.get("heading", 0),
+                "timestamp": loc_data.get("timestamp")
+            })
     except Exception as e:
         logger.error(f"[WebSocket] Error sending initial state: {e}")
         
