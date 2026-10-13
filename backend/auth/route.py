@@ -1,8 +1,11 @@
 import json
+import logging
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Path, Request
 from typing import List
 import random
 import os
+
+logger = logging.getLogger(__name__)
 
 from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest, RefreshTokenRequest, LoginPasswordRequest, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, AadhaarSendOTPRequest, AadhaarVerifyOTPRequest, PanVerifyRequest
 import httpx

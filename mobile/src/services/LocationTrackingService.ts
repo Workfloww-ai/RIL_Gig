@@ -149,22 +149,36 @@ export const LocationTrackingService = {
       console.error('[LocationTrackingService] Failed to notify backend of start', err);
     }
 
-    const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-    if (!hasStarted) {
-      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: 10000, // Update every 10 seconds
-        distanceInterval: 0, // Updates even if stationary
-        deferredUpdatesInterval: 10000,
-        showsBackgroundLocationIndicator: true,
-        foregroundService: {
-          notificationTitle: 'Live Job Tracking Active',
-          notificationBody: 'Sharing your real-time ETA with the store manager.',
-          notificationColor: '#0B5B31',
-        },
-      });
-      console.log(`[LocationTrackingService] Tracking started for job ${jobId}`);
+    let hasStarted = false;
+    try {
+      hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+    } catch (_) {}
+
+    if (hasStarted) {
+      try {
+        await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      } catch (_) {}
     }
+
+    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+      accuracy: Location.Accuracy.Balanced,
+      timeInterval: 10000, // Update every 10 seconds
+      distanceInterval: 0, // Updates even if stationary
+      deferredUpdatesInterval: 10000,
+      showsBackgroundLocationIndicator: true,
+      foregroundService: {
+        notificationTitle: 'Live Job Tracking Active',
+        notificationBody: 'Sharing your real-time ETA with the store manager.',
+        notificationColor: '#0B5B31',
+      },
+    });
+    console.log(`[LocationTrackingService] Tracking started for job ${jobId}`);
+
+    Alert.alert(
+      "Live Location Sharing Active",
+      "Your location is being shared with the respective organization.",
+      [{ text: "OK" }]
+    );
     return true;
   },
 
