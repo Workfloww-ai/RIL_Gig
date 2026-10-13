@@ -461,11 +461,12 @@ export default function LibraryScreen() {
         
         const now = new Date();
         
-        // Strict expiration: A job expires 30 minutes after start time. This ensures 
-        // older "stuck" jobs don't take priority over the new upcoming job.
-        const expirationDateTime = new Date(shiftDateTime.getTime() + 30 * 60 * 1000);
+        // Allow tracking while the worker is en-route up to shift duration or 3 hours after start time
+        // Tracking immediately halts as soon as the store manager verifies OTP (status becomes 'started' or arrival_status 'arrived')
+        const shiftDurationHours = Number(job.hours_duration) || 2;
+        const expirationDateTime = new Date(shiftDateTime.getTime() + Math.max(shiftDurationHours, 3) * 60 * 60 * 1000);
         
-        if (now >= trackingStartDateTime && now <= expirationDateTime) {
+        if (now >= trackingStartDateTime && now <= expirationDateTime && job.arrival_status !== 'arrived') {
           isWithinTrackingWindow = true;
         }
       }

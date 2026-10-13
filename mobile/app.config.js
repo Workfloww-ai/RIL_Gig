@@ -56,15 +56,15 @@ module.exports = {
       "expo-video",
       "@react-native-community/datetimepicker",
       "expo-sharing",
-      // [
-      //   "expo-location",
-      //   {
-      //     locationAlwaysAndWhenInUsePermission: "Allow Sahyogi to use your location to track your route during active jobs.",
-      //     locationAlwaysPermission: "Allow Sahyogi to track your location in the background so store managers can see your real-time ETA.",
-      //     isIosBackgroundLocationEnabled: true,
-      //     isAndroidBackgroundLocationEnabled: true
-      //   }
-      // ],
+      [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission: "Allow Sahyogi to use your location to track your route during active jobs.",
+          locationAlwaysPermission: "Allow Sahyogi to track your location in the background so store managers can see your real-time ETA.",
+          isIosBackgroundLocationEnabled: true,
+          isAndroidBackgroundLocationEnabled: true
+        }
+      ],
       "expo-secure-store"
     ],
     experiments: {

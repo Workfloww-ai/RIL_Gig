@@ -60,72 +60,99 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   }
 });
 
+let foregroundTimer: ReturnType<typeof setInterval> | null = null;
+
+async function sendLocationUpdate(jobId: string, location: Location.LocationObject) {
+  try {
+    const payload = {
+      job_id: jobId,
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      accuracy: location.coords.accuracy || 0,
+      speed: location.coords.speed || 0,
+      heading: location.coords.heading || 0,
+      timestamp: new Date(location.timestamp).toISOString(),
+    };
+
+    const res = await apiClient.post('/tracking/location', payload);
+    
+    if (res.data && res.data.stop) {
+      console.log(`[LocationService] Backend commanded stop for job ${jobId}. Terminating tracking.`);
+      await LocationTrackingService.stopTracking();
+      return false;
+    }
+    console.log(`[LocationService] Sent location for job ${jobId}: ${payload.latitude}, ${payload.longitude}`);
+    return true;
+  } catch (err: any) {
+    console.error('[LocationService] Failed to send location', err);
+    if (err.response?.data?.stop || err.response?.status === 403) {
+      console.log('[LocationService] Backend rejected tracking (stop/forbidden). Terminating updates.');
+      await LocationTrackingService.stopTracking();
+      return false;
+    }
+  }
+  return false;
+}
+
 export const LocationTrackingService = {
   async requestPermissions(showDisclosure?: () => Promise<boolean>, forceDisclosure: boolean = false) {
     console.log('[LocationTrackingService] Checking current permissions...');
     const fg = await Location.getForegroundPermissionsAsync();
-    const bg = await Location.getBackgroundPermissionsAsync();
-    console.log('[LocationTrackingService] Foreground:', fg.status, 'Background:', bg.status);
+    console.log('[LocationTrackingService] Foreground status:', fg.status);
 
-    // If both already granted and not forced, we are good to go!
-    if (fg.status === 'granted' && bg.status === 'granted' && !forceDisclosure) {
-      return true;
-    }
+    let hasForeground = fg.status === 'granted';
 
     // Step 1: Request Foreground Permission if not yet granted
-    if (fg.status !== 'granted') {
+    if (!hasForeground) {
       console.log('[LocationTrackingService] Requesting Foreground Permission...');
       const { status: reqFgStatus } = await Location.requestForegroundPermissionsAsync();
-      if (reqFgStatus !== 'granted') {
+      hasForeground = reqFgStatus === 'granted';
+      if (!hasForeground) {
         console.log('[LocationTrackingService] Foreground permission denied.');
         return false;
       }
     }
 
-    // Check background again
-    const currentBg = await Location.getBackgroundPermissionsAsync();
-    if (currentBg.status === 'granted' && !forceDisclosure) {
-      return true;
+    // Step 2: Try to request background permission as best-effort for background updates
+    try {
+      const currentBg = await Location.getBackgroundPermissionsAsync();
+      if (currentBg.status !== 'granted') {
+        let userAgreed = false;
+        if (showDisclosure) {
+          userAgreed = await showDisclosure();
+        } else {
+          userAgreed = await new Promise((resolve) => {
+            Alert.alert(
+              "Location Tracking Requirement",
+              "SahYogi collects location data to enable real-time ETA tracking for store managers during active shifts.",
+              [
+                { text: "Skip", onPress: () => resolve(false), style: "cancel" },
+                { text: "Allow", onPress: () => resolve(true) }
+              ],
+              { cancelable: true }
+            );
+          });
+        }
+
+        if (userAgreed) {
+          console.log('[LocationTrackingService] Requesting Background Permission...');
+          await Location.requestBackgroundPermissionsAsync();
+        }
+      }
+    } catch (bgErr) {
+      console.warn('[LocationTrackingService] Background permission request error/skipped:', bgErr);
     }
 
-    // Step 2: Show Prominent Disclosure before requesting background permission
-    console.log('[LocationTrackingService] Showing Prominent Disclosure Alert...');
-    let userAgreed = false;
-    if (showDisclosure) {
-      userAgreed = await showDisclosure();
-    } else {
-      userAgreed = await new Promise((resolve) => {
-        Alert.alert(
-          "Background Location Requirement",
-          "SahYogi collects location data to enable real-time ETA tracking for store managers even when the app is closed or not in use.",
-          [
-            { text: "Deny", onPress: () => resolve(false), style: "cancel" },
-            { text: "Accept", onPress: () => resolve(true) }
-          ],
-          { cancelable: false }
-        );
-      });
-    }
-
-    if (!userAgreed) {
-      console.log('[LocationTrackingService] User denied prominent disclosure.');
-      return false;
-    }
-
-    // Step 3: Request Background Permission
-    console.log('[LocationTrackingService] Requesting Background Permission...');
-    const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-    return backgroundStatus === 'granted';
+    // As long as foreground location is granted, we can proceed with tracking
+    return true;
   },
 
   async startTracking(jobId: string, showDisclosure?: () => Promise<boolean>) {
     // Check if already tracking this exact job
     try {
       const activeJobId = await AsyncStorage.getItem('active_tracking_job_id');
-      const isRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
-      const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-      if (isRegistered && hasStarted && activeJobId === jobId) {
-        console.log(`[LocationTrackingService] Already tracking job ${jobId}`);
+      if (activeJobId === jobId && foregroundTimer) {
+        console.log(`[LocationTrackingService] Already actively tracking job ${jobId}`);
         return true;
       }
     } catch (e) {
@@ -135,11 +162,11 @@ export const LocationTrackingService = {
     // Only prompt disclosure if permissions are not yet granted
     const hasPermissions = await this.requestPermissions(showDisclosure, false);
     if (!hasPermissions) {
-      console.warn('[LocationTrackingService] Permissions not granted.');
+      console.warn('[LocationTrackingService] Foreground permissions not granted.');
       return false;
     }
 
-    // Save job_id for the background task to use
+    // Save job_id for background task and foreground loop to use
     await AsyncStorage.setItem('active_tracking_job_id', jobId);
 
     // Notify backend that session is starting
@@ -149,34 +176,73 @@ export const LocationTrackingService = {
       console.error('[LocationTrackingService] Failed to notify backend of start', err);
     }
 
-    let hasStarted = false;
+    // 1. Immediately send current position so the backend & map update instantly!
     try {
-      hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-    } catch (_) {}
-
-    if (hasStarted) {
-      try {
-        await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      } catch (_) {}
+      const immediateLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      if (immediateLocation) {
+        await sendLocationUpdate(jobId, immediateLocation);
+      }
+    } catch (locErr) {
+      console.warn('[LocationTrackingService] Immediate location error:', locErr);
     }
 
-    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-      accuracy: Location.Accuracy.Balanced,
-      timeInterval: 10000, // Update every 10 seconds
-      distanceInterval: 0, // Updates even if stationary
-      deferredUpdatesInterval: 10000,
-      showsBackgroundLocationIndicator: true,
-      foregroundService: {
-        notificationTitle: 'Live Job Tracking Active',
-        notificationBody: 'Sharing your real-time ETA with the store manager.',
-        notificationColor: '#0B5B31',
-      },
-    });
-    console.log(`[LocationTrackingService] Tracking started for job ${jobId}`);
+    // 2. Start active in-app foreground interval (guarantees updates every 10s while app is open)
+    if (foregroundTimer) {
+      clearInterval(foregroundTimer);
+    }
+    foregroundTimer = setInterval(async () => {
+      try {
+        const currentJobId = await AsyncStorage.getItem('active_tracking_job_id');
+        if (!currentJobId) {
+          if (foregroundTimer) clearInterval(foregroundTimer);
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (loc) {
+          await sendLocationUpdate(currentJobId, loc);
+        }
+      } catch (err: any) {
+        console.warn('[LocationTrackingService] Foreground interval tick error:', err?.message);
+      }
+    }, 10000);
+
+    // 3. Start background location updates task
+    try {
+      let hasStarted = false;
+      try {
+        hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+      } catch (_) {}
+
+      if (hasStarted) {
+        try {
+          await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+        } catch (_) {}
+      }
+
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 10000, // Update every 10 seconds
+        distanceInterval: 0, // Updates even if stationary
+        deferredUpdatesInterval: 10000,
+        showsBackgroundLocationIndicator: true,
+        foregroundService: {
+          notificationTitle: 'Live Job Tracking Active',
+          notificationBody: 'Sharing your real-time ETA with the store manager.',
+          notificationColor: '#0B5B31',
+        },
+      });
+      console.log(`[LocationTrackingService] Background task started for job ${jobId}`);
+    } catch (bgTaskErr) {
+      console.warn('[LocationTrackingService] Background location task could not start (will rely on foreground loop):', bgTaskErr);
+    }
 
     Alert.alert(
       "Live Location Sharing Active",
-      "Your location is being shared with the respective organization.",
+      "Your location is being shared with the store manager.",
       [{ text: "OK" }]
     );
     return true;
@@ -185,8 +251,14 @@ export const LocationTrackingService = {
   async stopTracking() {
     const jobId = await AsyncStorage.getItem('active_tracking_job_id');
     
-    // Always clear storage first to stop any pending background loop
+    // Clear storage first to stop any pending loop
     await AsyncStorage.removeItem('active_tracking_job_id');
+
+    // Clear active foreground interval
+    if (foregroundTimer) {
+      clearInterval(foregroundTimer);
+      foregroundTimer = null;
+    }
 
     // Stop the background task
     try {
@@ -195,7 +267,7 @@ export const LocationTrackingService = {
         const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
         if (hasStarted) {
           await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-          console.log('[LocationTrackingService] Tracking stopped.');
+          console.log('[LocationTrackingService] Background tracking stopped.');
         }
       }
     } catch (e) {

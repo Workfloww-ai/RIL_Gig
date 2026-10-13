@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions, ActivityIndicator, TouchableOpacity
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { API_URL } from '../../src/api/client';
+import { API_URL, apiClient } from '../../src/api/client';
 
 interface LocationData {
   job_id: string;
@@ -83,6 +83,38 @@ export default function LiveTrackingScreen() {
   useEffect(() => {
     if (!jobId) return;
 
+    // 1. Initial HTTP fetch for latest location & ETA
+    apiClient.get(`/tracking/job/${jobId}`)
+      .then(res => {
+        if (res.data) {
+          if (res.data.location_data) {
+            const loc = res.data.location_data;
+            const wId = loc.worker_id || safeWorkerId;
+            if (wId) {
+              setLocations(prev => ({
+                ...prev,
+                [wId]: {
+                  job_id: jobId,
+                  worker_id: wId,
+                  latitude: loc.lat || loc.latitude,
+                  longitude: loc.lng || loc.longitude,
+                  accuracy: loc.accuracy || 0,
+                  speed: loc.speed || 0,
+                  heading: loc.heading || 0,
+                  timestamp: loc.timestamp || new Date().toISOString()
+                }
+              }));
+            }
+          }
+          if (res.data.eta_data) {
+            setEta(res.data.eta_data);
+          }
+        }
+      })
+      .catch(err => {
+        console.log("[LiveTracking] Initial state fetch error:", err?.message);
+      });
+
     setWsStatus("connecting");
     
     // Convert http(s) API_URL to ws(s)
@@ -116,7 +148,6 @@ export default function LiveTrackingScreen() {
           }));
         } else if (data.type === "eta_update") {
           console.log("[WebSocket] Received ETA Update:", data, "Bypassing workerId check for robustness.");
-          // Update the ETA regardless of the worker ID to handle headless token staleness
           setEta(data);
         } else if (data.type === "tracking_stopped") {
           console.log("[WebSocket] Tracking stopped for job/worker:", data);
@@ -144,7 +175,7 @@ export default function LiveTrackingScreen() {
     return () => {
       ws.close();
     };
-  }, [jobId, Array.isArray(workerId) ? workerId[0] : workerId]);
+  }, [jobId, safeWorkerId]);
 
   // Auto-fit to all markers + route
   useEffect(() => {
@@ -265,9 +296,9 @@ export default function LiveTrackingScreen() {
       </MapView>
       
       {!selectedLocation && routeCoordinates.length === 0 && (
-        <View style={[StyleSheet.absoluteFill, styles.mapPlaceholder, { backgroundColor: 'rgba(255,255,255,0.7)' }]}>
-          <ActivityIndicator size="large" color="#0B5B31" />
-          <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Waiting for {displayName}'s GPS...</Text>
+        <View style={styles.floatingConnectingBanner}>
+          <ActivityIndicator size="small" color="#0B5B31" style={{ marginRight: 8 }} />
+          <Text style={styles.floatingConnectingText}>Connecting to {displayName}'s live GPS...</Text>
         </View>
       )}
 
@@ -364,6 +395,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f5f5f5',
+  },
+  floatingConnectingBanner: {
+    position: 'absolute',
+    top: 54,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 999,
+  },
+  floatingConnectingText: {
+    color: '#0B5B31',
+    fontWeight: '700',
+    fontSize: 13,
   },
   backButtonContainer: {
     position: 'absolute',

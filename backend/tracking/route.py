@@ -119,8 +119,9 @@ async def receive_location(
                 shift_dt_str = f"{shift_date} {start_time}"
                 try:
                     shift_dt = datetime.strptime(shift_dt_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=IST)
-                    if now >= shift_dt:
-                        print(f"[Backend] Shift started at {shift_dt}, but worker arrival_status is '{arrival_status}'. Telling mobile to STOP.")
+                    # Allow tracking for up to 3 hours after start time if worker has not arrived yet
+                    if now >= shift_dt + timedelta(hours=3):
+                        print(f"[Backend] Shift started at {shift_dt} and 3 hours elapsed, worker arrival_status is '{arrival_status}'. Telling mobile to STOP.")
                         return {"message": "Stop tracking", "stop": True}
                 except Exception as ex:
                     print(f"[Tracking] Error parsing shift time: {ex}")
@@ -222,17 +223,25 @@ async def get_tracking_state(
                     user_role_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
                     if user_role_resp.data and user_role_resp.data[0].get("role_id"):
                         role_resp = supabase.table("roles").select("role_name").eq("role_id", user_role_resp.data[0]["role_id"]).execute()
-                        if role_resp.data and role_resp.data[0]["role_name"].lower() in ["superadmin", "finance"]:
+                        if role_resp.data and role_resp.data[0]["role_name"].lower() in ["superadmin", "finance", "store_manager"]:
                             is_authorized = True
                             
         if not is_authorized:
             raise HTTPException(status_code=403, detail="Not authorized to view tracking for this job.")
             
-        # Currently skipping Redis ETA fetch as per requirements
+        from .redis_client import get_redis
+        client = await get_redis()
+        latest_eta_raw = await client.get(f"job:{job_id}:latest_eta")
+        latest_loc_raw = await client.get(f"job:{job_id}:latest_location")
+        
+        latest_eta = json.loads(latest_eta_raw) if latest_eta_raw else None
+        latest_loc = json.loads(latest_loc_raw) if latest_loc_raw else None
+        
         return {
             "job_id": job_id, 
             "status": "active", 
-            "eta_data": None
+            "location_data": latest_loc,
+            "eta_data": latest_eta
         }
     except HTTPException:
         raise
