@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/authStore';
 import { apiClient } from '../../src/api/client';
 import RaiseRequestModal from '../../src/components/RaiseRequestModal';
+import { NotificationBell } from '../../src/components/NotificationBell';
 
 // Data Interfaces
 interface AcceptanceStatus {
@@ -785,10 +786,13 @@ export default function StoreManagerDashboard() {
               )}
             </Text>
           </View>
-          <Image
-            source={require('../../assets/images/newlogo.png')}
-            style={{ width: 85, height: 85, resizeMode: 'contain', marginLeft: 12 }}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <NotificationBell style={{ marginRight: 8 }} />
+            <Image
+              source={require('../../assets/images/newlogo.png')}
+              style={{ width: 75, height: 75, resizeMode: 'contain', marginLeft: 4 }}
+            />
+          </View>
         </View>
 
         {/* TEMPORARY LIVE TRACKING TEST BUTTON */}

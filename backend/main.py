@@ -108,10 +108,24 @@ async def log_requests_and_errors(request: Request, call_next):
         
     return response
 
+from routes.notifications import router as notifications_router
+from routes.notification_workflows import router as workflows_router
+from routes.unsubscribe import router as unsubscribe_router
+from utils.websocket_manager import ws_manager
+from workers.arq_worker import poll_notification_jobs
+
 scheduler = BackgroundScheduler()
 
+async def notification_poller_task():
+    while True:
+        try:
+            await poll_notification_jobs()
+        except Exception as e:
+            pass
+        await asyncio.sleep(10)
+
 @app.on_event("startup")
-def start_scheduler():
+async def start_scheduler():
     # scheduler.add_job(check_t60_status, 'interval', minutes=3)
     scheduler.add_job(check_t90_voice_calls, 'interval', minutes=2)
     scheduler.start()
@@ -119,16 +133,23 @@ def start_scheduler():
     
     # Start ETA Worker
     from tracking.eta_worker import process_eta_queue
-    import asyncio
     app.state.eta_task = asyncio.create_task(process_eta_queue())
     
     # Start Persistence Worker
     from tracking.persistence_worker import process_persistence
     app.state.persistence_task = asyncio.create_task(process_persistence())
 
+    # Start Event-Driven Notification System Poller & WebSocket subscriber
+    app.state.notif_task = asyncio.create_task(notification_poller_task())
+    await ws_manager.start()
+    print("[System] Notification poller & WebSocket Pub/Sub consumer initialized")
+
 @app.on_event("shutdown")
-def shutdown_scheduler():
+async def shutdown_scheduler():
     scheduler.shutdown()
+    if hasattr(app.state, "notif_task"):
+        app.state.notif_task.cancel()
+    await ws_manager.stop()
     print("[System] Background scheduler stopped")
 
 
@@ -172,6 +193,11 @@ from tracking.websocket import router as tracking_ws_router
 # Include the tracking routers
 app.include_router(tracking_router, prefix="/api/tracking", tags=["Tracking"])
 app.include_router(tracking_ws_router, tags=["Tracking WebSockets"])
+
+# Include Enterprise Notification System routers
+app.include_router(notifications_router, prefix="/api", tags=["Notifications"])
+app.include_router(workflows_router, prefix="/api", tags=["Notification Workflows Automation"])
+app.include_router(unsubscribe_router, prefix="/api", tags=["CAN-SPAM Unsubscribe"])
 
 @app.get("/health")
 async def health():

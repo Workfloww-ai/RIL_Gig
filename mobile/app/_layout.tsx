@@ -7,6 +7,9 @@ import '../src/services/LocationTrackingService'; // Initialize global TaskManag
 import { useAuthStore } from '../src/store/authStore';
 import { useEffect } from 'react';
 
+import { NotificationProvider } from '../src/context/NotificationContext';
+import { NotificationDrawer } from '../src/components/NotificationDrawer';
+
 export default function RootLayout() {
   const { _hasHydrated, token, role } = useAuthStore();
   const segments = useSegments();
@@ -37,17 +40,20 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1 }}>
-        <OfflineBanner />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#ffffff' } }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="otp" />
-          <Stack.Screen name="signup" />
-          <Stack.Screen name="store_manager" />
-          <Stack.Screen name="superadmin" />
-          <Stack.Screen name="library" />
-        </Stack>
-      </View>
+      <NotificationProvider>
+        <View style={{ flex: 1 }}>
+          <OfflineBanner />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#ffffff' } }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="otp" />
+            <Stack.Screen name="signup" />
+            <Stack.Screen name="store_manager" />
+            <Stack.Screen name="superadmin" />
+            <Stack.Screen name="library" />
+          </Stack>
+          <NotificationDrawer />
+        </View>
+      </NotificationProvider>
     </SafeAreaProvider>
   );
 }

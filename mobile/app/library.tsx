@@ -11,6 +11,7 @@ import * as Sharing from 'expo-sharing';
 import { Watermark } from '../src/components/Watermark';
 import StatusModal from '../src/components/StatusModal';
 import { LocationTrackingService } from '../src/services/LocationTrackingService';
+import { NotificationBell } from '../src/components/NotificationBell';
 interface Module {
   id: string;
   title: string;
@@ -839,11 +840,14 @@ export default function LibraryScreen() {
                 </View>
               </View>
 
-              {/* Top Right Logo */}
-              <Image
-                source={require('../assets/images/newlogo.png')}
-                style={{ width: 85, height: 85, resizeMode: 'contain' }}
-              />
+              {/* Top Right Bell & Logo */}
+              <View className="flex-row items-center">
+                <NotificationBell style={{ marginRight: 10 }} />
+                <Image
+                  source={require('../assets/images/newlogo.png')}
+                  style={{ width: 75, height: 75, resizeMode: 'contain' }}
+                />
+              </View>
             </View>
 
             {/* Decorative Brand Line - Absolute Bottom */}
