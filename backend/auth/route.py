@@ -40,7 +40,7 @@ def hash_otp(otp: str) -> str:
     return hmac.new(key, str(otp).encode('utf-8'), hashlib.sha256).hexdigest()
 
 def hash_document_number(doc_number: str) -> str:
-    """Creates a deterministic SHA-256 hash of document numbers (Aadhaar / PAN) for secure storage and indexing."""
+    """Creates a deterministic SHA-256 hash of document numbers (e.g., PAN) for secure storage and indexing."""
     if not doc_number:
         return ""
     clean = str(doc_number).strip().upper()
@@ -333,10 +333,13 @@ async def upload_documents(
             
             doc_url = supabase.storage.from_("documents").get_public_url(file_path)
             
-            # Determine document number to store (hash Aadhaar and PAN for security)
-            doc_num_to_store = meta.doc_number
-            if meta.doc_name.lower() in ["aadhar card", "aadhaar card", "pan card"]:
+            # Determine document number to store (do not store Aadhaar; hash PAN for security)
+            if meta.doc_name.lower() in ["aadhar card", "aadhaar card"]:
+                doc_num_to_store = None
+            elif meta.doc_name.lower() in ["pan card"]:
                 doc_num_to_store = hash_document_number(meta.doc_number)
+            else:
+                doc_num_to_store = meta.doc_number
 
             # Manually check if document exists since there's no unique constraint for upsert
             try:
@@ -369,9 +372,12 @@ async def upload_documents(
             if doc_type_resp.data:
                 doc_id = doc_type_resp.data[0]["doc_id"]
                 
-                doc_num_to_store = meta.doc_number
-                if meta.doc_name.lower() in ["aadhar card", "aadhaar card", "pan card"]:
+                if meta.doc_name.lower() in ["aadhar card", "aadhaar card"]:
+                    doc_num_to_store = None
+                elif meta.doc_name.lower() in ["pan card"]:
                     doc_num_to_store = hash_document_number(meta.doc_number)
+                else:
+                    doc_num_to_store = meta.doc_number
                     
                 try:
                     existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
@@ -678,10 +684,13 @@ async def verify_and_signup(
             
             doc_url = supabase.storage.from_("documents").get_public_url(file_path)
             
-            # Determine document number to store (hash Aadhaar and PAN for security)
-            doc_num_to_store = meta.doc_number
-            if meta.doc_name.lower() in ["aadhar card", "aadhaar card", "pan card"]:
+            # Determine document number to store (do not store Aadhaar; hash PAN for security)
+            if meta.doc_name.lower() in ["aadhar card", "aadhaar card"]:
+                doc_num_to_store = None
+            elif meta.doc_name.lower() in ["pan card"]:
                 doc_num_to_store = hash_document_number(meta.doc_number)
+            else:
+                doc_num_to_store = meta.doc_number
 
             try:
                 existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
@@ -711,9 +720,12 @@ async def verify_and_signup(
             if doc_type_resp.data:
                 doc_id = doc_type_resp.data[0]["doc_id"]
                 
-                doc_num_to_store = meta.doc_number
-                if meta.doc_name.lower() in ["aadhar card", "aadhaar card", "pan card"]:
+                if meta.doc_name.lower() in ["aadhar card", "aadhaar card"]:
+                    doc_num_to_store = None
+                elif meta.doc_name.lower() in ["pan card"]:
                     doc_num_to_store = hash_document_number(meta.doc_number)
+                else:
+                    doc_num_to_store = meta.doc_number
 
                 try:
                     existing = supabase.table("user_documents").select("user_id, doc_id").eq("user_id", user_id).eq("doc_id", doc_id).execute()
@@ -985,10 +997,10 @@ async def kyc_aadhaar_send_otp(payload: AadhaarSendOTPRequest):
             response = await client.post(url, headers=headers, json=data)
             if response.status_code == 200:
                 res_data = response.json()
-                print(f"[CASHFREE AADHAAR OTP SUCCESS] Mobile (Signup/User): {payload.mobile_number or 'Not provided'} | Aadhaar: {payload.aadhaar_number} | Cashfree/UIDAI Response: {json.dumps(res_data)}")
+                print(f"[CASHFREE AADHAAR OTP SUCCESS] Mobile (Signup/User): {payload.mobile_number or 'Not provided'} | Cashfree/UIDAI Response: {json.dumps(res_data)}")
                 return res_data
             else:
-                print(f"[CASHFREE AADHAAR OTP ERROR] Mobile (Signup/User): {payload.mobile_number or 'Not provided'} | Aadhaar: {payload.aadhaar_number} | Status: {response.status_code} | URL: {url} | Body: {response.text}")
+                print(f"[CASHFREE AADHAAR OTP ERROR] Mobile (Signup/User): {payload.mobile_number or 'Not provided'} | Status: {response.status_code} | URL: {url} | Body: {response.text}")
                 try:
                     error_data = response.json()
                     error_msg = error_data.get("message") or error_data.get("subCode") or "Verification failed"

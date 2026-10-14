@@ -28,6 +28,12 @@ async def process_t90_voice_calls():
     for workers whose shift starts in approximately 90 minutes (between 60 and 95 mins).
     Deduplication is handled at the DB level via atomic claim per assignment.
     """
+    worker_flag = os.getenv("IS_WORKER_ON") or os.getenv("is_worker_on", "false")
+    is_worker_on = str(worker_flag).strip().lower() in ("true", "1", "t", "yes")
+    if not is_worker_on:
+        logger.info("[T90VoiceWorker] IS_WORKER_ON is false/disabled. Skipping T-90 processing.")
+        return
+
     # Distributed lock to prevent multiple API replicas from executing this simultaneously
     # try:
     #     redis_client = await get_redis()
@@ -152,7 +158,8 @@ if __name__ == "__main__":
         while True:
             # Reload .env on each tick so the flag can be toggled without restarting the script
             load_dotenv(override=True)
-            is_worker_on = os.getenv("IS_WORKER_ON", "false").lower() in ("true", "1", "t", "yes")
+            worker_flag = os.getenv("IS_WORKER_ON") or os.getenv("is_worker_on", "false")
+            is_worker_on = str(worker_flag).strip().lower() in ("true", "1", "t", "yes")
             
             if is_worker_on:
                 run_t90_worker_sync()
