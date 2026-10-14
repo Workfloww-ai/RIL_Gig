@@ -27,7 +27,7 @@ module.exports = {
       package: "com.workfloww.sahyogi",
       config: {
         googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "API_KEY_MISSING_IN_ENV"
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
         }
       },
       permissions: [
@@ -65,7 +65,13 @@ module.exports = {
           isAndroidBackgroundLocationEnabled: true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true

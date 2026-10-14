@@ -62,8 +62,10 @@ export default function LiveTrackingScreen() {
   // Store locations for ALL workers on this job
   const [locations, setLocations] = useState<Record<string, LocationData>>({});
   const [eta, setEta] = useState<EtaData | null>(null);
+  const [storeData, setStoreData] = useState<{ store_name?: string; latitude?: number; longitude?: number } | null>(null);
   const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
   const [trackingEnded, setTrackingEnded] = useState<boolean>(false);
+  const [isMapReady, setIsMapReady] = useState<boolean>(false);
   const router = useRouter();
   
   const mapRef = useRef<MapView>(null);
@@ -83,7 +85,7 @@ export default function LiveTrackingScreen() {
   useEffect(() => {
     if (!jobId) return;
 
-    // 1. Initial HTTP fetch for latest location & ETA
+    // 1. Initial HTTP fetch for latest location & ETA & store info
     apiClient.get(`/tracking/job/${jobId}`)
       .then(res => {
         if (res.data) {
@@ -108,6 +110,9 @@ export default function LiveTrackingScreen() {
           }
           if (res.data.eta_data) {
             setEta(res.data.eta_data);
+          }
+          if (res.data.store_data) {
+            setStoreData(res.data.store_data);
           }
         }
       })
@@ -177,24 +182,35 @@ export default function LiveTrackingScreen() {
     };
   }, [jobId, safeWorkerId]);
 
-  // Auto-fit to all markers + route
+  // Auto-fit to all markers + route once the native map is ready
   useEffect(() => {
-    if (mapRef.current) {
+    if (mapRef.current && isMapReady) {
       const coords = [...routeCoordinates];
       
+      if (storeData?.latitude && storeData?.longitude) {
+        coords.push({ latitude: storeData.latitude, longitude: storeData.longitude });
+      }
+
       // Add all worker locations to the bounding box
       Object.values(locations).forEach(loc => {
         coords.push({ latitude: loc.latitude, longitude: loc.longitude });
       });
       
-      if (coords.length > 0) {
+      if (coords.length >= 2) {
         mapRef.current.fitToCoordinates(coords, {
-          edgePadding: { top: 100, right: 50, bottom: 250, left: 50 },
+          edgePadding: { top: 120, right: 60, bottom: 280, left: 60 },
           animated: true,
         });
+      } else if (coords.length === 1) {
+        mapRef.current.animateToRegion({
+          latitude: coords[0].latitude,
+          longitude: coords[0].longitude,
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02,
+        }, 500);
       }
     }
-  }, [routeCoordinates, locations]);
+  }, [routeCoordinates, locations, isMapReady, storeData]);
 
   if (!jobId) {
     return (
@@ -204,8 +220,12 @@ export default function LiveTrackingScreen() {
     );
   }
 
-  // Use the selected worker's location for initial region if available, else first available
-  const initialLoc = selectedLocation || Object.values(locations)[0];
+  const initialRegion = {
+    latitude: selectedLocation?.latitude || storeData?.latitude || 28.4428,
+    longitude: selectedLocation?.longitude || storeData?.longitude || 77.0106,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  };
 
   return (
     <View style={styles.container}>
@@ -214,23 +234,17 @@ export default function LiveTrackingScreen() {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
-        region={initialLoc ? {
-          latitude: initialLoc.latitude,
-          longitude: initialLoc.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        } : {
-          latitude: 20.5937, // Default center (India)
-          longitude: 78.9629,
-          latitudeDelta: 15.0,
-          longitudeDelta: 15.0,
-        }}
+        initialRegion={initialRegion}
+        onMapReady={() => setIsMapReady(true)}
+        showsCompass={true}
+        showsScale={true}
       >
+
         {/* Draw the route line (for selected worker only) */}
         {routeCoordinates.length > 0 && (
           <Polyline
             coordinates={routeCoordinates}
-            strokeWidth={4}
+            strokeWidth={5}
             strokeColor="#0B5B31"
             zIndex={100}
             geodesic={true}
@@ -239,14 +253,22 @@ export default function LiveTrackingScreen() {
           />
         )}
         
-        {/* Store marker (the last point in the route) */}
-        {routeCoordinates.length > 0 && (
+        {/* Store marker (either from storeData or the last point in the route) */}
+        {(storeData?.latitude && storeData?.longitude) ? (
+          <Marker
+            coordinate={{ latitude: storeData.latitude, longitude: storeData.longitude }}
+            title={storeData.store_name || "Store Location"}
+            pinColor="green"
+            zIndex={200}
+          />
+        ) : routeCoordinates.length > 0 ? (
           <Marker
             coordinate={routeCoordinates[routeCoordinates.length - 1]}
             title="Store Location"
             pinColor="green"
+            zIndex={200}
           />
-        )}
+        ) : null}
 
         {/* Draw all assigned workers */}
         {Object.values(locations).map(loc => (
@@ -386,7 +408,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   map: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     height: '100%',
   },

@@ -236,12 +236,33 @@ async def get_tracking_state(
         
         latest_eta = json.loads(latest_eta_raw) if latest_eta_raw else None
         latest_loc = json.loads(latest_loc_raw) if latest_loc_raw else None
+
+        # Fetch store coordinates for this job so mobile map can center on the store immediately
+        store_data = None
+        try:
+            req_store_resp = supabase.table("manpower_requests").select(
+                "store_id, stores(store_id, store_name, latitude, longitude)"
+            ).eq("request_id", job_id).execute()
+            if req_store_resp.data and len(req_store_resp.data) > 0:
+                s_info = req_store_resp.data[0].get("stores")
+                if isinstance(s_info, list) and len(s_info) > 0:
+                    s_info = s_info[0]
+                if s_info:
+                    store_data = {
+                        "store_id": s_info.get("store_id"),
+                        "store_name": s_info.get("store_name"),
+                        "latitude": s_info.get("latitude"),
+                        "longitude": s_info.get("longitude")
+                    }
+        except Exception as s_err:
+            print(f"[Tracking] Error fetching store info: {s_err}")
         
         return {
             "job_id": job_id, 
             "status": "active", 
             "location_data": latest_loc,
-            "eta_data": latest_eta
+            "eta_data": latest_eta,
+            "store_data": store_data
         }
     except HTTPException:
         raise
