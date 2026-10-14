@@ -17,8 +17,13 @@
       "distribution": "internal"
     },
     "production": {
+      "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://sahyogi-backend-540529464663.asia-south2.run.app/api"
+        "EXPO_PUBLIC_API_URL": "https://sahyogi-backend-dev-540529464663.asia-south2.run.app"
       }
     }
   },
