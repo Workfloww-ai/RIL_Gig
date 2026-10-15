@@ -21,7 +21,6 @@
       "android": {
         "buildType": "app-bundle"
       },
-      "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://sahyogi-backend-dev-540529464663.asia-south2.run.app"
       }

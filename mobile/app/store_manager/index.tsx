@@ -34,6 +34,8 @@ interface AcceptedWorker {
   name: string;
   role: string;
   avatarUrl?: string;
+  assignment_id?: string;
+  mobile_number?: string;
   status: 'Review Pending' | 'En Route' | 'On Site' | 'Confirmed' | 'Completed';
   acceptances: {
     t90: AcceptanceStatus;
@@ -168,10 +170,11 @@ export default function StoreManagerDashboard() {
     upcoming: false,
     past: false,
     pending: false,
-    declined: false
+    declined: false,
+    req_approved: false
   });
 
-  const toggleSection = (section: 'today' | 'upcoming' | 'past' | 'pending' | 'declined') => {
+  const toggleSection = (section: 'today' | 'upcoming' | 'past' | 'pending' | 'declined' | 'req_approved') => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]

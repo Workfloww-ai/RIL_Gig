@@ -1,8 +1,10 @@
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
 module.exports = {
   expo: {
     name: "Sahyogi",
     slug: "sahyogi",
-    version: "1.2.4",
+    version: "1.2.6",
     orientation: "portrait",
     icon: "./assets/images/newlogo.png",
     splash: {
@@ -16,7 +18,7 @@ module.exports = {
       icon: "./assets/images/newlogo.png"
     },
     android: {
-      versionCode: 8,
+      versionCode: 10,
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/newlogo.png",
@@ -27,7 +29,7 @@ module.exports = {
       package: "com.workfloww.sahyogi",
       config: {
         googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+          apiKey: GOOGLE_MAPS_API_KEY
         }
       },
       permissions: [
@@ -56,6 +58,8 @@ module.exports = {
       "expo-video",
       "@react-native-community/datetimepicker",
       "expo-sharing",
+      "expo-image",
+      "expo-web-browser",
       [
         "expo-location",
         {
@@ -69,7 +73,7 @@ module.exports = {
       [
         "react-native-maps",
         {
-          "androidGoogleMapsApiKey": process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+          "androidGoogleMapsApiKey": GOOGLE_MAPS_API_KEY
         }
       ]
     ],

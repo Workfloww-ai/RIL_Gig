@@ -27,34 +27,72 @@ interface EtaData {
 }
 
 function decodePolyline(encoded: string) {
-  if (!encoded) return [];
-  const poly: {latitude: number, longitude: number}[] = [];
-  let index = 0, len = encoded.length;
-  let lat = 0, lng = 0;
+  if (!encoded || typeof encoded !== 'string') return [];
+  try {
+    const poly: {latitude: number, longitude: number}[] = [];
+    let index = 0, len = encoded.length;
+    let lat = 0, lng = 0;
 
-  while (index < len) {
-    let b, shift = 0, result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lat += dlat;
+    while (index < len) {
+      let b, shift = 0, result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
 
-    shift = 0;
-    result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-    lng += dlng;
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
 
-    poly.push({ latitude: (lat / 1e5), longitude: (lng / 1e5) });
+      const pLat = lat / 1e5;
+      const pLng = lng / 1e5;
+      if (isFinite(pLat) && isFinite(pLng)) {
+        poly.push({ latitude: pLat, longitude: pLng });
+      }
+    }
+    return poly;
+  } catch (err) {
+    console.warn("[LiveTracking] Error decoding polyline:", err);
+    return [];
   }
-  return poly;
+}
+
+class MapErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.error("[MapErrorBoundary] Caught map rendering error:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <View style={styles.mapPlaceholder}>
+          <MaterialCommunityIcons name="map-marker-alert" size={48} color="#0B5B31" style={{ marginBottom: 12 }} />
+          <Text style={{ color: '#1A1A1A', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>
+            Map View Unavailable
+          </Text>
+          <Text style={{ color: '#666', fontSize: 13, textAlign: 'center', paddingHorizontal: 32 }}>
+            Unable to render map. Live tracking data and ETA are still updating below.
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default function LiveTrackingScreen() {
@@ -172,42 +210,65 @@ export default function LiveTrackingScreen() {
       }
     };
 
+    ws.onerror = (err) => {
+      console.warn("[WebSocket] Error connecting to live tracking:", err);
+      setWsStatus("disconnected");
+    };
+
     ws.onclose = () => {
       console.log(`[WebSocket] Disconnected from job ${jobId}`);
       setWsStatus("disconnected");
     };
 
     return () => {
-      ws.close();
+      try {
+        ws.close();
+      } catch {}
     };
   }, [jobId, safeWorkerId]);
 
   // Auto-fit to all markers + route once the native map is ready
   useEffect(() => {
     if (mapRef.current && isMapReady) {
-      const coords = [...routeCoordinates];
-      
-      if (storeData?.latitude && storeData?.longitude) {
-        coords.push({ latitude: storeData.latitude, longitude: storeData.longitude });
-      }
-
-      // Add all worker locations to the bounding box
-      Object.values(locations).forEach(loc => {
-        coords.push({ latitude: loc.latitude, longitude: loc.longitude });
-      });
-      
-      if (coords.length >= 2) {
-        mapRef.current.fitToCoordinates(coords, {
-          edgePadding: { top: 120, right: 60, bottom: 280, left: 60 },
-          animated: true,
+      try {
+        const coords: { latitude: number; longitude: number }[] = [];
+        
+        routeCoordinates.forEach(c => {
+          if (isFinite(c.latitude) && isFinite(c.longitude)) coords.push(c);
         });
-      } else if (coords.length === 1) {
-        mapRef.current.animateToRegion({
-          latitude: coords[0].latitude,
-          longitude: coords[0].longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }, 500);
+
+        if (storeData?.latitude != null && storeData?.longitude != null) {
+          const sLat = Number(storeData.latitude);
+          const sLng = Number(storeData.longitude);
+          if (isFinite(sLat) && isFinite(sLng)) {
+            coords.push({ latitude: sLat, longitude: sLng });
+          }
+        }
+
+        // Add all worker locations to the bounding box
+        Object.values(locations).forEach(loc => {
+          const wLat = Number(loc.latitude);
+          const wLng = Number(loc.longitude);
+          if (isFinite(wLat) && isFinite(wLng)) {
+            coords.push({ latitude: wLat, longitude: wLng });
+          }
+        });
+        
+        if (coords.length >= 2) {
+          mapRef.current.fitToCoordinates(coords, {
+            edgePadding: { top: 120, right: 60, bottom: 280, left: 60 },
+            animated: true,
+          });
+        } else if (coords.length === 1) {
+          mapRef.current.animateToRegion({
+            latitude: coords[0].latitude,
+            longitude: coords[0].longitude,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }, 500);
+        }
+      } catch (err) {
+        console.warn("[LiveTracking] fitToCoordinates error:", err);
       }
     }
   }, [routeCoordinates, locations, isMapReady, storeData]);
@@ -220,102 +281,116 @@ export default function LiveTrackingScreen() {
     );
   }
 
+  const rawLat = Number(selectedLocation?.latitude ?? storeData?.latitude);
+  const rawLng = Number(selectedLocation?.longitude ?? storeData?.longitude);
   const initialRegion = {
-    latitude: selectedLocation?.latitude || storeData?.latitude || 28.4428,
-    longitude: selectedLocation?.longitude || storeData?.longitude || 77.0106,
+    latitude: isFinite(rawLat) && rawLat !== 0 ? rawLat : 28.4428,
+    longitude: isFinite(rawLng) && rawLng !== 0 ? rawLng : 77.0106,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   };
 
+  const storeLat = Number(storeData?.latitude);
+  const storeLng = Number(storeData?.longitude);
+  const hasValidStoreCoord = storeData != null && isFinite(storeLat) && isFinite(storeLng);
+
   return (
     <View style={styles.container}>
-      {/* Map View */}
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        initialRegion={initialRegion}
-        onMapReady={() => setIsMapReady(true)}
-        showsCompass={true}
-        showsScale={true}
-      >
+      {/* Map View wrapped in Error Boundary */}
+      <MapErrorBoundary>
+        <MapView
+          ref={mapRef}
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          initialRegion={initialRegion}
+          onMapReady={() => setIsMapReady(true)}
+          showsCompass={true}
+          showsScale={true}
+        >
+          {/* Draw the route line (for selected worker only) */}
+          {routeCoordinates.length > 1 && (
+            <Polyline
+              coordinates={routeCoordinates}
+              strokeWidth={5}
+              strokeColor="#0B5B31"
+              zIndex={100}
+              geodesic={true}
+              lineJoin="round"
+              lineCap="round"
+            />
+          )}
+          
+          {/* Store marker (either from storeData or the last point in the route) */}
+          {hasValidStoreCoord ? (
+            <Marker
+              coordinate={{ latitude: storeLat, longitude: storeLng }}
+              title={storeData?.store_name || "Store Location"}
+              pinColor="green"
+              zIndex={200}
+            />
+          ) : routeCoordinates.length > 0 && isFinite(routeCoordinates[routeCoordinates.length - 1].latitude) ? (
+            <Marker
+              coordinate={routeCoordinates[routeCoordinates.length - 1]}
+              title="Store Location"
+              pinColor="green"
+              zIndex={200}
+            />
+          ) : null}
 
-        {/* Draw the route line (for selected worker only) */}
-        {routeCoordinates.length > 0 && (
-          <Polyline
-            coordinates={routeCoordinates}
-            strokeWidth={5}
-            strokeColor="#0B5B31"
-            zIndex={100}
-            geodesic={true}
-            lineJoin="round"
-            lineCap="round"
-          />
-        )}
-        
-        {/* Store marker (either from storeData or the last point in the route) */}
-        {(storeData?.latitude && storeData?.longitude) ? (
-          <Marker
-            coordinate={{ latitude: storeData.latitude, longitude: storeData.longitude }}
-            title={storeData.store_name || "Store Location"}
-            pinColor="green"
-            zIndex={200}
-          />
-        ) : routeCoordinates.length > 0 ? (
-          <Marker
-            coordinate={routeCoordinates[routeCoordinates.length - 1]}
-            title="Store Location"
-            pinColor="green"
-            zIndex={200}
-          />
-        ) : null}
+          {/* Draw all assigned workers */}
+          {Object.values(locations).map(loc => {
+            const wLat = Number(loc.latitude);
+            const wLng = Number(loc.longitude);
+            if (!isFinite(wLat) || !isFinite(wLng)) return null;
 
-        {/* Draw all assigned workers */}
-        {Object.values(locations).map(loc => (
-          <Marker
-            key={loc.worker_id}
-            coordinate={{
-              latitude: loc.latitude,
-              longitude: loc.longitude,
-            }}
-            title={loc.worker_id === workerId ? `${displayName} Location` : "Other Worker"}
-            description={`Speed: ${(loc.speed * 3.6).toFixed(1)} km/h`}
-            anchor={{ x: 0.5, y: 0.5 }}
-            rotation={loc.heading || 0}
-            zIndex={1000}
-          >
-            {loc.worker_id === workerId ? (
-              <View style={{
-                backgroundColor: 'white',
-                padding: 4,
-                borderRadius: 25,
-                borderWidth: 2,
-                borderColor: '#0B5B31',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 3,
-                elevation: 5,
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 40,
-                height: 40
-              }}>
-                <Text style={{ fontSize: 22 }}>🏍️</Text>
-              </View>
-            ) : (
-              <View style={{
-                backgroundColor: 'blue',
-                width: 15,
-                height: 15,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: 'white'
-              }} />
-            )}
-          </Marker>
-        ))}
-      </MapView>
+            const speedKmh = Math.round(Number(loc.speed || 0) * 3.6);
+            return (
+              <Marker
+                key={loc.worker_id}
+                coordinate={{
+                  latitude: wLat,
+                  longitude: wLng,
+                }}
+                title={loc.worker_id === workerId ? `${displayName} Location` : "Other Worker"}
+                description={`Speed: ${speedKmh} km/h`}
+                anchor={{ x: 0.5, y: 0.5 }}
+                rotation={Number(loc.heading) || 0}
+                zIndex={1000}
+              >
+                {loc.worker_id === workerId ? (
+                  <View style={{
+                    backgroundColor: 'white',
+                    padding: 4,
+                    borderRadius: 25,
+                    borderWidth: 2,
+                    borderColor: '#0B5B31',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 3,
+                    elevation: 5,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 40,
+                    height: 40
+                  }}>
+                    <Text style={{ fontSize: 22 }}>🏍️</Text>
+                  </View>
+                ) : (
+                  <View style={{
+                    backgroundColor: 'blue',
+                    width: 15,
+                    height: 15,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: 'white'
+                  }} />
+                )}
+              </Marker>
+            );
+          })}
+        </MapView>
+      </MapErrorBoundary>
       
       {!selectedLocation && routeCoordinates.length === 0 && (
         <View style={styles.floatingConnectingBanner}>
@@ -356,11 +431,11 @@ export default function LiveTrackingScreen() {
             <View style={styles.etaHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.etaMainText}>
-                  {eta ? `Arriving in ${eta.eta_minutes} min` : 'Calculating ETA...'}
+                  {eta && typeof eta.eta_minutes === 'number' ? `Arriving in ${eta.eta_minutes} min` : 'Calculating ETA...'}
                 </Text>
                 {eta && (
                   <Text style={styles.etaSubText}>
-                    {(eta.distance_meters / 1000).toFixed(1)} km away • {eta.status.replace('_', ' ')}
+                    {((Number(eta.distance_meters) || 0) / 1000).toFixed(1)} km away • {(eta.status || '').replace(/_/g, ' ')}
                   </Text>
                 )}
               </View>
@@ -369,7 +444,7 @@ export default function LiveTrackingScreen() {
                 <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
                   <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#BBF7D0' }}>
                     <Text style={{ color: '#166534', fontWeight: '800', fontSize: 16 }}>
-                      {Math.round(selectedLocation.speed * 3.6)} <Text style={{ fontSize: 10, fontWeight: '600' }}>km/h</Text>
+                      {Math.round(Number(selectedLocation.speed || 0) * 3.6)} <Text style={{ fontSize: 10, fontWeight: '600' }}>km/h</Text>
                     </Text>
                   </View>
                   <Text style={{ color: '#9CA3AF', fontSize: 9, marginTop: 4, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
