@@ -16,6 +16,7 @@ import { useAuthStore } from '../../src/store/authStore';
 // Validation Schema for Add Store
 const storeSchema = z.object({
   store_name: z.string().min(2, "Store name is required"),
+  domain_id: z.string().min(1, "Store industry domain is required"),
   address: z.string().min(5, "Street address is required"),
   contact_number: z.string().optional().or(z.literal('')),
   city: z.string().min(2, "City is required"),
@@ -49,6 +50,8 @@ export default function SuperadminStores() {
   const [showStateModal, setShowStateModal] = useState(false);
   const [showCityModal, setShowCityModal] = useState(false);
   const [showStoreTypeModal, setShowStoreTypeModal] = useState(false);
+  const [showDomainModal, setShowDomainModal] = useState(false);
+  const [domains, setDomains] = useState<{ domain_id: string; name: string }[]>([]);
   const [showTenantModal, setShowTenantModal] = useState(false);
   const [tenants, setTenants] = useState<{tenant_id: string, tenant_name: string}[]>([]);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -59,6 +62,7 @@ export default function SuperadminStores() {
     resolver: zodResolver(storeSchema),
     defaultValues: {
       store_name: '',
+      domain_id: '',
       address: '',
       contact_number: '',
       city: '',
@@ -90,6 +94,22 @@ export default function SuperadminStores() {
 
   useEffect(() => {
     fetchStores();
+
+    // Fetch industry domains for store configuration
+    apiClient.get('/superadmin/domains')
+      .then(res => {
+        if (res.data?.domains) setDomains(res.data.domains);
+      })
+      .catch(() => {
+        apiClient.get('/preferences/categories')
+          .then(res => {
+            if (res.data?.domains) {
+              setDomains(res.data.domains.map((d: any) => ({ domain_id: d.domain_id, name: d.name })));
+            }
+          })
+          .catch(console.error);
+      });
+
     if (role === 'superadmin' && selectedOrganizationId) {
       apiClient.get(`/superadmin/organizations/${selectedOrganizationId}/tenants`)
         .then(res => {
@@ -173,8 +193,13 @@ export default function SuperadminStores() {
               <View key={store.store_id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 }}>
                 <TouchableOpacity onPress={() => toggleExpand(store.store_id)} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <View style={{ flex: 1, paddingRight: 10 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginRight: 8 }}>{store.store_name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>{store.store_name}</Text>
+                      {store.domain_name ? (
+                        <View style={{ backgroundColor: '#EAF3EC', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#C3D3CA' }}>
+                          <Text style={{ fontSize: 10, color: '#10472B', fontWeight: '700' }}>{store.domain_name}</Text>
+                        </View>
+                      ) : null}
                       {store.store_type ? (
                         <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                           <Text style={{ fontSize: 10, color: '#4F46E5', fontWeight: '600', textTransform: 'capitalize' }}>{store.store_type}</Text>
@@ -193,6 +218,12 @@ export default function SuperadminStores() {
 
                 {expandedStoreId === store.store_id && (
                   <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
+                    {store.domain_name ? (
+                      <View style={{ marginBottom: 12 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 }}>Industry Domain</Text>
+                        <Text style={{ fontSize: 14, color: '#10472B', fontWeight: '700' }}>{store.domain_name}</Text>
+                      </View>
+                    ) : null}
                     <View style={{ marginBottom: 12 }}>
                       <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 }}>Full Address</Text>
                       <Text style={{ fontSize: 14, color: '#1F2937' }}>{store.address}, {store.city}, {store.state} - {store.pincode}</Text>
@@ -264,6 +295,28 @@ export default function SuperadminStores() {
                   <Input label="Store Name" placeholder="SuperMart" value={value} onChangeText={onChange} error={errors.store_name?.message} />
                 )}
               />
+
+              {/* Store Industry Domain Selector */}
+              <Controller
+                control={control}
+                name="domain_id"
+                render={({ field: { value } }) => (
+                  <View style={{ marginBottom: 16 }}>
+                    <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 13, marginBottom: 8, marginLeft: 4 }}>Store Industry Domain *</Text>
+                    <TouchableOpacity 
+                      onPress={() => setShowDomainModal(true)}
+                      style={{ backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: errors.domain_id ? '#D32F2F' : '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                    >
+                      <Text style={{ color: value ? '#111827' : '#9CA3AF', fontWeight: value ? '600' : '400' }}>
+                        {domains.find(d => d.domain_id === value)?.name || "Select Store Domain (e.g. Non-Technical, Technical)"}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color="#9CA3AF" />
+                    </TouchableOpacity>
+                    {errors.domain_id && <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 4, marginLeft: 4 }}>{errors.domain_id.message}</Text>}
+                  </View>
+                )}
+              />
+
               <Controller
                 control={control}
                 name="address"
@@ -455,6 +508,36 @@ export default function SuperadminStores() {
                   style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', flexDirection: 'row', justifyContent: 'space-between' }}
                 >
                   <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>{item.tenant_name}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Domain Modal */}
+      <Modal visible={showDomainModal} animationType="fade" transparent={true}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowDomainModal(false)}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '60%' }} onStartShouldSetResponder={() => true}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Select Store Industry Domain</Text>
+              <TouchableOpacity onPress={() => setShowDomainModal(false)}>
+                <Text style={{ color: '#6B7280', fontWeight: '600' }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={domains}
+              keyExtractor={item => item.domain_id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  onPress={() => {
+                    setValue('domain_id', item.domain_id, { shouldValidate: true });
+                    setShowDomainModal(false);
+                  }}
+                  style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <Text style={{ fontSize: 16, color: '#1F2937', fontWeight: '500' }}>{item.name}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
                 </TouchableOpacity>
               )}
             />

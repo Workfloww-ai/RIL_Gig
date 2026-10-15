@@ -4,6 +4,7 @@ from typing import List, Optional, Any
 class ContentModuleResponse(BaseModel):
     id: str
     title: str
+    category_id: Optional[str] = None
     category_name: str
     duration_text: Optional[str] = None
     video_url: Optional[str] = None

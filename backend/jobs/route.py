@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from .schemas import JobRequestCreate, JobRequestResponse, JobResponse, JobRoleResponse, AvailableJobsResponse, AcceptJobResponse, MyAcceptedJobsResponse, AcceptedJobResponse, CompleteJobRequest, ExtendJobRequest, RespondExtensionRequest
 from db.jobs_db import create_job_request, get_all_jobs
 from db.finance_db import create_payment_record
@@ -15,13 +15,53 @@ def get_ist_now_naive():
 
 router = APIRouter()
 
+@router.get("/store-categories")
+async def fetch_store_categories(user_id: str = Depends(get_current_user)):
+    """
+    Fetches the allowed job categories for the logged-in store manager's assigned store.
+    If the store has an assigned domain (e.g. Technical), only returns categories in that domain!
+    """
+    try:
+        assignment_resp = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).limit(1).execute()
+        if not assignment_resp.data:
+            cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
+            return {"categories": cats_resp.data or [], "domain_name": "General"}
+
+        store_id = assignment_resp.data[0]["store_id"]
+        store_resp = supabase.table("stores").select("store_id, store_name, domain_id").eq("store_id", store_id).single().execute()
+        store_data = store_resp.data or {}
+        store_domain_id = store_data.get("domain_id")
+
+        domain_name = "General"
+        if store_domain_id:
+            dom_resp = supabase.table("job_domains").select("name").eq("domain_id", store_domain_id).single().execute()
+            domain_name = dom_resp.data.get("name", "General") if dom_resp.data else "General"
+            cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").eq("domain_id", store_domain_id).order("name").execute()
+        else:
+            cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
+
+        return {
+            "store_id": store_id,
+            "store_name": store_data.get("store_name"),
+            "domain_id": store_domain_id,
+            "domain_name": domain_name,
+            "categories": cats_resp.data or []
+        }
+    except Exception as e:
+        cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
+        return {"categories": cats_resp.data or [], "domain_name": "General"}
+
 @router.get("/roles", response_model=list[JobRoleResponse])
-async def fetch_available_job_roles(limit: int = 100, offset: int = 0, user_id: str = Depends(get_current_user)):
+async def fetch_available_job_roles(category_id: Optional[str] = None, limit: int = 100, offset: int = 0, user_id: str = Depends(get_current_user)):
     """
-    Fetches all available job roles for the dropdown.
+    Fetches available job roles, optionally filtered by category_id.
     """
-    jobs = get_all_jobs(limit=limit, offset=offset)
-    return jobs
+    try:
+        jobs = get_all_jobs(limit=limit, offset=offset, category_id=category_id)
+        return jobs
+    except Exception as e:
+        logger.error(f"Error fetching job roles for category_id={category_id}: {e}")
+        return []
 
 @router.post("/", response_model=JobRequestResponse, status_code=status.HTTP_201_CREATED)
 async def raise_job_request(
@@ -44,11 +84,18 @@ async def raise_job_request(
 async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = Depends(get_current_user)):
     try:
         # Fetch open requests and join jobs and stores
-        response = supabase.table("manpower_requests").select(
-            "request_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
-            "jobs(job_id, job_name, base_compensation, description), "
-            "stores(store_id, store_name, address, city, google_map_link)"
-        ).eq("request_status", "open").order("shift_date", desc=False).order("start_time", desc=False).execute()
+        try:
+            response = supabase.table("manpower_requests").select(
+                "request_id, job_id, store_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
+                "jobs(job_id, job_name, base_compensation, category_id), "
+                "stores(store_id, store_name, address, city, google_map_link)"
+            ).eq("request_status", "open").order("shift_date", desc=False).order("start_time", desc=False).execute()
+        except Exception:
+            response = supabase.table("manpower_requests").select(
+                "request_id, job_id, store_id, workers_needed, shift_date, start_time, hours_duration, request_status, approval_status, "
+                "jobs(job_id, job_name, base_compensation, category), "
+                "stores(store_id, store_name, address, city, google_map_link)"
+            ).eq("request_status", "open").order("shift_date", desc=False).order("start_time", desc=False).execute()
         
         # Allow either 'approved' or 'confirmed'
         requests = [r for r in response.data if str(r.get("approval_status")).lower() in ("approved", "confirmed")]
@@ -81,7 +128,32 @@ async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = De
         
         # Get user's currently accepted jobs to filter them out
         assignments = supabase.table("worker_job_assignments").select("request_id").eq("worker_id", user_id).execute()
-        accepted_ids = {a["request_id"] for a in assignments.data}
+        accepted_ids = {a["request_id"] for a in (assignments.data or [])}
+
+        # Fetch worker's certified categories from user_category_certifications
+        cert_resp = supabase.table("user_category_certifications").select("category_id").eq("user_id", user_id).execute()
+        certified_cat_ids = {c["category_id"] for c in (cert_resp.data or []) if "category_id" in c}
+
+        # If worker is not certified in any category, they cannot see any shifts
+        if not certified_cat_ids:
+            return AvailableJobsResponse(status="success", jobs=[])
+
+        # Fetch worker's active selected job preferences
+        prefs_resp = supabase.table("user_job_preferences").select("category_id").eq("user_id", user_id).execute()
+        selected_cat_ids = {p["category_id"] for p in (prefs_resp.data or []) if "category_id" in p}
+
+        # Eligible categories MUST be in the worker's active preferences AND certified
+        eligible_cat_ids = certified_cat_ids.intersection(selected_cat_ids) if selected_cat_ids else certified_cat_ids
+        if not eligible_cat_ids:
+            return AvailableJobsResponse(status="success", jobs=[])
+
+        # Fetch category names dictionary
+        cats_resp = supabase.table("job_categories").select("category_id, name").execute()
+        cats_name_map = {c["category_id"]: c["name"] for c in (cats_resp.data or [])}
+
+        # Fetch all jobs to ensure accurate category mapping
+        all_jobs_list = get_all_jobs()
+        jobs_dict = {j["job_id"]: j for j in all_jobs_list}
         
         jobs = []
         for r in requests:
@@ -89,14 +161,29 @@ async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = De
                 continue
                 
             job_info = r.get("jobs") or {}
-            # If for some reason job_info is a list (depending on relationship), get first item
             if isinstance(job_info, list) and len(job_info) > 0:
                 job_info = job_info[0]
                 
             store_info = r.get("stores") or {}
             if isinstance(store_info, list) and len(store_info) > 0:
                 store_info = store_info[0]
-            
+
+            job_id = job_info.get("job_id") or r.get("job_id")
+            resolved_job = jobs_dict.get(job_id) or job_info
+
+            # Extract category ID from resolved job or nested query
+            job_cat_id = resolved_job.get("category_id") or resolved_job.get("category")
+            if not job_cat_id:
+                job_cat_id = job_info.get("category_id") or job_info.get("category")
+
+            # STRICT CATEGORY MATCH: Worker ONLY sees jobs in their active preference domain where they are certified!
+            if not job_cat_id or job_cat_id not in eligible_cat_ids:
+                continue
+
+            category_name = cats_name_map.get(job_cat_id) or resolved_job.get("category_name") or ""
+            job_name = resolved_job.get("job_name") or job_info.get("job_name", "")
+            base_comp = resolved_job.get("base_compensation") if resolved_job.get("base_compensation") is not None else job_info.get("base_compensation", 0)
+
             jobs.append(JobResponse(
                 request_id=r.get("request_id", ""),
                 workers_needed=r.get("workers_needed", 1),
@@ -104,10 +191,12 @@ async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = De
                 start_time=r.get("start_time", ""),
                 hours_duration=float(r.get("hours_duration", 0)),
                 request_status=r.get("request_status", ""),
-                job_id=job_info.get("job_id", ""),
-                job_name=job_info.get("job_name", ""),
-                job_description=job_info.get("description"),
-                base_compensation=float(job_info.get("base_compensation", 0)),
+                job_id=job_id or "",
+                job_name=job_name,
+                job_description=resolved_job.get("description") or job_info.get("description"),
+                base_compensation=float(base_comp),
+                category_id=job_cat_id,
+                category_name=category_name,
                 store_id=store_info.get("store_id", ""),
                 store_name=store_info.get("store_name", ""),
                 address=store_info.get("address"),

@@ -10,6 +10,7 @@ from jobs.route import router as jobs_router
 from stores.route import router as stores_router
 from superadmin.route import router as superadmin_router
 from finance.route import router as finance_router
+from preferences.route import router as preferences_router
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from jobs.cron_tasks import check_t90_voice_calls
@@ -163,6 +164,9 @@ app.include_router(superadmin_router, prefix="/api/superadmin", tags=["Superadmi
 
 # Include the finance router
 app.include_router(finance_router, prefix="/api/finance", tags=["Finance"])
+
+# Include the preferences router
+app.include_router(preferences_router, prefix="/api/preferences", tags=["Preferences"])
 
 from tracking.route import router as tracking_router
 from tracking.websocket import router as tracking_ws_router

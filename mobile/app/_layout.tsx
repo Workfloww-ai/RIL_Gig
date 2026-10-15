@@ -7,6 +7,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
 import { useEffect } from 'react';
 
+import { apiClient } from '../src/api/client';
+
 export default function RootLayout() {
   const { _hasHydrated, token, role } = useAuthStore();
   const segments = useSegments();
@@ -25,8 +27,18 @@ export default function RootLayout() {
       } else if (role === 'store_manager') {
         router.replace('/store_manager');
       } else {
-        // Default to gig worker flow
-        router.replace('/library'); 
+        // Default to gig worker flow: check if they have chosen preferences
+        apiClient.get('/preferences/my', {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(res => {
+          if (!res.data?.selected_category_ids || res.data.selected_category_ids.length === 0) {
+            router.replace({ pathname: '/preferences', params: { onboarding: 'true' } });
+          } else {
+            router.replace('/library');
+          }
+        }).catch(() => {
+          router.replace('/library');
+        });
       }
     } else if (!token && !inAuthGroup) {
       // Redirect unauthenticated users to the login screen
@@ -45,6 +57,7 @@ export default function RootLayout() {
           <Stack.Screen name="store_manager" />
           <Stack.Screen name="superadmin" />
           <Stack.Screen name="library" />
+          <Stack.Screen name="preferences" />
         </Stack>
       </View>
     </SafeAreaProvider>
