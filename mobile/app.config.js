@@ -4,7 +4,7 @@ module.exports = {
   expo: {
     name: "Sahyogi",
     slug: "sahyogi",
-    version: "1.2.7",
+    version: "1.2.8",
     orientation: "portrait",
     icon: "./assets/images/newlogo.png",
     splash: {
@@ -18,7 +18,7 @@ module.exports = {
       icon: "./assets/images/newlogo.png"
     },
     android: {
-      versionCode: 11,
+      versionCode: 12,
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/newlogo.png",
