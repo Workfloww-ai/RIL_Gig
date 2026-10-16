@@ -24,8 +24,29 @@ async def fetch_store_categories(user_id: str = Depends(get_current_user)):
     try:
         assignment_resp = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).limit(1).execute()
         if not assignment_resp.data:
-            cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
-            return {"categories": cats_resp.data or [], "domain_name": "General"}
+            try:
+                cats_resp = supabase.table("job_categories").select("category_id, name, domain_id, is_active").order("name").execute()
+                cats_data = [
+                    {
+                        "category_id": c["category_id"],
+                        "name": c["name"],
+                        "domain_id": c.get("domain_id"),
+                        "is_active": c.get("is_active") is not False
+                    }
+                    for c in (cats_resp.data or [])
+                ]
+            except Exception:
+                cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
+                cats_data = [
+                    {
+                        "category_id": c["category_id"],
+                        "name": c["name"],
+                        "domain_id": c.get("domain_id"),
+                        "is_active": True
+                    }
+                    for c in (cats_resp.data or [])
+                ]
+            return {"categories": cats_data, "domain_name": "General"}
 
         store_id = assignment_resp.data[0]["store_id"]
         store_resp = supabase.table("stores").select("store_id, store_name, domain_id").eq("store_id", store_id).single().execute()
@@ -34,22 +55,103 @@ async def fetch_store_categories(user_id: str = Depends(get_current_user)):
 
         domain_name = "General"
         if store_domain_id:
-            dom_resp = supabase.table("job_domains").select("name").eq("domain_id", store_domain_id).single().execute()
-            domain_name = dom_resp.data.get("name", "General") if dom_resp.data else "General"
-            cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").eq("domain_id", store_domain_id).order("name").execute()
+            try:
+                dom_resp = supabase.table("job_domains").select("name, is_active").eq("domain_id", store_domain_id).single().execute()
+                dom_data = dom_resp.data or {}
+                if dom_data.get("is_active") is False:
+                    # Domain is inactive: neither domain nor its categories can be chosen
+                    return {
+                        "store_id": store_id,
+                        "store_name": store_data.get("store_name"),
+                        "domain_id": store_domain_id,
+                        "domain_name": dom_data.get("name", "Inactive Domain"),
+                        "categories": []
+                    }
+                domain_name = dom_data.get("name", "General")
+            except Exception:
+                dom_resp = supabase.table("job_domains").select("name").eq("domain_id", store_domain_id).single().execute()
+                domain_name = dom_resp.data.get("name", "General") if dom_resp.data else "General"
+
+            try:
+                cats_resp = supabase.table("job_categories").select("category_id, name, domain_id, is_active").eq("domain_id", store_domain_id).order("name").execute()
+                cats_list = [
+                    {
+                        "category_id": c["category_id"],
+                        "name": c["name"],
+                        "domain_id": c.get("domain_id"),
+                        "is_active": c.get("is_active") is not False
+                    }
+                    for c in (cats_resp.data or [])
+                ]
+            except Exception:
+                cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").eq("domain_id", store_domain_id).order("name").execute()
+                cats_list = [
+                    {
+                        "category_id": c["category_id"],
+                        "name": c["name"],
+                        "domain_id": c.get("domain_id"),
+                        "is_active": True
+                    }
+                    for c in (cats_resp.data or [])
+                ]
         else:
-            cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
+            try:
+                doms_resp = supabase.table("job_domains").select("domain_id, is_active").execute()
+                active_dom_ids = {d["domain_id"] for d in (doms_resp.data or []) if d.get("is_active") is not False}
+                cats_resp = supabase.table("job_categories").select("category_id, name, domain_id, is_active").order("name").execute()
+                cats_list = [
+                    {
+                        "category_id": c["category_id"],
+                        "name": c["name"],
+                        "domain_id": c.get("domain_id"),
+                        "is_active": c.get("is_active") is not False
+                    }
+                    for c in (cats_resp.data or [])
+                    if c.get("domain_id") in active_dom_ids
+                ]
+            except Exception:
+                cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
+                cats_list = [
+                    {
+                        "category_id": c["category_id"],
+                        "name": c["name"],
+                        "domain_id": c.get("domain_id"),
+                        "is_active": True
+                    }
+                    for c in (cats_resp.data or [])
+                ]
 
         return {
             "store_id": store_id,
             "store_name": store_data.get("store_name"),
             "domain_id": store_domain_id,
             "domain_name": domain_name,
-            "categories": cats_resp.data or []
+            "categories": cats_list
         }
     except Exception as e:
-        cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
-        return {"categories": cats_resp.data or [], "domain_name": "General"}
+        try:
+            cats_resp = supabase.table("job_categories").select("category_id, name, domain_id, is_active").order("name").execute()
+            cats_data = [
+                {
+                    "category_id": c["category_id"],
+                    "name": c["name"],
+                    "domain_id": c.get("domain_id"),
+                    "is_active": c.get("is_active") is not False
+                }
+                for c in (cats_resp.data or [])
+            ]
+        except Exception:
+            cats_resp = supabase.table("job_categories").select("category_id, name, domain_id").order("name").execute()
+            cats_data = [
+                {
+                    "category_id": c["category_id"],
+                    "name": c["name"],
+                    "domain_id": c.get("domain_id"),
+                    "is_active": True
+                }
+                for c in (cats_resp.data or [])
+            ]
+        return {"categories": cats_data, "domain_name": "General"}
 
 @router.get("/roles", response_model=list[JobRoleResponse])
 async def fetch_available_job_roles(category_id: Optional[str] = None, limit: int = 100, offset: int = 0, user_id: str = Depends(get_current_user)):
@@ -142,8 +244,20 @@ async def get_available_jobs(limit: int = 20, offset: int = 0, user_id: str = De
         prefs_resp = supabase.table("user_job_preferences").select("category_id").eq("user_id", user_id).execute()
         selected_cat_ids = {p["category_id"] for p in (prefs_resp.data or []) if "category_id" in p}
 
-        # Eligible categories MUST be in the worker's active preferences AND certified
-        eligible_cat_ids = certified_cat_ids.intersection(selected_cat_ids) if selected_cat_ids else certified_cat_ids
+        # Eligible categories MUST be in the worker's active preferences AND certified AND active in the system
+        try:
+            active_doms_resp = supabase.table("job_domains").select("domain_id, is_active").execute()
+            active_dom_ids = {d["domain_id"] for d in (active_doms_resp.data or []) if d.get("is_active") is not False}
+            active_cats_resp = supabase.table("job_categories").select("category_id, domain_id, is_active").execute()
+            active_cat_ids = {
+                c["category_id"] for c in (active_cats_resp.data or [])
+                if c.get("is_active") is not False and c.get("domain_id") in active_dom_ids
+            }
+            base_eligible = certified_cat_ids.intersection(selected_cat_ids) if selected_cat_ids else certified_cat_ids
+            eligible_cat_ids = base_eligible.intersection(active_cat_ids)
+        except Exception:
+            eligible_cat_ids = certified_cat_ids.intersection(selected_cat_ids) if selected_cat_ids else certified_cat_ids
+
         if not eligible_cat_ids:
             return AvailableJobsResponse(status="success", jobs=[])
 

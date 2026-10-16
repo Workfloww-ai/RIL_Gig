@@ -311,11 +311,16 @@ async def get_all_stores(
 @router.get("/domains")
 async def get_domains_list(admin_info: dict = Depends(verify_superadmin)):
     """
-    Fetch all job domains for store domain selection.
+    Fetch all active job domains for store domain selection.
     """
     try:
-        doms_res = supabase.table("job_domains").select("domain_id, name").order("name").execute()
-        return {"status": "success", "domains": doms_res.data or []}
+        try:
+            doms_res = supabase.table("job_domains").select("domain_id, name, is_active").order("name").execute()
+            active_doms = [d for d in (doms_res.data or []) if d.get("is_active") is not False]
+        except Exception:
+            doms_res = supabase.table("job_domains").select("domain_id, name").order("name").execute()
+            active_doms = doms_res.data or []
+        return {"status": "success", "domains": active_doms}
     except Exception as e:
         print(f"Error fetching domains: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -30,14 +30,38 @@ def create_job_request(user_id: str, request_data: Dict[str, Any]):
                 detail="A job category must be explicitly selected before raising a request."
             )
 
-        # Verify that category exists and belongs to the store's domain
-        cat_resp = supabase.table("job_categories").select("category_id, domain_id, name").eq("category_id", category_id).limit(1).execute()
+        # Verify that category exists, is active, and belongs to an active domain
+        try:
+            cat_resp = supabase.table("job_categories").select("category_id, domain_id, name, is_active").eq("category_id", category_id).limit(1).execute()
+        except Exception:
+            cat_resp = supabase.table("job_categories").select("category_id, domain_id, name").eq("category_id", category_id).limit(1).execute()
+
         if not cat_resp.data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Selected job category is invalid."
             )
         category_info = cat_resp.data[0]
+
+        if category_info.get("is_active") is False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category '{category_info.get('name')}' is currently inactive and cannot be selected."
+            )
+
+        # Verify that the category's domain is active
+        if category_info.get("domain_id"):
+            try:
+                dom_resp = supabase.table("job_domains").select("domain_id, name, is_active").eq("domain_id", category_info["domain_id"]).limit(1).execute()
+                if dom_resp.data and dom_resp.data[0].get("is_active") is False:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Domain '{dom_resp.data[0].get('name')}' is currently inactive. Categories of this domain cannot be chosen."
+                    )
+            except HTTPException:
+                raise
+            except Exception:
+                pass
 
         # Verify that the store's domain matches the category's domain
         store_resp = supabase.table("stores").select("domain_id").eq("store_id", store_id).limit(1).execute()

@@ -20,6 +20,7 @@ interface CategoryItem {
   category_id: string;
   name: string;
   domain_id: string;
+  is_active?: boolean;
 }
 
 interface DomainGroup {
@@ -187,13 +188,14 @@ export default function PreferencesScreen() {
     setShowDomainSwitchModal(false);
   };
 
-  const toggleCategory = (categoryId: string) => {
+  const toggleCategory = (cat: CategoryItem) => {
+    if (cat.is_active === false) return;
     setSelectedCategories((prev) => {
       const next = new Set(prev);
-      if (next.has(categoryId)) {
-        next.delete(categoryId);
+      if (next.has(cat.category_id)) {
+        next.delete(cat.category_id);
       } else {
-        next.add(categoryId);
+        next.add(cat.category_id);
       }
       return next;
     });
@@ -201,15 +203,18 @@ export default function PreferencesScreen() {
 
   const toggleSelectAllCurrentDomain = () => {
     if (!currentDomain) return;
-    const currentCatIds = currentDomain.categories.map((c) => c.category_id);
-    const allSelected = currentCatIds.every((id) => selectedCategories.has(id));
+    const activeCats = currentDomain.categories.filter((c) => c.is_active !== false);
+    const activeCatIds = activeCats.map((c) => c.category_id);
+    if (activeCatIds.length === 0) return;
+
+    const allActiveSelected = activeCatIds.every((id) => selectedCategories.has(id));
 
     setSelectedCategories((prev) => {
       const next = new Set(prev);
-      if (allSelected) {
-        currentCatIds.forEach((id) => next.delete(id));
+      if (allActiveSelected) {
+        activeCatIds.forEach((id) => next.delete(id));
       } else {
-        currentCatIds.forEach((id) => next.add(id));
+        activeCatIds.forEach((id) => next.add(id));
       }
       return next;
     });
@@ -244,11 +249,15 @@ export default function PreferencesScreen() {
   };
 
   const currentDomain = domains.find((d) => d.domain_id === selectedDomainId);
-  const currentDomainCategoryCount = currentDomain ? currentDomain.categories.length : 0;
-  const currentDomainSelectedCount = currentDomain
-    ? currentDomain.categories.filter((c) => selectedCategories.has(c.category_id)).length
-    : 0;
-  const isAllCurrentDomainSelected = currentDomainCategoryCount > 0 && currentDomainSelectedCount === currentDomainCategoryCount;
+  const currentDomainActiveCategories = currentDomain
+    ? currentDomain.categories.filter((c) => c.is_active !== false)
+    : [];
+  const currentDomainCategoryCount = currentDomainActiveCategories.length;
+  const currentDomainSelectedCount = currentDomainActiveCategories.filter((c) =>
+    selectedCategories.has(c.category_id)
+  ).length;
+  const isAllCurrentDomainSelected =
+    currentDomainCategoryCount > 0 && currentDomainSelectedCount === currentDomainCategoryCount;
 
   const pendingDomain = domains.find((d) => d.domain_id === pendingDomainId);
 
@@ -520,67 +529,88 @@ export default function PreferencesScreen() {
               {/* Category Cards Grid */}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
                 {currentDomain.categories.map((cat) => {
+                  const isInactive = cat.is_active === false;
                   const isSelected = selectedCategories.has(cat.category_id);
                   const isCertified = certifiedCategories.has(cat.category_id);
 
                   return (
                     <View key={cat.category_id} style={{ width: cardWidth, paddingHorizontal: 3, marginBottom: 10 }}>
                       <TouchableOpacity
-                        onPress={() => toggleCategory(cat.category_id)}
-                        activeOpacity={0.8}
+                        onPress={() => toggleCategory(cat)}
+                        disabled={isInactive}
+                        activeOpacity={isInactive ? 1 : 0.8}
                         style={{
-                          backgroundColor: isSelected ? '#EAF3EC' : '#FFFFFF',
+                          backgroundColor: isInactive ? '#F3F4F6' : isSelected ? '#EAF3EC' : '#FFFFFF',
                           borderRadius: 16,
                           borderWidth: 1.5,
-                          borderColor: isSelected ? '#10472B' : '#F0F0F0',
+                          borderColor: isInactive ? '#E5E7EB' : isSelected ? '#10472B' : '#F0F0F0',
                           paddingVertical: 12,
-                          paddingHorizontal: 6,
+                          paddingHorizontal: 4,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          minHeight: 96,
+                          minHeight: 104,
                           position: 'relative',
+                          opacity: isInactive ? 0.65 : 1,
                           shadowColor: '#000',
                           shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: isSelected ? 0.08 : 0.02,
+                          shadowOpacity: isSelected && !isInactive ? 0.08 : 0.02,
                           shadowRadius: 3,
-                          elevation: isSelected ? 2 : 1,
+                          elevation: isSelected && !isInactive ? 2 : 1,
                         }}
                       >
                         {/* Corner Indicator Badge */}
-                        <View
-                          style={{
-                            position: 'absolute',
-                            top: 6,
-                            right: 6,
-                            width: 14,
-                            height: 14,
-                            borderRadius: 7,
-                            backgroundColor: isSelected ? '#10472B' : '#FFCDD2',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          {isSelected ? (
-                            <MaterialCommunityIcons name="check" size={10} color="#FFFFFF" />
-                          ) : null}
-                        </View>
+                        {isInactive ? (
+                          <View
+                            style={{
+                              position: 'absolute',
+                              top: 5,
+                              right: 5,
+                              backgroundColor: '#E5E7EB',
+                              paddingHorizontal: 4,
+                              paddingVertical: 1.5,
+                              borderRadius: 4,
+                            }}
+                          >
+                            <Text style={{ fontSize: 7, fontWeight: '800', color: '#6B7280' }}>
+                              SOON
+                            </Text>
+                          </View>
+                        ) : (
+                          <View
+                            style={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              width: 14,
+                              height: 14,
+                              borderRadius: 7,
+                              backgroundColor: isSelected ? '#10472B' : '#FFCDD2',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {isSelected ? (
+                              <MaterialCommunityIcons name="check" size={10} color="#FFFFFF" />
+                            ) : null}
+                          </View>
+                        )}
 
                         {/* Icon Container */}
                         <View
                           style={{
-                            width: 42,
-                            height: 42,
+                            width: 40,
+                            height: 40,
                             borderRadius: 12,
-                            backgroundColor: isSelected ? '#10472B' : '#F3F4F6',
+                            backgroundColor: isInactive ? '#E5E7EB' : isSelected ? '#10472B' : '#F3F4F6',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: 8,
+                            marginBottom: 6,
                           }}
                         >
                           <MaterialCommunityIcons
                             name={getCategoryIcon(cat.name)}
                             size={22}
-                            color={isSelected ? '#FFFFFF' : '#4B5563'}
+                            color={isInactive ? '#9CA3AF' : isSelected ? '#FFFFFF' : '#4B5563'}
                           />
                         </View>
 
@@ -588,8 +618,8 @@ export default function PreferencesScreen() {
                         <Text
                           style={{
                             fontSize: 11,
-                            fontWeight: isSelected ? '800' : '600',
-                            color: isSelected ? '#10472B' : '#374151',
+                            fontWeight: isInactive ? '600' : isSelected ? '800' : '600',
+                            color: isInactive ? '#9CA3AF' : isSelected ? '#10472B' : '#374151',
                             textAlign: 'center',
                             lineHeight: 14,
                           }}
@@ -598,7 +628,22 @@ export default function PreferencesScreen() {
                           {cat.name}
                         </Text>
 
-                        {isCertified && (
+                        {/* Coming Soon or Certified Badge */}
+                        {isInactive ? (
+                          <View
+                            style={{
+                              marginTop: 4,
+                              backgroundColor: '#E5E7EB',
+                              paddingHorizontal: 4,
+                              paddingVertical: 1.5,
+                              borderRadius: 4,
+                            }}
+                          >
+                            <Text style={{ fontSize: 8, fontWeight: '700', color: '#6B7280' }}>
+                              Coming Soon
+                            </Text>
+                          </View>
+                        ) : isCertified ? (
                           <View
                             style={{
                               marginTop: 4,
@@ -612,11 +657,19 @@ export default function PreferencesScreen() {
                               Certified
                             </Text>
                           </View>
-                        )}
+                        ) : null}
                       </TouchableOpacity>
                     </View>
                   );
                 })}
+                {currentDomain.categories.length === 0 && (
+                  <View style={{ width: '100%', paddingVertical: 24, alignItems: 'center' }}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={32} color="#9CA3AF" />
+                    <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 8, fontWeight: '600' }}>
+                      No active job roles currently available in this domain.
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           )}

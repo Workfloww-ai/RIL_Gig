@@ -15,6 +15,7 @@ interface CategoryOption {
   category_id: string;
   name: string;
   domain_id?: string;
+  is_active?: boolean;
 }
 
 export default function RaiseRequestModal({ visible, onClose, onSuccess, managerStoreName }: RaiseRequestModalProps) {
@@ -430,42 +431,54 @@ export default function RaiseRequestModal({ visible, onClose, onSuccess, manager
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {availableCategories.map((cat, index) => (
-                <TouchableOpacity
-                  key={cat.category_id || index}
-                  onPress={() => handleSelectCategory(cat)}
-                  style={{
-                    paddingVertical: 14,
-                    paddingHorizontal: 12,
-                    borderBottomWidth: 1,
-                    borderBottomColor: '#F3F4F6',
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    backgroundColor: selectedCategory?.category_id === cat.category_id ? '#EAF3EC' : 'transparent',
-                    borderRadius: 10,
-                    marginBottom: 4
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <MaterialCommunityIcons
-                      name={getCategoryIcon(cat.name)}
-                      size={20}
-                      color="#10472B"
-                      style={{ marginRight: 10 }}
-                    />
-                    <Text style={{ fontSize: 15, color: '#1A1A1A', fontWeight: selectedCategory?.category_id === cat.category_id ? '800' : '600' }}>
-                      {cat.name}
-                    </Text>
-                  </View>
-                  {selectedCategory?.category_id === cat.category_id && (
-                    <Ionicons name="checkmark-circle" size={18} color="#10472B" />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {availableCategories.map((cat, index) => {
+                const isInactive = cat.is_active === false;
+                const isSelected = selectedCategory?.category_id === cat.category_id;
+
+                return (
+                  <TouchableOpacity
+                    key={cat.category_id || index}
+                    onPress={() => !isInactive && handleSelectCategory(cat)}
+                    disabled={isInactive}
+                    activeOpacity={isInactive ? 1 : 0.7}
+                    style={{
+                      paddingVertical: 14,
+                      paddingHorizontal: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: '#F3F4F6',
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      backgroundColor: isSelected ? '#EAF3EC' : isInactive ? '#F9FAFB' : 'transparent',
+                      borderRadius: 10,
+                      marginBottom: 4,
+                      opacity: isInactive ? 0.55 : 1,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 8 }}>
+                      <MaterialCommunityIcons
+                        name={getCategoryIcon(cat.name)}
+                        size={20}
+                        color={isInactive ? '#9CA3AF' : '#10472B'}
+                        style={{ marginRight: 10 }}
+                      />
+                      <Text style={{ fontSize: 15, color: isInactive ? '#9CA3AF' : '#1A1A1A', fontWeight: isSelected ? '800' : '600' }}>
+                        {cat.name}
+                      </Text>
+                    </View>
+                    {isInactive ? (
+                      <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#6B7280' }}>Coming Soon</Text>
+                      </View>
+                    ) : isSelected ? (
+                      <Ionicons name="checkmark-circle" size={18} color="#10472B" />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
               {availableCategories.length === 0 && (
                 <Text style={{ textAlign: 'center', color: '#6B7280', padding: 20 }}>
-                  No categories found for this store's domain.
+                  No active categories available for this store's domain.
                 </Text>
               )}
             </ScrollView>

@@ -5,6 +5,7 @@ class CategoryItem(BaseModel):
     category_id: str
     name: str
     domain_id: str
+    is_active: bool = True
 
 class DomainWithCategories(BaseModel):
     domain_id: str
@@ -20,6 +21,7 @@ class CategoryInfo(BaseModel):
     name: str
     domain_id: Optional[str] = None
     domain_name: Optional[str] = None
+    is_active: bool = True
 
 class DomainInfo(BaseModel):
     domain_id: str
