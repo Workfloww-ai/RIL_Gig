@@ -266,16 +266,24 @@ export default function PreferencesScreen() {
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: '#FAFBFB' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFBFB" />
-
-      {/* Decorative Brand Top Accent Line */}
-      <View style={{ height: 4, flexDirection: 'row', width: '100%' }}>
-        <View style={{ flex: 1, backgroundColor: '#10472B' }} />
-        <View style={{ width: 60, backgroundColor: '#D32F2F' }} />
-      </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Header Bar */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: '#FAFBFB' }}>
+      <View
+        style={{
+          backgroundColor: '#FFFFFF',
+          paddingTop: 10,
+          paddingBottom: 16,
+          paddingHorizontal: 20,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 10,
+          elevation: 6,
+          zIndex: 10,
+          position: 'relative',
+        }}
+      >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -295,28 +303,38 @@ export default function PreferencesScreen() {
                   <MaterialCommunityIcons name="arrow-left" size={18} color="#374151" />
                 </TouchableOpacity>
               )}
-              <Text style={{ fontSize: 13, fontWeight: '800', color: '#D32F2F', letterSpacing: 0.5 }}>
-                Sah<Text style={{ color: '#10472B' }}>Yogi</Text>
+              <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>
+                <Text style={{ color: '#0B5B31' }}>Sah</Text>
+                <Text style={{ color: '#D32F2F' }}>Yogi</Text>
               </Text>
               <Text style={{ fontSize: 11, fontWeight: '700', color: '#777777', marginLeft: 6 }}>
                 • {isOnboarding ? 'STEP 2: PREFERENCES' : 'JOB PREFERENCES'}
               </Text>
             </View>
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#1A1A1A', marginTop: 4, letterSpacing: -0.5 }}>
-              Hi {userName ? userName.charAt(0).toUpperCase() + userName.slice(1).toLowerCase() : 'Worker'}, Select Domain & Roles
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#1A1A1A', marginTop: 4, letterSpacing: -0.5 }}>
+              Select Domain & Roles
             </Text>
           </View>
 
           <Image
             source={require('../assets/images/newlogo.png')}
-            style={{ width: 52, height: 52, resizeMode: 'contain', marginLeft: 12 }}
+            style={{ width: 60, height: 60, resizeMode: 'contain', marginLeft: 12 }}
           />
+        </View>
+
+        {/* Decorative Brand Line - Absolute Bottom (Same as library.tsx) */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 8, flexDirection: 'row', overflow: 'hidden' }}>
+          <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+          <View style={{ width: 0, height: 0, borderTopWidth: 8, borderTopColor: '#0B5B31', borderRightWidth: 8, borderRightColor: 'transparent', marginLeft: -1 }} />
+          <View style={{ width: 4, height: 8, backgroundColor: 'transparent' }} />
+          <View style={{ width: 0, height: 0, borderBottomWidth: 8, borderBottomColor: '#D32F2F', borderLeftWidth: 8, borderLeftColor: 'transparent', marginRight: -1 }} />
+          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
         </View>
       </View>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#10472B" />
+          <ActivityIndicator size="large" color="#0B5B31" />
           <Text style={{ marginTop: 12, fontSize: 14, color: '#666666', fontWeight: '600' }}>
             Loading categories...
           </Text>
@@ -328,13 +346,45 @@ export default function PreferencesScreen() {
         >
           {/* Locked Status Banner if already configured */}
           {isDomainLocked && (
-            <View style={{ backgroundColor: '#EAF3EC', borderWidth: 1.5, borderColor: '#10472B', borderRadius: 16, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
-              <MaterialCommunityIcons name="lock-check" size={24} color="#10472B" style={{ marginRight: 10 }} />
+            <View
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderLeftWidth: 4,
+                borderLeftColor: '#D32F2F',
+                borderRightWidth: 4,
+                borderRightColor: '#0B5B31',
+                padding: 14,
+                marginBottom: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 6,
+                elevation: 2,
+              }}
+            >
+              <View
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  backgroundColor: '#EAF3EC',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}
+              >
+                <MaterialCommunityIcons name="lock-check" size={22} color="#0B5B31" />
+              </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#10472B' }}>
-                  Industry Domain Registered: {currentDomain?.name || 'Selected Domain'}
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#1A1A1A' }}>
+                  Industry Domain Registered: <Text style={{ color: '#0B5B31' }}>{currentDomain?.name || 'Selected Domain'}</Text>
                 </Text>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: '#2E7D32', marginTop: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: '#666666', marginTop: 2 }}>
                   Domain cannot be changed, but you can select or add any roles in this domain below.
                 </Text>
               </View>
@@ -354,8 +404,8 @@ export default function PreferencesScreen() {
                   {isDomainLocked ? 'Your registered industry sector' : 'Job roles are organized exclusively by domain'}
                 </Text>
               </View>
-              <View style={{ backgroundColor: isDomainLocked ? '#EAF3EC' : '#F2F6F4', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: isDomainLocked ? '#10472B' : '#C3D3CA' }}>
-                <Text style={{ color: '#10472B', fontSize: 11, fontWeight: '700' }}>{isDomainLocked ? 'Domain Locked' : 'Single Domain'}</Text>
+              <View style={{ backgroundColor: isDomainLocked ? '#EAF3EC' : '#F2F6F4', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: isDomainLocked ? '#0B5B31' : '#C3D3CA' }}>
+                <Text style={{ color: '#0B5B31', fontSize: 11, fontWeight: '700' }}>{isDomainLocked ? 'Domain Locked' : 'Single Domain'}</Text>
               </View>
             </View>
 
@@ -370,30 +420,34 @@ export default function PreferencesScreen() {
                   onPress={() => handleDomainPress(dom.domain_id)}
                   activeOpacity={isDomainOtherAndLocked ? 0.6 : 0.8}
                   style={{
-                    backgroundColor: isDomainActive ? '#EAF3EC' : isDomainOtherAndLocked ? '#F9FAFB' : '#FFFFFF',
+                    backgroundColor: '#FFFFFF',
                     borderRadius: 16,
-                    borderWidth: 1.5,
-                    borderColor: isDomainActive ? '#10472B' : '#E5E7EB',
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                    borderLeftWidth: 4,
+                    borderLeftColor: isDomainOtherAndLocked ? '#D1D5DB' : '#D32F2F',
+                    borderRightWidth: 4,
+                    borderRightColor: isDomainOtherAndLocked ? '#D1D5DB' : '#0B5B31',
                     padding: 14,
-                    marginBottom: 10,
+                    marginBottom: 12,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     opacity: isDomainOtherAndLocked ? 0.45 : 1,
                     shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: isDomainActive ? 0.06 : 0.02,
-                    shadowRadius: 3,
-                    elevation: isDomainActive ? 2 : 1,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDomainActive ? 0.08 : 0.03,
+                    shadowRadius: 6,
+                    elevation: isDomainActive ? 3 : 2,
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 10 }}>
                     <View
                       style={{
-                        width: 40,
-                        height: 40,
+                        width: 42,
+                        height: 42,
                         borderRadius: 12,
-                        backgroundColor: isDomainActive ? '#10472B' : isDomainOtherAndLocked ? '#E5E7EB' : '#F3F4F6',
+                        backgroundColor: isDomainActive ? '#0B5B31' : isDomainOtherAndLocked ? '#E5E7EB' : '#F3F4F6',
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginRight: 12,
@@ -407,12 +461,12 @@ export default function PreferencesScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 15, fontWeight: '800', color: isDomainActive ? '#10472B' : isDomainOtherAndLocked ? '#9CA3AF' : '#1A1A1A' }}>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: isDomainActive ? '#0B5B31' : isDomainOtherAndLocked ? '#9CA3AF' : '#1A1A1A' }}>
                           <Text style={{ color: '#D32F2F' }}>{domIdx + 1}. </Text>
                           {dom.name}
                         </Text>
                         {hasCertified && (
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#10472B', marginLeft: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#0B5B31', marginLeft: 6 }}>
                             • Certified ✓
                           </Text>
                         )}
@@ -430,7 +484,7 @@ export default function PreferencesScreen() {
                       <Text style={{ fontSize: 10, fontWeight: '700', color: '#9CA3AF' }}>Locked</Text>
                     </View>
                   ) : isDomainActive ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#10472B', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B5B31', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
                       {isDomainLocked && <MaterialCommunityIcons name="lock" size={11} color="#FFFFFF" style={{ marginRight: 4 }} />}
                       <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFFFFF' }}>{isDomainLocked ? 'Registered' : 'Selected'}</Text>
                     </View>
@@ -459,15 +513,19 @@ export default function PreferencesScreen() {
               style={{
                 backgroundColor: '#FFFFFF',
                 borderRadius: 20,
-                borderWidth: 1.5,
-                borderColor: currentDomainSelectedCount > 0 ? '#10472B' : '#E5E7EB',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderLeftWidth: 5,
+                borderLeftColor: '#D32F2F',
+                borderRightWidth: 5,
+                borderRightColor: '#0B5B31',
                 padding: 16,
                 marginBottom: 16,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.04,
-                shadowRadius: 6,
-                elevation: 2,
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+                elevation: 3,
               }}
             >
               {/* Domain Header Card */}
@@ -478,7 +536,7 @@ export default function PreferencesScreen() {
                       width: 36,
                       height: 36,
                       borderRadius: 10,
-                      backgroundColor: '#10472B',
+                      backgroundColor: '#0B5B31',
                       alignItems: 'center',
                       justifyContent: 'center',
                       marginRight: 10,
@@ -506,12 +564,12 @@ export default function PreferencesScreen() {
                   onPress={toggleSelectAllCurrentDomain}
                   activeOpacity={0.7}
                   style={{
-                    backgroundColor: currentDomainSelectedCount > 0 ? '#10472B' : '#FFF5F5',
+                    backgroundColor: currentDomainSelectedCount > 0 ? '#0B5B31' : '#FFF5F5',
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: currentDomainSelectedCount > 0 ? '#10472B' : '#FED7D7',
+                    borderColor: currentDomainSelectedCount > 0 ? '#0B5B31' : '#FED7D7',
                   }}
                 >
                   <Text
@@ -540,22 +598,22 @@ export default function PreferencesScreen() {
                         disabled={isInactive}
                         activeOpacity={isInactive ? 1 : 0.8}
                         style={{
-                          backgroundColor: isInactive ? '#F3F4F6' : isSelected ? '#EAF3EC' : '#FFFFFF',
+                          backgroundColor: isInactive ? '#F9FAFB' : isSelected ? '#EAF3EC' : '#FFFFFF',
                           borderRadius: 16,
-                          borderWidth: 1.5,
-                          borderColor: isInactive ? '#E5E7EB' : isSelected ? '#10472B' : '#F0F0F0',
+                          borderWidth: isSelected ? 1.5 : 1,
+                          borderColor: isInactive ? '#E5E7EB' : isSelected ? '#0B5B31' : '#E5E7EB',
                           paddingVertical: 12,
                           paddingHorizontal: 4,
                           alignItems: 'center',
                           justifyContent: 'center',
                           minHeight: 104,
                           position: 'relative',
-                          opacity: isInactive ? 0.65 : 1,
+                          opacity: isInactive ? 0.6 : 1,
                           shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: isSelected && !isInactive ? 0.08 : 0.02,
-                          shadowRadius: 3,
-                          elevation: isSelected && !isInactive ? 2 : 1,
+                          shadowOffset: { width: 0, height: isSelected ? 2 : 1 },
+                          shadowOpacity: isSelected ? 0.08 : 0.02,
+                          shadowRadius: isSelected ? 4 : 2,
+                          elevation: isSelected ? 3 : 1,
                         }}
                       >
                         {/* Corner Indicator Badge */}
@@ -575,6 +633,22 @@ export default function PreferencesScreen() {
                               SOON
                             </Text>
                           </View>
+                        ) : isSelected ? (
+                          <View
+                            style={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              width: 16,
+                              height: 16,
+                              borderRadius: 8,
+                              backgroundColor: '#0B5B31',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <MaterialCommunityIcons name="check" size={11} color="#FFFFFF" />
+                          </View>
                         ) : (
                           <View
                             style={{
@@ -584,15 +658,11 @@ export default function PreferencesScreen() {
                               width: 14,
                               height: 14,
                               borderRadius: 7,
-                              backgroundColor: isSelected ? '#10472B' : '#FFCDD2',
-                              alignItems: 'center',
-                              justifyContent: 'center',
+                              borderWidth: 1.5,
+                              borderColor: '#CBD5E1',
+                              backgroundColor: '#FFFFFF',
                             }}
-                          >
-                            {isSelected ? (
-                              <MaterialCommunityIcons name="check" size={10} color="#FFFFFF" />
-                            ) : null}
-                          </View>
+                          />
                         )}
 
                         {/* Icon Container */}
@@ -601,7 +671,7 @@ export default function PreferencesScreen() {
                             width: 40,
                             height: 40,
                             borderRadius: 12,
-                            backgroundColor: isInactive ? '#E5E7EB' : isSelected ? '#10472B' : '#F3F4F6',
+                            backgroundColor: isInactive ? '#E5E7EB' : isSelected ? '#0B5B31' : '#F3F4F6',
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginBottom: 6,
@@ -619,7 +689,7 @@ export default function PreferencesScreen() {
                           style={{
                             fontSize: 11,
                             fontWeight: isInactive ? '600' : isSelected ? '800' : '600',
-                            color: isInactive ? '#9CA3AF' : isSelected ? '#10472B' : '#374151',
+                            color: isInactive ? '#9CA3AF' : isSelected ? '#0B5B31' : '#374151',
                             textAlign: 'center',
                             lineHeight: 14,
                           }}
@@ -653,7 +723,7 @@ export default function PreferencesScreen() {
                               borderRadius: 4,
                             }}
                           >
-                            <Text style={{ fontSize: 9, fontWeight: '700', color: '#10472B' }}>
+                            <Text style={{ fontSize: 9, fontWeight: '700', color: '#0B5B31' }}>
                               Certified
                             </Text>
                           </View>
@@ -703,17 +773,27 @@ export default function PreferencesScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View
             style={{
-              backgroundColor: '#FFEBEE',
-              borderRadius: 10,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 12,
               paddingHorizontal: 12,
               paddingVertical: 8,
               borderWidth: 1,
-              borderColor: '#FFCDD2',
+              borderColor: '#E5E7EB',
+              borderLeftWidth: 3.5,
+              borderLeftColor: '#D32F2F',
+              borderRightWidth: 3.5,
+              borderRightColor: '#0B5B31',
               marginRight: 10,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.04,
+              shadowRadius: 3,
+              elevation: 1,
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '900', color: '#D32F2F', textAlign: 'center' }}>
-              {selectedCategories.size} <Text style={{ fontSize: 13, fontWeight: '700', color: '#777777' }}>/ {currentDomainCategoryCount}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '900', color: '#1A1A1A', textAlign: 'center' }}>
+              <Text style={{ color: '#D32F2F' }}>{selectedCategories.size}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#777777' }}> / {currentDomainCategoryCount}</Text>
             </Text>
           </View>
           <View>
@@ -732,13 +812,13 @@ export default function PreferencesScreen() {
           disabled={saving || loading}
           activeOpacity={0.8}
           style={{
-            backgroundColor: '#10472B',
+            backgroundColor: '#0B5B31',
             paddingHorizontal: 22,
             paddingVertical: 14,
             borderRadius: 14,
             flexDirection: 'row',
             alignItems: 'center',
-            shadowColor: '#10472B',
+            shadowColor: '#0B5B31',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.25,
             shadowRadius: 8,
@@ -762,7 +842,26 @@ export default function PreferencesScreen() {
       {/* Domain Switch Warning Modal */}
       <Modal visible={showDomainSwitchModal} transparent animationType="fade">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 24, width: '85%', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+          <View
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: '#E5E7EB',
+              borderLeftWidth: 4,
+              borderLeftColor: '#D32F2F',
+              borderRightWidth: 4,
+              borderRightColor: '#0B5B31',
+              padding: 24,
+              width: '85%',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
             <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFF5F5', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
               <MaterialCommunityIcons name="alert-circle-outline" size={30} color="#D32F2F" />
             </View>
@@ -770,7 +869,7 @@ export default function PreferencesScreen() {
               Switch Industry Domain?
             </Text>
             <Text style={{ fontSize: 14, color: '#555555', textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
-              Changing to <Text style={{ fontWeight: '700', color: '#10472B' }}>{pendingDomain?.name}</Text> will clear your selected roles from the current domain.
+              Changing to <Text style={{ fontWeight: '700', color: '#0B5B31' }}>{pendingDomain?.name}</Text> will clear your selected roles from the current domain.
             </Text>
             <View style={{ flexDirection: 'row', width: '100%', gap: 10 }}>
               <TouchableOpacity
@@ -784,7 +883,7 @@ export default function PreferencesScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={confirmDomainSwitch}
-                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#10472B', alignItems: 'center' }}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#0B5B31', alignItems: 'center' }}
               >
                 <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>Switch</Text>
               </TouchableOpacity>
