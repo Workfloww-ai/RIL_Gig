@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import * as Location from 'expo-location';
 import { View, Text, Platform, StatusBar, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, BackHandler, Pressable, Linking, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
 import { Button } from '../src/components/Button';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
@@ -11,9 +11,18 @@ import * as Sharing from 'expo-sharing';
 import { Watermark } from '../src/components/Watermark';
 import StatusModal from '../src/components/StatusModal';
 import { LocationTrackingService } from '../src/services/LocationTrackingService';
+
+interface CategoryOption {
+  category_id: string;
+  name: string;
+  domain_id?: string;
+  domain_name?: string;
+}
+
 interface Module {
   id: string;
   title: string;
+  category_id?: string;
   category_name: string;
   duration_text: string;
   video_url: string;
@@ -33,6 +42,12 @@ export default function LibraryScreen() {
 
   const [modules, setModules] = useState<Module[]>([]);
   const [userProfile, setUserProfile] = useState<{ first_name: string, last_name: string } | null>(null);
+  const [userCategories, setUserCategories] = useState<CategoryOption[]>([]);
+  const [workerDomain, setWorkerDomain] = useState<{ domain_id: string; name: string } | null>(null);
+  const [certifiedCategoryIds, setCertifiedCategoryIds] = useState<string[]>([]);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  const [selectedCertCategory, setSelectedCertCategory] = useState<CategoryOption | null>(null);
+  const [availableJobsCategoryFilter, setAvailableJobsCategoryFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -299,8 +314,57 @@ export default function LibraryScreen() {
     });
   };
 
+  const fetchData = useCallback(async () => {
+    try {
+      const [modulesRes, profileRes, prefsRes] = await Promise.all([
+        apiClient.get('/content/modules'),
+        apiClient.get('/auth/me').catch(() => ({ data: null })),
+        apiClient.get('/preferences/my').catch(() => ({ data: { selected_category_ids: [], certified_category_ids: [] } }))
+      ]);
+      const mods: Module[] = modulesRes.data || [];
+      setModules(mods);
+      if (profileRes?.data) setUserProfile(profileRes.data);
+
+      if (prefsRes?.data) {
+        const prefData = prefsRes.data;
+        const certIds: string[] = prefData.certified_category_ids || [];
+        setCertifiedCategoryIds(certIds);
+        if (prefData.domain) setWorkerDomain(prefData.domain);
+
+        let cats: CategoryOption[] = prefData.categories || [];
+        // If no categories in response, infer from modules list
+        if (cats.length === 0 && mods.length > 0) {
+          const seen = new Set<string>();
+          const inferred: CategoryOption[] = [];
+          mods.forEach((m: Module) => {
+            const cName = m.category_name || 'General';
+            const cId = m.category_id || cName;
+            if (!seen.has(cId)) {
+              seen.add(cId);
+              inferred.push({ category_id: cId, name: cName });
+            }
+          });
+          cats = inferred;
+        }
+        setUserCategories(cats);
+
+        if (cats.length > 0) {
+          const firstCertified = cats.find(c => certIds.includes(c.category_id));
+          setSelectedCertCategory(firstCertified || cats[0]);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch modules:', err);
+      setError('Failed to load content modules.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
+      fetchData();
+
       const onBackPress = () => {
         BackHandler.exitApp();
         return true;
@@ -309,33 +373,24 @@ export default function LibraryScreen() {
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
       return () => subscription.remove();
-    }, [])
+    }, [fetchData])
   );
 
-  useEffect(() => {
-    // Request background location permissions immediately on login
-    // so Google Play reviewers see the Prominent Disclosure
-    // without needing to accept a job. Passing custom UI callback.
-    // LocationTrackingService.requestPermissions(showCustomDisclosure);
-
-    const fetchData = async () => {
-      try {
-        const [modulesRes, profileRes] = await Promise.all([
-          apiClient.get('/content/modules'),
-          apiClient.get('/auth/me').catch(() => ({ data: null }))
-        ]);
-        setModules(modulesRes.data);
-        if (profileRes?.data) setUserProfile(profileRes.data);
-      } catch (err: any) {
-        console.error('Failed to fetch modules:', err);
-        setError('Failed to load content modules.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  // Icon mapping for categories
+  const getCategoryIcon = (categoryName?: string): keyof typeof MaterialCommunityIcons.glyphMap => {
+    const lower = (categoryName || '').toLowerCase();
+    if (lower.includes('electric')) return 'lightning-bolt';
+    if (lower.includes('plumb')) return 'water';
+    if (lower.includes('hvac') || lower.includes('ac')) return 'weather-windy';
+    if (lower.includes('carpent')) return 'hammer';
+    if (lower.includes('mechanic')) return 'wrench';
+    if (lower.includes('retail') || lower.includes('cashier')) return 'barcode-scan';
+    if (lower.includes('warehouse') || lower.includes('loader')) return 'warehouse';
+    if (lower.includes('hospitality') || lower.includes('f&b')) return 'silverware-fork-knife';
+    if (lower.includes('logistic') || lower.includes('deliver')) return 'bike-fast';
+    if (lower.includes('phlebotom') || lower.includes('medic')) return 'needle';
+    return 'briefcase-outline';
+  };
 
   const handleStartLesson = (module: Module) => {
     router.push({ pathname: '/studio', params: { id: module.id, moduleData: JSON.stringify(module) } });
@@ -345,6 +400,21 @@ export default function LibraryScreen() {
   const totalCount = modules.length;
   const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isAllCompleted = totalCount > 0 && completedCount === totalCount;
+  const hasCertifiedAccess = certifiedCategoryIds.length > 0 || isAllCompleted;
+
+  // Category progress calculation helper
+  const getCategoryProgress = useCallback((cat: CategoryOption) => {
+    const catModules = modules.filter(m => {
+      if (m.category_id && cat.category_id && m.category_id === cat.category_id) return true;
+      if (m.category_name && cat.name && m.category_name.toLowerCase() === cat.name.toLowerCase()) return true;
+      return false;
+    });
+    const total = catModules.length;
+    const passed = catModules.filter(m => m.status === 'quiz_passed').length;
+    const percent = total > 0 ? Math.round((passed / total) * 100) : 0;
+    const isCertified = (total > 0 && passed === total) || certifiedCategoryIds.includes(cat.category_id);
+    return { total, passed, percent, isCertified, modules: catModules };
+  }, [modules, certifiedCategoryIds]);
 
   const fetchAvailableJobs = async (loadMore = false) => {
     if (loadMore && (!hasMoreAvailable || loadingMoreAvailable)) return;
@@ -432,10 +502,10 @@ export default function LibraryScreen() {
   };
 
   useEffect(() => {
-    if (activeTab === 'jobs' && isAllCompleted) {
+    if (activeTab === 'jobs' && hasCertifiedAccess) {
       fetchJobs();
     }
-  }, [activeTab, isAllCompleted, jobsTab]);
+  }, [activeTab, hasCertifiedAccess, jobsTab]);
 
   useEffect(() => {
     if (justCompleted === 'true' && isAllCompleted) {
@@ -845,38 +915,167 @@ export default function LibraryScreen() {
           <View className="px-5 pt-6 pb-20">
             {activeTab === 'modules' && (
               <View>
-                {/* Dashboard Progress Card */}
+                {/* Domain & Worker Header */}
                 <View
-                  className="bg-white rounded-3xl p-6 mb-8 shadow-sm border border-sage/10"
+                  className="bg-white rounded-3xl p-5 mb-5 shadow-sm border border-sage/10"
                   style={{ borderLeftWidth: 6, borderLeftColor: '#D32F2F', borderRightWidth: 6, borderRightColor: '#0B5B31' }}
                 >
-                  <View className="flex-row justify-between items-center mb-6">
-                    <View className="flex-row items-center">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <View className="flex-row items-center flex-1">
                       <View className="h-12 w-12 rounded-full bg-moss/10 items-center justify-center border border-moss/20 mr-3">
                         <Text className="text-moss text-lg font-bold">{userProfile?.first_name?.charAt(0).toUpperCase() || 'U'}</Text>
                       </View>
-                      <View>
-                        <Text className="text-slate text-xl font-extrabold">{userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'Loading...'}</Text>
+                      <View className="flex-1">
+                        <Text className="text-slate text-lg font-extrabold" numberOfLines={1}>
+                          {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'STUDENT'}
+                        </Text>
+                        <View className="flex-row items-center mt-0.5">
+                          <Text className="text-muted text-xs font-semibold">Domain: </Text>
+                          <Text className="text-moss text-xs font-extrabold">{workerDomain?.name || 'Selected Domain'}</Text>
+                        </View>
                       </View>
                     </View>
-
+                    <TouchableOpacity
+                      onPress={() => router.push('/preferences')}
+                      className="bg-moss/10 px-3 py-1.5 rounded-full flex-row items-center border border-moss/20"
+                    >
+                      <Feather name="sliders" size={12} color="#0B5B31" style={{ marginRight: 4 }} />
+                      <Text className="text-moss text-xs font-bold">Preferences</Text>
+                    </TouchableOpacity>
                   </View>
 
-                  <View className="mb-2 flex-row justify-between">
-                    <Text className="text-slate font-bold"> Module Completion</Text>
-                    <Text className="text-moss font-extrabold">{completedCount} of {totalCount} ({completionPercent}%)</Text>
-                  </View>
-                  <View className="h-2 bg-sage/20 rounded-full mb-4 overflow-hidden flex-row">
-                    <View className="h-full bg-moss rounded-full" style={{ width: `${completionPercent}%` }} />
-                  </View>
-                  <Text className="text-muted text-sm font-medium">
-                    Complete all video modules and pass each short quiz to get certified.
-                  </Text>
+                  {/* Progress Header */}
+                  {selectedCategoryFilter === 'all' ? (
+                    <>
+                      <View className="mb-2 flex-row justify-between">
+                        <Text className="text-slate font-bold text-xs uppercase tracking-wider">Overall Training Completion</Text>
+                        <Text className="text-moss font-extrabold text-xs">{completedCount} of {totalCount} ({completionPercent}%)</Text>
+                      </View>
+                      <View className="h-2 bg-sage/20 rounded-full mb-3 overflow-hidden flex-row">
+                        <View className="h-full bg-moss rounded-full" style={{ width: `${completionPercent}%` }} />
+                      </View>
+                      <Text className="text-muted text-xs leading-relaxed">
+                        Pass quizzes across your selected categories to get certified and unlock shifts.
+                      </Text>
+                    </>
+                  ) : (() => {
+                    const activeCat = userCategories.find(c => c.category_id === selectedCategoryFilter);
+                    const catProg = activeCat ? getCategoryProgress(activeCat) : null;
+                    if (!catProg) return null;
+                    return (
+                      <>
+                        <View className="mb-2 flex-row justify-between items-center">
+                          <Text className="text-slate font-bold text-xs uppercase tracking-wider">{activeCat?.name} Progress</Text>
+                          <Text className="text-moss font-extrabold text-xs">{catProg.passed} of {catProg.total} ({catProg.percent}%)</Text>
+                        </View>
+                        <View className="h-2 bg-sage/20 rounded-full mb-3 overflow-hidden flex-row">
+                          <View className="h-full bg-moss rounded-full" style={{ width: `${catProg.percent}%` }} />
+                        </View>
+                        {catProg.isCertified ? (
+                          <View className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 flex-row items-center">
+                            <Feather name="check-circle" size={14} color="#15803D" style={{ marginRight: 6 }} />
+                            <Text className="text-emerald-800 text-xs font-bold flex-1">
+                              Certified in {activeCat?.name}! You can now receive shifts for this category.
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text className="text-muted text-xs leading-relaxed">
+                            Pass all {catProg.total} modules in {activeCat?.name} to unlock certification.
+                          </Text>
+                        )}
+                      </>
+                    );
+                  })()}
                 </View>
 
-                <View className="mb-6">
-                  <Text className="text-2xl font-bold text-charcoal">Training Content</Text>
-                  {/* <Text className="text-muted mt-1">Empower your growth with our curated training library. </Text> */}
+                {/* Category Filter Selector Pills */}
+                <View className="mb-5">
+                  <Text className="text-xs font-bold text-slate uppercase tracking-wider mb-2.5">Filter by Category</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 10 }}>
+                    {/* All Categories Pill */}
+                    <TouchableOpacity
+                      onPress={() => setSelectedCategoryFilter('all')}
+                      style={{
+                        backgroundColor: selectedCategoryFilter === 'all' ? '#0B5B31' : '#FFFFFF',
+                        borderColor: selectedCategoryFilter === 'all' ? '#0B5B31' : '#E5E7EB',
+                        borderWidth: 1.5,
+                        borderRadius: 20,
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        marginRight: 8,
+                        flexDirection: 'row',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Feather
+                        name="grid"
+                        size={14}
+                        color={selectedCategoryFilter === 'all' ? '#FFFFFF' : '#6B7280'}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={{ color: selectedCategoryFilter === 'all' ? '#FFFFFF' : '#1A1A1A', fontWeight: '700', fontSize: 13 }}>
+                        All ({modules.length})
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Specific Categories Pills */}
+                    {userCategories.map(cat => {
+                      const isSelected = selectedCategoryFilter === cat.category_id;
+                      const catProg = getCategoryProgress(cat);
+                      return (
+                        <TouchableOpacity
+                          key={cat.category_id}
+                          onPress={() => setSelectedCategoryFilter(cat.category_id)}
+                          style={{
+                            backgroundColor: isSelected ? '#0B5B31' : '#FFFFFF',
+                            borderColor: isSelected ? '#0B5B31' : '#E5E7EB',
+                            borderWidth: 1.5,
+                            borderRadius: 20,
+                            paddingHorizontal: 14,
+                            paddingVertical: 8,
+                            marginRight: 8,
+                            flexDirection: 'row',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name={getCategoryIcon(cat.name)}
+                            size={16}
+                            color={isSelected ? '#FFFFFF' : '#0B5B31'}
+                            style={{ marginRight: 6 }}
+                          />
+                          <Text style={{ color: isSelected ? '#FFFFFF' : '#1A1A1A', fontWeight: '700', fontSize: 13 }}>
+                            {cat.name}
+                          </Text>
+                          {catProg.isCertified ? (
+                            <View style={{ backgroundColor: isSelected ? '#FFFFFF33' : '#DCFCE7', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1, marginLeft: 6 }}>
+                              <Text style={{ color: isSelected ? '#FFFFFF' : '#15803D', fontSize: 10, fontWeight: '800' }}>✓</Text>
+                            </View>
+                          ) : catProg.total > 0 ? (
+                            <View style={{ backgroundColor: isSelected ? '#FFFFFF33' : '#F3F4F6', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1, marginLeft: 6 }}>
+                              <Text style={{ color: isSelected ? '#FFFFFF' : '#6B7280', fontSize: 10, fontWeight: '700' }}>
+                                {catProg.passed}/{catProg.total}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* Modules List Header */}
+                <View className="mb-4 flex-row justify-between items-center">
+                  <Text className="text-xl font-bold text-charcoal">
+                    {selectedCategoryFilter === 'all'
+                      ? 'Training Content'
+                      : `${userCategories.find(c => c.category_id === selectedCategoryFilter)?.name || 'Category'} Modules`}
+                  </Text>
+                  <Text className="text-muted text-xs font-semibold">
+                    {selectedCategoryFilter === 'all'
+                      ? `${modules.length} lessons`
+                      : `${modules.filter(m => (m.category_id && m.category_id === selectedCategoryFilter) || (m.category_name && m.category_name.toLowerCase() === (userCategories.find(c => c.category_id === selectedCategoryFilter)?.name || '').toLowerCase())).length} lessons`}
+                  </Text>
                 </View>
 
                 {loading ? (
@@ -884,192 +1083,337 @@ export default function LibraryScreen() {
                 ) : error ? (
                   <Text className="text-clay/80 text-center mt-10">{error}</Text>
                 ) : (
-                  modules.map((module) => (
-                    <View
-                      key={module.id}
-                      className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10"
-                    >
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (module.status !== 'locked') {
-                            handleStartLesson(module);
-                          }
-                        }}
-                        activeOpacity={module.status === 'locked' ? 1 : 0.7}
+                  (() => {
+                    // Filter modules
+                    const displayModules = selectedCategoryFilter === 'all'
+                      ? modules
+                      : modules.filter(m => {
+                          const activeCat = userCategories.find(c => c.category_id === selectedCategoryFilter);
+                          if (!activeCat) return true;
+                          if (m.category_id && m.category_id === activeCat.category_id) return true;
+                          if (m.category_name && m.category_name.toLowerCase() === activeCat.name.toLowerCase()) return true;
+                          return false;
+                        });
+
+                    if (displayModules.length === 0) {
+                      return (
+                        <View className="bg-cream rounded-3xl p-8 shadow-sm border border-sage/10 items-center justify-center py-12">
+                          <Feather name="book-open" size={32} color="#9CA3AF" style={{ marginBottom: 10 }} />
+                          <Text className="text-base font-bold text-charcoal text-center mb-1">No Modules Found</Text>
+                          <Text className="text-muted text-xs text-center leading-relaxed">
+                            No training modules are currently mapped to this category.
+                          </Text>
+                        </View>
+                      );
+                    }
+
+                    return displayModules.map((module) => (
+                      <View
+                        key={module.id}
+                        className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10"
                       >
-                      <View className="flex-row mb-4">
-                        {/* Thumbnail / Icon */}
-                        <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
-                          {/* Placeholder for video thumbnail */}
-                          <View className="absolute inset-0 bg-sage/30 opacity-50" />
-                          <View className="absolute inset-0 items-center justify-center">
-                            <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-moss/50' : 'bg-moss/80'}`}>
-                              <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (module.status !== 'locked') {
+                              handleStartLesson(module);
+                            }
+                          }}
+                          activeOpacity={module.status === 'locked' ? 1 : 0.7}
+                        >
+                          <View className="flex-row mb-4">
+                            {/* Thumbnail / Icon */}
+                            <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
+                              <View className="absolute inset-0 bg-sage/30 opacity-50" />
+                              <View className="absolute inset-0 items-center justify-center">
+                                <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-moss/50' : 'bg-moss/80'}`}>
+                                  <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
+                                </View>
+                              </View>
+                            </View>
+
+                            {/* Details */}
+                            <View className="flex-1 justify-between py-1">
+                              <View>
+                                <View className="bg-moss/10 self-start px-2.5 py-1 rounded-full mb-2 flex-row items-center border border-moss/20">
+                                  <MaterialCommunityIcons
+                                    name={getCategoryIcon(module.category_name)}
+                                    size={12}
+                                    color="#0B5B31"
+                                    style={{ marginRight: 4 }}
+                                  />
+                                  <Text className="text-moss text-[10px] font-bold tracking-wider">{module.category_name}</Text>
+                                </View>
+                                <Text className="font-bold text-charcoal text-base leading-tight mb-1" numberOfLines={2}>
+                                  {module.title}
+                                </Text>
+                                <Text className="text-muted text-xs" numberOfLines={2}>
+                                  {module.overview_text}
+                                </Text>
+                              </View>
                             </View>
                           </View>
-                          {/* <View className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded-md">
- <Text className="text-white text-xs font-medium">{module.duration_text || '2m'}</Text>
- </View> */}
-                        </View>
 
-                        {/* Details */}
-                        <View className="flex-1 justify-between py-1">
-                          <View>
-                            <View className="bg-moss/10 self-start px-2 py-1 rounded-full mb-2">
-                              <Text className="text-moss text-[10px] font-bold tracking-wider">{module.category_name}</Text>
+                          {/* Actions */}
+                          <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
+                            <View className="flex-row items-center">
+                              <Text className="text-gray-400 mr-2">⏱</Text>
+                              <Text className="text-muted text-xs font-medium">{module.duration_text}</Text>
                             </View>
-                            <Text className="font-bold text-charcoal text-base leading-tight mb-1" numberOfLines={2}>
-                              {module.title}
-                            </Text>
-                            <Text className="text-muted text-xs" numberOfLines={2}>
-                              {module.overview_text}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
 
-                      {/* Actions */}
-                      <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
-                        <View className="flex-row items-center">
-                          <Text className="text-gray-400 mr-2">⏱</Text>
-                          <Text className="text-muted text-xs font-medium">{module.duration_text}</Text>
-                        </View>
+                            {module.status === 'locked' ? (
+                              <View className="bg-sage/10 px-5 py-2.5 rounded-full flex-row items-center">
+                                <Text className="text-sage mr-2">🔒</Text>
+                                <Text className="text-sage font-bold">Locked</Text>
+                              </View>
+                            ) : module.status === 'quiz_passed' ? (
+                              <View
+                                className="bg-moss/5 px-5 py-2.5 rounded-full flex-row items-center border border-moss/20"
+                              >
+                                <Text className="text-moss font-bold mr-2">✓ Passed</Text>
+                                <Text className="text-moss/80 text-xs font-medium bg-moss/10 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
+                              </View>
+                            ) : (
+                              <View
+                                className="bg-moss px-5 py-2.5 rounded-full flex-row items-center shadow-sm"
+                              >
+                                <Text className="text-white mr-2">▶</Text>
+                                <Text className="text-white font-bold">Start Lesson</Text>
+                              </View>
+                            )}
+                          </View>
+                        </TouchableOpacity>
 
-                        {module.status === 'locked' ? (
-                          <View className="bg-sage/10 px-5 py-2.5 rounded-full flex-row items-center">
-                            <Text className="text-sage mr-2">🔒</Text>
-                            <Text className="text-sage font-bold">Locked</Text>
-                          </View>
-                        ) : module.status === 'quiz_passed' ? (
-                          <View
-                            className="bg-moss/5 px-5 py-2.5 rounded-full flex-row items-center border border-moss/20"
-                          >
-                            <Text className="text-moss font-bold mr-2">✓ Passed</Text>
-                            <Text className="text-moss/80 text-xs font-medium bg-moss/10 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
-                          </View>
-                        ) : (
-                          <View
-                            className="bg-moss px-5 py-2.5 rounded-full flex-row items-center shadow-sm shadow-primary-500/50"
-                          >
-                            <Text className="text-white mr-2">▶</Text>
-                            <Text className="text-white font-bold">Start Lesson</Text>
+                        {/* Topics Pills */}
+                        {module.key_module_topics && module.key_module_topics.length > 0 && (
+                          <View className="flex-row items-center mt-5 pt-1">
+                            <Text className="text-sage text-xs font-medium mr-3">Topics:</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                              {module.key_module_topics.map((topic, idx) => (
+                                <View key={idx} className="border border-gray-200 rounded-full px-3 py-1 mr-2 bg-white shadow-sm">
+                                  <Text className="text-muted text-xs">{topic}</Text>
+                                </View>
+                              ))}
+                            </ScrollView>
                           </View>
                         )}
                       </View>
-
-                      </TouchableOpacity>
-
-                      {/* Topics Pills */}
-                      {module.key_module_topics && module.key_module_topics.length > 0 && (
-                        <View className="flex-row items-center mt-5 pt-1">
-                          <Text className="text-sage text-xs font-medium mr-3">Topics:</Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            {module.key_module_topics.map((topic, idx) => (
-                              <View key={idx} className="border border-gray-200 rounded-full px-3 py-1 mr-2 bg-white shadow-sm">
-                                <Text className="text-muted text-xs">{topic}</Text>
-                              </View>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </View>
-                  ))
+                    ));
+                  })()
                 )}
               </View>
             )}
 
             {activeTab === 'certificate' && (
-              <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
-                {/* Certificate Template */}
-                <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
-                  <View className="w-full bg-[#FAFBFB] rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden border border-gray-200" style={{ aspectRatio: 1.414 }}>
-                    {/* Decorative Brand Line - Absolute Top */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 30 }}>
-                      <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-                      <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
-                      <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
-                      <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
-                      <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
-                    </View>
+              <View>
+                {/* Category Switcher Tabs for Certificates */}
+                <View className="mb-5">
+                  <Text className="text-xs font-bold text-slate uppercase tracking-wider mb-2.5">
+                    Select Category Certificate
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 10 }}>
+                    {userCategories.map(cat => {
+                      const catProg = getCategoryProgress(cat);
+                      const isCert = certifiedCategoryIds.includes(cat.category_id) || catProg.isCertified;
+                      const isSelected = (selectedCertCategory?.category_id || userCategories[0]?.category_id) === cat.category_id;
+                      return (
+                        <TouchableOpacity
+                          key={cat.category_id}
+                          onPress={() => setSelectedCertCategory(cat)}
+                          style={{
+                            backgroundColor: isSelected ? '#0B5B31' : '#FFFFFF',
+                            borderColor: isSelected ? '#0B5B31' : '#E5E7EB',
+                            borderWidth: 1.5,
+                            borderRadius: 20,
+                            paddingHorizontal: 14,
+                            paddingVertical: 10,
+                            marginRight: 8,
+                            flexDirection: 'row',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name={getCategoryIcon(cat.name)}
+                            size={18}
+                            color={isSelected ? '#FFFFFF' : '#0B5B31'}
+                            style={{ marginRight: 6 }}
+                          />
+                          <Text style={{ color: isSelected ? '#FFFFFF' : '#1A1A1A', fontWeight: '700', fontSize: 13 }}>
+                            {cat.name}
+                          </Text>
+                          {isCert ? (
+                            <View style={{ backgroundColor: isSelected ? '#FFFFFF33' : '#DCFCE7', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1, marginLeft: 6 }}>
+                              <Text style={{ color: isSelected ? '#FFFFFF' : '#15803D', fontSize: 10, fontWeight: '800' }}>✓</Text>
+                            </View>
+                          ) : (
+                            <View style={{ backgroundColor: isSelected ? '#FFFFFF33' : '#F3F4F6', borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1, marginLeft: 6 }}>
+                              <Text style={{ color: isSelected ? '#FFFFFF' : '#9CA3AF', fontSize: 10 }}>🔒</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
 
-                    {/* Decorative Brand Line - Absolute Bottom */}
-                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 30 }}>
-                      <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-                      <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
-                      <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
-                      <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
-                      <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
-                    </View>
-
-                    {/* Branding Logo - Top Left */}
-                    <View className="absolute top-0 left-0 z-20">
-                      <Image
-                        source={require('../assets/images/newlogo.png')}
-                        style={{ width: 80, height: 45, resizeMode: 'contain' }}
-                      />
-                    </View>
-
-                    {/* Certificate ID - Top Right */}
-                    <View className="absolute top-4 right-5 z-20">
-                      <Text className="text-moss text-[6.5px] font-bold tracking-widest uppercase">
-                        CERT. NO: {userProfile ? `SHY-${userProfile.first_name.toUpperCase().substring(0, 4)}${userProfile.last_name ? userProfile.last_name.toUpperCase().substring(0, 2) : '84'}-26` : 'SHY-CERT-0001'}
-                      </Text>
-                    </View>
-
-                    {/* Main Content Centered */}
-                    <View className="items-center z-10 w-full mt-2">
-                      <Text className="text-2xl font-serif font-bold text-moss mb-0.5">CERTIFICATE</Text>
-                      <Text className="text-[9px] text-moss tracking-widest uppercase font-bold mb-3">of completion</Text>
-                      <Text className="text-sage italic text-[10px] mb-1">This is proudly presented to</Text>
-                      <View className="px-4 w-full border-b border-sage/20 pb-1 mb-2">
-                        <Text className="text-xl font-bold text-slate w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
-                          {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'STUDENT NAME'}
-                        </Text>
+                {/* Render Selected Category Certificate OR Locked Notice */}
+                {(() => {
+                  const targetCat = selectedCertCategory || userCategories[0];
+                  if (!targetCat) {
+                    return (
+                      <View className="bg-cream rounded-3xl p-8 shadow-sm border border-sage/10 items-center justify-center py-16">
+                        <Feather name="award" size={32} color="#9CA3AF" style={{ marginBottom: 10 }} />
+                        <Text className="text-base font-bold text-charcoal text-center mb-1">No Categories Selected</Text>
+                        <Text className="text-muted text-xs text-center">Please select your preferred categories in the preferences screen.</Text>
                       </View>
-                      <Text className="text-sage italic text-center text-[9px] px-6 leading-tight">
-                        For successfully completing all required training modules in the Sahyogi program.
-                      </Text>
-                    </View>
+                    );
+                  }
 
-                    {/* Date - Bottom Left */}
-                    <View className="absolute bottom-3 left-4 items-center w-20 z-10">
-                      <Text className="text-slate font-bold border-b border-sage/30 pb-0.5 w-full text-center text-[10px]">
-                        {(() => {
-                          const formatDate = (date: Date) => {
-                            const d = String(date.getDate()).padStart(2, '0');
-                            const m = String(date.getMonth() + 1).padStart(2, '0');
-                            const y = date.getFullYear();
-                            return `${d}/${m}/${y}`;
-                          };
-                          const completedModules = modules.filter(m => m.status === 'quiz_passed' && m.completed_at);
-                          if (completedModules.length > 0) {
-                            const maxDate = new Date(Math.max(...completedModules.map(m => new Date(m.completed_at as string).getTime())));
-                            return formatDate(maxDate);
-                          }
-                          return formatDate(new Date());
-                        })()}
-                      </Text>
-                      <Text className="text-sage text-[7px] uppercase font-bold tracking-wider mt-0.5">Date</Text>
-                    </View>
+                  const catProg = getCategoryProgress(targetCat);
+                  const isCert = certifiedCategoryIds.includes(targetCat.category_id) || catProg.isCertified;
 
-                    {/* Seal - Bottom Right */}
-                    <View className="absolute bottom-7 right-4 z-10 opacity-85" style={{ transform: [{ scale: 0.5 }, { rotate: '-12deg' }], transformOrigin: 'bottom right' }}>
-                      <View className="border-[3px] border-[#991b1b] rounded-lg p-[2px]">
-                        <View className="border border-[#991b1b] rounded-[4px] px-3 py-1 items-center justify-center bg-white/50">
-                          <Text className="text-[#991b1b] text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ fontFamily: 'serif' }}>SahYogi</Text>
-                          <Text className="text-[#991b1b] text-[11px] font-black uppercase tracking-[0.15em]" style={{ fontFamily: 'serif' }}>Verified</Text>
+                  if (isCert) {
+                    // Category-Specific Certificate View
+                    const catCode = (targetCat.name || 'CERT').replace(/[^a-zA-Z]/g, '').substring(0, 4).toUpperCase();
+                    const initials = userProfile
+                      ? `${(userProfile.first_name || 'SHY').substring(0, 3)}${(userProfile.last_name || '84').substring(0, 2)}`.toUpperCase()
+                      : '0001';
+                    const certNo = `SHY-${catCode}-${initials}-26`;
+
+                    return (
+                      <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[400px]">
+                        <ViewShot ref={certificateRef} options={{ format: 'png', quality: 1.0 }} style={{ width: '100%', backgroundColor: 'white', borderRadius: 12 }}>
+                          <View className="w-full bg-[#FAFBFB] rounded-xl p-3 items-center justify-center relative shadow-lg overflow-hidden border border-gray-200" style={{ aspectRatio: 1.414 }}>
+                            {/* Decorative Brand Line - Absolute Top */}
+                            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 30 }}>
+                              <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+                              <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+                              <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+                              <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+                              <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+                            </View>
+
+                            {/* Decorative Brand Line - Absolute Bottom */}
+                            <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row', zIndex: 30 }}>
+                              <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
+                              <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
+                              <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
+                              <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+                              <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+                            </View>
+
+                            {/* Branding Logo - Top Left */}
+                            <View className="absolute top-0 left-0 z-20">
+                              <Image
+                                source={require('../assets/images/newlogo.png')}
+                                style={{ width: 80, height: 45, resizeMode: 'contain' }}
+                              />
+                            </View>
+
+                            {/* Certificate ID - Top Right */}
+                            <View className="absolute top-4 right-5 z-20">
+                              <Text className="text-moss text-[6.5px] font-bold tracking-widest uppercase">
+                                CERT. NO: {certNo}
+                              </Text>
+                            </View>
+
+                            {/* Main Content Centered */}
+                            <View className="items-center z-10 w-full mt-2">
+                              <Text className="text-2xl font-serif font-bold text-moss mb-0.5">CERTIFICATE</Text>
+                              <Text className="text-[9px] text-moss tracking-widest uppercase font-bold mb-3">
+                                of completion in {targetCat.name}
+                              </Text>
+                              <Text className="text-sage italic text-[10px] mb-1">This is proudly presented to</Text>
+                              <View className="px-4 w-full border-b border-sage/20 pb-1 mb-2">
+                                <Text className="text-xl font-bold text-slate w-full text-center" numberOfLines={1} adjustsFontSizeToFit>
+                                  {userProfile ? `${userProfile.first_name} ${userProfile.last_name}`.toUpperCase() : 'STUDENT NAME'}
+                                </Text>
+                              </View>
+                              <Text className="text-sage italic text-center text-[9px] px-6 leading-tight">
+                                For successfully demonstrating competence and completing all required training modules in {targetCat.name} under the SahYogi program.
+                              </Text>
+                            </View>
+
+                            {/* Date - Bottom Left */}
+                            <View className="absolute bottom-3 left-4 items-center w-20 z-10">
+                              <Text className="text-slate font-bold border-b border-sage/30 pb-0.5 w-full text-center text-[10px]">
+                                {(() => {
+                                  const formatDate = (date: Date) => {
+                                    const d = String(date.getDate()).padStart(2, '0');
+                                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                                    const y = date.getFullYear();
+                                    return `${d}/${m}/${y}`;
+                                  };
+                                  const completedMods = catProg.modules.filter(m => m.status === 'quiz_passed' && m.completed_at);
+                                  if (completedMods.length > 0) {
+                                    const maxDate = new Date(Math.max(...completedMods.map(m => new Date(m.completed_at as string).getTime())));
+                                    return formatDate(maxDate);
+                                  }
+                                  return formatDate(new Date());
+                                })()}
+                              </Text>
+                              <Text className="text-sage text-[7px] uppercase font-bold tracking-wider mt-0.5">Date</Text>
+                            </View>
+
+                            {/* Seal - Bottom Right */}
+                            <View className="absolute bottom-7 right-4 z-10 opacity-85" style={{ transform: [{ scale: 0.5 }, { rotate: '-12deg' }], transformOrigin: 'bottom right' }}>
+                              <View className="border-[3px] border-[#991b1b] rounded-lg p-[2px]">
+                                <View className="border border-[#991b1b] rounded-[4px] px-3 py-1 items-center justify-center bg-white/50">
+                                  <Text className="text-[#991b1b] text-[8px] font-black uppercase tracking-widest mb-0.5" style={{ fontFamily: 'serif' }}>SahYogi</Text>
+                                  <Text className="text-[#991b1b] text-[11px] font-black uppercase tracking-[0.15em]" style={{ fontFamily: 'serif' }}>Verified</Text>
+                                </View>
+                              </View>
+                            </View>
+                          </View>
+                        </ViewShot>
+
+                        <View className="mt-8 items-center justify-center w-full">
+                          <TouchableOpacity onPress={shareCertificate} className="bg-clay px-8 py-3.5 rounded-full flex-row items-center shadow-md">
+                            <Feather name="share" size={18} color="white" style={{ marginRight: 8 }} />
+                            <Text className="font-bold text-white tracking-wide text-sm">Share Certificate</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
-                    </View>
-                  </View>
-                </ViewShot>
+                    );
+                  } else {
+                    // Category Certificate Locked View
+                    return (
+                      <View className="bg-cream rounded-3xl p-6 shadow-sm border border-sage/10 items-center justify-center min-h-[360px]">
+                        <View className="w-16 h-16 rounded-full bg-amber-50 items-center justify-center border border-amber-200 mb-4">
+                          <Feather name="lock" size={28} color="#D97706" />
+                        </View>
+                        <Text className="text-xl font-extrabold text-charcoal mb-2 text-center">
+                          {targetCat.name} Certificate Locked
+                        </Text>
+                        <Text className="text-muted text-xs text-center px-4 mb-6 leading-relaxed">
+                          Complete all training lessons and quizzes in {targetCat.name} to earn this certificate and unlock job shifts posted in this category.
+                        </Text>
 
-                <View className="mt-8 items-center justify-center w-full">
-                  <TouchableOpacity onPress={shareCertificate} className="bg-clay px-8 py-3.5 rounded-full flex-row items-center shadow-md">
-                    <Feather name="share" size={18} color="white" style={{ marginRight: 8 }} />
-                    <Text className="font-bold text-white tracking-wide text-sm">Share Certificate</Text>
-                  </TouchableOpacity>
-                </View>
+                        <View className="w-full bg-white rounded-2xl p-4 border border-gray-100 mb-6">
+                          <View className="flex-row justify-between mb-2">
+                            <Text className="text-xs font-bold text-slate">{targetCat.name} Progress</Text>
+                            <Text className="text-xs font-bold text-moss">
+                              {catProg.passed} of {catProg.total} Passed ({catProg.percent}%)
+                            </Text>
+                          </View>
+                          <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <View className="h-full bg-moss rounded-full" style={{ width: `${catProg.percent}%` }} />
+                          </View>
+                        </View>
+
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSelectedCategoryFilter(targetCat.category_id);
+                            setActiveTab('modules');
+                          }}
+                          className="bg-moss px-8 py-3.5 rounded-full flex-row items-center shadow-md"
+                        >
+                          <Feather name="book-open" size={16} color="white" style={{ marginRight: 8 }} />
+                          <Text className="font-bold text-white text-sm">Start {targetCat.name} Training</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  }
+                })()}
               </View>
             )}
 
@@ -1100,33 +1444,114 @@ export default function LibraryScreen() {
                   </Pressable>
                 </View>
 
+                {/* Category Filter for Available Jobs */}
+                {jobsTab === 'available' && certifiedCategoryIds.length > 0 && (
+                  <View className="mb-4">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 10 }}>
+                      <TouchableOpacity
+                        onPress={() => setAvailableJobsCategoryFilter('all')}
+                        style={{
+                          backgroundColor: availableJobsCategoryFilter === 'all' ? '#0B5B31' : '#FFFFFF',
+                          borderColor: availableJobsCategoryFilter === 'all' ? '#0B5B31' : '#E5E7EB',
+                          borderWidth: 1.5,
+                          borderRadius: 20,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          marginRight: 8,
+                          flexDirection: 'row',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <Text style={{ color: availableJobsCategoryFilter === 'all' ? '#FFFFFF' : '#1A1A1A', fontWeight: '700', fontSize: 12 }}>
+                          All Certified Shifts
+                        </Text>
+                      </TouchableOpacity>
+                      {userCategories
+                        .filter(c => certifiedCategoryIds.includes(c.category_id))
+                        .map(cat => {
+                          const isSel = availableJobsCategoryFilter === cat.category_id;
+                          return (
+                            <TouchableOpacity
+                              key={cat.category_id}
+                              onPress={() => setAvailableJobsCategoryFilter(cat.category_id)}
+                              style={{
+                                backgroundColor: isSel ? '#0B5B31' : '#FFFFFF',
+                                borderColor: isSel ? '#0B5B31' : '#E5E7EB',
+                                borderWidth: 1.5,
+                                borderRadius: 20,
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                marginRight: 8,
+                                flexDirection: 'row',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <MaterialCommunityIcons
+                                name={getCategoryIcon(cat.name)}
+                                size={14}
+                                color={isSel ? '#FFFFFF' : '#0B5B31'}
+                                style={{ marginRight: 4 }}
+                              />
+                              <Text style={{ color: isSel ? '#FFFFFF' : '#1A1A1A', fontWeight: '700', fontSize: 12 }}>
+                                {cat.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                    </ScrollView>
+                  </View>
+                )}
+
                 {jobsLoading ? (
                   <ActivityIndicator size="large" color="#0B5B31" className="mt-10" />
                 ) : jobsTab === 'available' ? (
-                  availableJobs.length === 0 ? (
-                    <View className="bg-cream rounded-3xl p-8 shadow-sm border border-sage/10 items-center justify-center py-20 mt-4">
-                      {/* <Text className="text-6xl mb-6">🔍</Text> */}
-                      <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Jobs Available</Text>
-                      <Text className="text-muted text-center leading-relaxed">
-                        Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.
-                      </Text>
-                    </View>
-                  ) : (
-                    <>
-                      {availableJobs.map((job) => (
-                        <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
-                          <View className="flex-row justify-between items-start mb-4">
-                            <View className="flex-1 pr-4">
-                              <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-2 flex-row items-center border border-moss/20">
-                              <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
-                              <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
-                            </View>
-                            <View className="flex-row items-center mb-1.5 flex-wrap">
-                              <Text className="font-bold text-charcoal text-xl leading-tight mr-1">{job.job_name}</Text>
-                              <TouchableOpacity onPress={() => setStatusModal({ visible: true, title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', isError: false })} style={{ padding: 4 }}>
-                                <Feather name="info" size={20} color="#6B7280" />
-                              </TouchableOpacity>
-                            </View>
+                  (() => {
+                    const filteredAvailable = availableJobs.filter(job => {
+                      if (availableJobsCategoryFilter === 'all') return true;
+                      const activeCat = userCategories.find(c => c.category_id === availableJobsCategoryFilter);
+                      if (!activeCat) return true;
+                      if (job.category_id && job.category_id === activeCat.category_id) return true;
+                      if (job.category_name && job.category_name.toLowerCase() === activeCat.name.toLowerCase()) return true;
+                      return false;
+                    });
+
+                    if (filteredAvailable.length === 0) {
+                      return (
+                        <View className="bg-cream rounded-3xl p-8 shadow-sm border border-sage/10 items-center justify-center py-20 mt-4">
+                          <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Jobs Available</Text>
+                          <Text className="text-muted text-center leading-relaxed">
+                            {availableJobsCategoryFilter === 'all'
+                              ? 'Wait for jobs to get hosted. We will notify you when matching opportunities are available in your area.'
+                              : `No open shifts found for ${userCategories.find(c => c.category_id === availableJobsCategoryFilter)?.name || 'this category'} right now.`}
+                          </Text>
+                        </View>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {filteredAvailable.map((job) => (
+                          <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
+                            <View className="flex-row justify-between items-start mb-4">
+                              <View className="flex-1 pr-4">
+                                <View className="flex-row items-center mb-2 flex-wrap">
+                                  <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full flex-row items-center border border-moss/20 mr-2">
+                                    <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
+                                    <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
+                                  </View>
+                                  {job.category_name && (
+                                    <View className="bg-emerald-50 self-start px-2.5 py-1.5 rounded-full flex-row items-center border border-emerald-200">
+                                      <MaterialCommunityIcons name={getCategoryIcon(job.category_name)} size={12} color="#0B5B31" style={{ marginRight: 4 }} />
+                                      <Text className="text-emerald-800 text-[10px] font-bold tracking-wider uppercase">{job.category_name}</Text>
+                                    </View>
+                                  )}
+                                </View>
+                                <View className="flex-row items-center mb-1.5 flex-wrap">
+                                  <Text className="font-bold text-charcoal text-xl leading-tight mr-1">{job.job_name}</Text>
+                                  <TouchableOpacity onPress={() => setStatusModal({ visible: true, title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', isError: false })} style={{ padding: 4 }}>
+                                    <Feather name="info" size={20} color="#6B7280" />
+                                  </TouchableOpacity>
+                                </View>
                             <View className="flex-row items-start">
                               <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
                               <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
@@ -1182,8 +1607,9 @@ export default function LibraryScreen() {
                       <ActivityIndicator size="small" color="#0B5B31" style={{ marginVertical: 10 }} />
                     )}
                   </>
-                  )
-                ) : (
+                );
+              })()
+            ) : (
                   totalAcceptedCount === 0 ? (
                     <View className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 items-center justify-center py-20 mt-4">
                       <Text className="text-xl font-bold text-charcoal mb-3 text-center">No Accepted Jobs</Text>
@@ -1330,24 +1756,26 @@ export default function LibraryScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => isAllCompleted ? setActiveTab('certificate') : showToast('Complete all training modules to unlock Certificate')}
+            onPress={() => setActiveTab('certificate')}
             className="items-center flex-1"
           >
-            <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 2, opacity: isAllCompleted ? 1 : 0.5 }} />
+            <Feather name="award" size={22} color={activeTab === 'certificate' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 2 }} />
             <View className="flex-row items-center">
               <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'certificate' ? 'text-charcoal' : 'text-gray-400'}`}>Certificate</Text>
-              {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
+              {certifiedCategoryIds.length > 0 && (
+                <View className="w-1.5 h-1.5 rounded-full bg-moss ml-1" />
+              )}
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => isAllCompleted ? setActiveTab('jobs') : showToast('Complete all training modules to unlock Jobs')}
+            onPress={() => hasCertifiedAccess ? setActiveTab('jobs') : showToast('Complete training in at least 1 category to unlock Jobs')}
             className="items-center flex-1"
           >
-            <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 2, opacity: isAllCompleted ? 1 : 0.5 }} />
+            <Feather name="briefcase" size={22} color={activeTab === 'jobs' ? '#111827' : '#9CA3AF'} style={{ marginBottom: 2, opacity: hasCertifiedAccess ? 1 : 0.5 }} />
             <View className="flex-row items-center">
               <Text className={`text-[10px] font-medium tracking-wide ${activeTab === 'jobs' ? 'text-charcoal' : 'text-gray-400'}`}>Jobs</Text>
-              {!isAllCompleted && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
+              {!hasCertifiedAccess && <Feather name="lock" size={10} color="#9CA3AF" style={{ marginLeft: 2 }} />}
             </View>
           </TouchableOpacity>
         </View>

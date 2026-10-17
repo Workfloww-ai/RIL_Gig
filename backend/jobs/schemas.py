@@ -6,9 +6,12 @@ class JobRoleResponse(BaseModel):
     job_id: str
     job_name: str
     base_compensation: float
+    category_id: Optional[str] = None
+    category_name: Optional[str] = None
 
 class JobRequestCreate(BaseModel):
     job_id: str = Field(..., description="The UUID of the job")
+    category_id: str = Field(..., description="The category ID is required")
     workers_needed: int = Field(..., gt=0, description="Number of workers needed")
     shift_date: date = Field(..., description="Date of the shift")
     start_time: time = Field(..., description="Start time of the shift")
@@ -52,6 +55,8 @@ class JobResponse(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     google_map_link: Optional[str] = None
+    category_id: Optional[str] = None
+    category_name: Optional[str] = None
 
 class AvailableJobsResponse(BaseModel):
     status: str

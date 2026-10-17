@@ -43,6 +43,7 @@ class StoreCreateRequest(BaseModel):
     contact_number: Optional[str] = None
     store_type: str
     tenant_id: Optional[str] = None
+    domain_id: Optional[str] = None
 
 class StoreResponse(BaseModel):
     store_id: str
@@ -56,6 +57,8 @@ class StoreResponse(BaseModel):
     manager_name: Optional[str] = None
     store_type: Optional[str] = None
     tenant_id: Optional[str] = None
+    domain_id: Optional[str] = None
+    domain_name: Optional[str] = None
 
 class StoresListResponse(BaseModel):
     status: str

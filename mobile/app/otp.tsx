@@ -57,6 +57,7 @@ export default function OTPScreen() {
 
         // Append files using a for...of loop so we can await the blob fetch
         for (const doc of metadataList) {
+          if (!doc.uri) continue;
           const fileResp = await fetch(doc.uri);
           const blob = await fileResp.blob();
 
@@ -96,12 +97,32 @@ export default function OTPScreen() {
         }
         setRole(role);
 
+        let parsedFirstName = '';
+        try {
+          if (userDetails) {
+            const parsed = JSON.parse(userDetails);
+            parsedFirstName = parsed.first_name || '';
+          }
+        } catch {}
+
         if (role === 'superadmin' || role === 'admin') {
           router.replace('/superadmin');
         } else if (role === 'store_manager' || role === 'supervisor') {
           router.replace('/store_manager');
         } else {
-          router.replace('/library');
+          // Gig worker flow: if preferences already set, go straight to library
+          try {
+            const prefRes = await apiClient.get('/preferences/my');
+            if (prefRes.data?.selected_category_ids && prefRes.data.selected_category_ids.length > 0) {
+              router.replace('/library');
+              return;
+            }
+          } catch {}
+
+          router.replace({
+            pathname: '/preferences',
+            params: { onboarding: 'true', name: parsedFirstName }
+          });
         }
       }
     } catch (err: any) {

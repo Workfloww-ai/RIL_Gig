@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Platform, StatusBar, ScrollView, Alert, Modal, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, Platform, StatusBar, ScrollView, Alert, Modal, TouchableOpacity, Linking, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Button } from '../../src/components/Button';
-import { Input } from '../../src/components/Input';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { apiClient } from '../../src/api/client';
 
 interface DocumentEntry {
@@ -25,22 +24,131 @@ export default function DocumentsScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string>('');
 
+  // Aadhaar OTP Verification States
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarOtp, setAadhaarOtp] = useState('');
+  const [aadhaarRefId, setAadhaarRefId] = useState('');
+  const [isAadhaarVerified, setIsAadhaarVerified] = useState(false);
+  const [showAadhaarOtpInput, setShowAadhaarOtpInput] = useState(false);
+  const [aadhaarLoading, setAadhaarLoading] = useState(false);
+
+  // PAN Verification States
+  const [panNumber, setPanNumber] = useState('');
+  const [isPanVerified, setIsPanVerified] = useState(false);
+  const [panRegisteredName, setPanRegisteredName] = useState('');
+  const [panLoading, setPanLoading] = useState(false);
+
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [consentAadhar, setConsentAadhar] = useState(false);
   const [consentPan, setConsentPan] = useState(false);
   const [consentPrivacy, setConsentPrivacy] = useState(false);
-  // const [consentLocation, setConsentLocation] = useState(false);
 
-  const allConsented = consentAadhar && consentPan && consentPrivacy; // && consentLocation;
+  const allConsented = consentAadhar && consentPan && consentPrivacy;
 
   const requiredDocs = [
-    { key: 'Aadhar Card', name: 'Aadhar Card', placeholder: 'Aadhar Number' },
-    { key: 'PAN Card', name: 'PAN Card', placeholder: 'PAN Number' },
-    { key: 'Certification/Marksheet', name: 'Certification/Marksheet', placeholder: 'Certificate Number' },
-    { key: 'Live Photo', name: 'Live Photo', placeholder: 'N/A' }
+    { 
+      key: 'Certification/Marksheet', 
+      name: 'Certification/Marksheet', 
+      desc: '10th / 12th / Skill certificate (Image or PDF)',
+      icon: 'school-outline' as const 
+    },
+    { 
+      key: 'Live Photo', 
+      name: 'Live Photo', 
+      desc: 'Take a clear, well-lit selfie using camera',
+      icon: 'camera-outline' as const 
+    }
   ];
 
   const getDoc = (name: string) => documents.find(d => d.doc_name === name);
+
+  // Progress Calculation
+  const totalSteps = 4;
+  let completedSteps = 0;
+  if (isAadhaarVerified) completedSteps++;
+  if (isPanVerified) completedSteps++;
+  if (getDoc('Certification/Marksheet')) completedSteps++;
+  if (getDoc('Live Photo')) completedSteps++;
+
+  const handleSendAadhaarOtp = async () => {
+    const clean = aadhaarNumber.replace(/\s+/g, '');
+    if (!clean || clean.length !== 12) {
+      setErrors(prev => ({ ...prev, aadhaar: 'Please enter a valid 12-digit Aadhaar number.' }));
+      return;
+    }
+    setAadhaarLoading(true);
+    setErrors(prev => ({ ...prev, aadhaar: '' }));
+    try {
+      const response = await apiClient.post('/auth/kyc/aadhaar/send-otp', { 
+        aadhaar_number: clean,
+        mobile_number: mobile || ''
+      });
+      setAadhaarRefId(response.data.ref_id);
+      setShowAadhaarOtpInput(true);
+      Alert.alert('OTP Sent', 'An OTP has been sent to your Aadhaar-registered mobile number.');
+    } catch (error: any) {
+      console.error(error);
+      setErrors(prev => ({ ...prev, aadhaar: error.response?.data?.detail || 'Failed to send OTP.' }));
+    } finally {
+      setAadhaarLoading(false);
+    }
+  };
+
+  const handleVerifyAadhaarOtp = async () => {
+    if (!aadhaarOtp || aadhaarOtp.length < 4) {
+      setErrors(prev => ({ ...prev, aadhaar_otp: 'Please enter a valid OTP.' }));
+      return;
+    }
+    setAadhaarLoading(true);
+    setErrors(prev => ({ ...prev, aadhaar_otp: '' }));
+    try {
+      const response = await apiClient.post('/auth/kyc/aadhaar/verify-otp', { 
+        otp: aadhaarOtp.trim(),
+        ref_id: aadhaarRefId
+      });
+      setIsAadhaarVerified(true);
+      setShowAadhaarOtpInput(false);
+      Alert.alert('Verified', 'Aadhaar verified successfully!');
+    } catch (error: any) {
+      console.error(error);
+      setErrors(prev => ({ ...prev, aadhaar_otp: error.response?.data?.detail || 'Failed to verify OTP.' }));
+    } finally {
+      setAadhaarLoading(false);
+    }
+  };
+
+  const handleVerifyPan = async () => {
+    const cleanPan = panNumber.trim().toUpperCase();
+    if (!cleanPan || cleanPan.length !== 10) {
+      setErrors(prev => ({ ...prev, pan: 'Please enter a valid 10-character PAN number.' }));
+      return;
+    }
+    setPanLoading(true);
+    setErrors(prev => ({ ...prev, pan: '' }));
+    try {
+      let parsedName = '';
+      try {
+        if (userDetails) {
+          const parsed = JSON.parse(userDetails);
+          parsedName = parsed.full_name || '';
+        }
+      } catch {}
+
+      const response = await apiClient.post('/auth/kyc/pan/verify', { 
+        pan: cleanPan,
+        name: parsedName || undefined
+      });
+      setIsPanVerified(true);
+      const regName = response.data.registered_name || response.data.name_registered || '';
+      setPanRegisteredName(regName);
+      Alert.alert('Verified', response.data.message || 'PAN Card verified successfully!');
+    } catch (error: any) {
+      console.error(error);
+      setErrors(prev => ({ ...prev, pan: error.response?.data?.detail || 'Failed to verify PAN.' }));
+    } finally {
+      setPanLoading(false);
+    }
+  };
 
   const pickImage = async (docName: string) => {
     let result;
@@ -72,25 +180,16 @@ export default function DocumentsScreen() {
         const filtered = prev.filter(d => d.doc_name !== docName);
         return [...filtered, {
           doc_name: docName,
-          doc_number: '', // will be updated via text input
+          doc_number: '',
           uri: asset.uri,
           filename: filename,
           type: asset.mimeType || 'image/jpeg'
         }];
       });
       
-      // Clear error for this doc when uploaded
       if (errors[docName]) {
         setErrors(prev => ({ ...prev, [docName]: '' }));
       }
-    }
-  };
-
-  const updateDocNumber = (docName: string, number: string) => {
-    setDocNumbers(prev => ({ ...prev, [docName]: number }));
-    // Clear error for this doc number when user types
-    if (errors[`${docName}_number`]) {
-      setErrors(prev => ({ ...prev, [`${docName}_number`]: '' }));
     }
   };
 
@@ -100,29 +199,27 @@ export default function DocumentsScreen() {
     let hasError = false;
     const newErrors: Record<string, string> = {};
 
-    // Validate documents and numbers
+    if (!isAadhaarVerified) {
+      newErrors['aadhaar'] = 'Aadhaar verification is required';
+      hasError = true;
+    }
+
+    if (!isPanVerified) {
+      newErrors['pan'] = 'PAN verification is required';
+      hasError = true;
+    }
+
     requiredDocs.forEach(reqDoc => {
       const doc = getDoc(reqDoc.name);
       if (!doc) {
         newErrors[reqDoc.name] = `${reqDoc.name} is required`;
         hasError = true;
       }
-      
-      if (reqDoc.name !== 'Live Photo') {
-        const num = docNumbers[reqDoc.name] || '';
-        if (!num && reqDoc.name !== 'Certification/Marksheet') {
-          newErrors[`${reqDoc.name}_number`] = `${reqDoc.name} number is required`;
-          hasError = true;
-        } else if (reqDoc.name === 'PAN Card' && num.length !== 10) {
-          newErrors[`${reqDoc.name}_number`] = 'PAN Card number must be exactly 10 characters';
-          hasError = true;
-        }
-      }
     });
 
     if (hasError) {
       setErrors(newErrors);
-      setTopError('Please fill all mandatory fields correctly before proceeding.');
+      setTopError('Please complete all 4 KYC verification steps to continue.');
       return;
     }
 
@@ -133,7 +230,6 @@ export default function DocumentsScreen() {
     setShowConsentModal(false);
     setLoading(true);
     try {
-      // 1. Prepare metadata
       const documentsMetadata = documents.map(d => ({
         filename: d.filename,
         doc_name: d.doc_name,
@@ -141,11 +237,25 @@ export default function DocumentsScreen() {
         uri: d.uri,
         type: d.type
       }));
+      
+      documentsMetadata.push({
+        filename: 'aadhaar_verified_via_otp',
+        doc_name: 'Aadhar Card',
+        doc_number: aadhaarNumber.replace(/\s+/g, ''),
+        uri: '',
+        type: 'verification'
+      });
 
-      // 2. Request OTP
+      documentsMetadata.push({
+        filename: 'pan_verified_via_api',
+        doc_name: 'PAN Card',
+        doc_number: panNumber.trim().toUpperCase(),
+        uri: '',
+        type: 'verification'
+      });
+
       await apiClient.post('/auth/send-otp', { mobile_number: mobile });
       
-      // 3. Navigate to OTP Screen and pass all signup data
       router.push({ 
         pathname: '/otp', 
         params: { 
@@ -164,154 +274,751 @@ export default function DocumentsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-cream pt-8">
-      {/* Decorative Brand Line - Top Edge */}
-      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
-        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
-          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
-          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
-          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* Decorative Brand Accent Top Line */}
+      <View style={{ height: 4, flexDirection: 'row', width: '100%' }}>
+        <View style={{ flex: 1, backgroundColor: '#10472B' }} />
+        <View style={{ width: 60, backgroundColor: '#D32F2F' }} />
       </View>
-      <ScrollView className="flex-1 px-8 pt-8" contentContainerStyle={{ paddingBottom: 60 + insets.bottom }} showsVerticalScrollIndicator={false}>
-        <Text className="text-4xl font-bold text-slate mb-3 tracking-tight">Documents</Text>
-        <Text className="text-sage mb-8 text-lg font-medium">Upload your KYC documents.</Text>
+
+      <ScrollView 
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60 + insets.bottom }} 
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Section */}
+        <View style={{ marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View>
+              <Text style={{ fontSize: 28, fontWeight: '800', color: '#1A1A1A', letterSpacing: -0.5 }}>
+                Identity & KYC
+              </Text>
+              <Text style={{ fontSize: 14, color: '#666666', marginTop: 4 }}>
+                Instant paperless verification to activate your account
+              </Text>
+            </View>
+            {/* <View style={{ 
+              backgroundColor: '#F2F6F4', 
+              paddingHorizontal: 12, 
+              paddingVertical: 6, 
+              borderRadius: 20,
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: '#C3D3CA'
+            }}> */}
+              {/* <MaterialCommunityIcons name="shield-check" size={16} color="#10472B" />
+              <Text style={{ color: '#10472B', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>
+                Secure
+              </Text>
+            </View> */}
+          </View>
+
+          {/* Progress Pill Bar */}
+          {/* <View style={{ 
+            marginTop: 16, 
+            backgroundColor: '#F7F8F9', 
+            borderRadius: 14, 
+            padding: 12, 
+            borderWidth: 1, 
+            borderColor: '#EEEEEE' 
+          }}> */}
+            {/* <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A1A1A' }}>
+                Verification Progress
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: completedSteps === totalSteps ? '#10472B' : '#666666' }}>
+                {completedSteps} of {totalSteps} Complete
+              </Text>
+            </View> */}
+            {/* <View style={{ height: 6, backgroundColor: '#E0E0E0', borderRadius: 3, overflow: 'hidden' }}>
+              <View style={{ 
+                height: '100%', 
+                width: `${(completedSteps / totalSteps) * 100}%`, 
+                backgroundColor: completedSteps === totalSteps ? '#10472B' : '#10472B',
+                borderRadius: 3 
+              }} />
+            </View> */}
+          </View>
+        {/* </View> */}
 
         {topError ? (
-          <View className="bg-clay/10 border border-red-200 p-4 rounded-xl mb-6">
-            <Text className="text-clay font-medium">{topError}</Text>
+          <View style={{ 
+            backgroundColor: '#FFEBEE', 
+            borderColor: '#FFCDD2', 
+            borderWidth: 1, 
+            padding: 12, 
+            borderRadius: 12, 
+            marginBottom: 16,
+            flexDirection: 'row',
+            alignItems: 'center'
+          }}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#D32F2F" style={{ marginRight: 8 }} />
+            <Text style={{ color: '#D32F2F', fontWeight: '600', fontSize: 13, flex: 1 }}>{topError}</Text>
           </View>
         ) : null}
 
+        {/* 1. Aadhaar Card Card */}
+        <View style={{ 
+          backgroundColor: '#FFFFFF', 
+          borderRadius: 18, 
+          padding: 18, 
+          marginBottom: 16,
+          borderWidth: 1.5,
+          borderColor: isAadhaarVerified ? '#A7D7B5' : (errors.aadhaar ? '#FFCDD2' : '#EAEAEA'),
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 6,
+          elevation: 2
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <View style={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: 12, 
+                backgroundColor: isAadhaarVerified ? '#E8F5E9' : '#F2F6F4',
+                alignItems: 'center', 
+                justifyContent: 'center',
+                marginRight: 12 
+              }}>
+                <MaterialCommunityIcons 
+                  name="card-account-details-outline" 
+                  size={22} 
+                  color={isAadhaarVerified ? '#10472B' : '#10472B'} 
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>
+                    Aadhaar Verification
+                  </Text>
+                  <Text style={{ color: '#D32F2F', marginLeft: 2, fontWeight: '700' }}>*</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: '#777777', marginTop: 1 }}>
+                  Instant OTP via UIDAI
+                </Text>
+              </View>
+            </View>
+
+            {isAadhaarVerified ? (
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                backgroundColor: '#E8F5E9', 
+                paddingHorizontal: 10, 
+                paddingVertical: 5, 
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#C8E6C9'
+              }}>
+                <MaterialCommunityIcons name="check-circle" size={15} color="#10472B" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#10472B', fontWeight: '800', fontSize: 11 }}>Verified</Text>
+              </View>
+            ) : (
+              <View style={{ 
+                backgroundColor: '#FFF8E1', 
+                paddingHorizontal: 8, 
+                paddingVertical: 4, 
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#FFE082'
+              }}>
+                <Text style={{ color: '#F57F17', fontWeight: '700', fontSize: 11 }}>Pending</Text>
+              </View>
+            )}
+          </View>
+
+          {!isAadhaarVerified ? (
+            <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                backgroundColor: '#F8F9FA', 
+                borderRadius: 12, 
+                borderWidth: 1, 
+                borderColor: errors.aadhaar ? '#D32F2F' : '#E0E0E0',
+                paddingHorizontal: 14,
+                marginBottom: errors.aadhaar ? 4 : 10
+              }}>
+                <MaterialCommunityIcons name="numeric" size={20} color="#888888" style={{ marginRight: 8 }} />
+                <InputPrimitive
+                  placeholder="12-digit Aadhaar Number"
+                  value={aadhaarNumber}
+                  onChangeText={(val: string) => {
+                    const cleaned = val.replace(/\D/g, '').slice(0, 12);
+                    setAadhaarNumber(cleaned);
+                  }}
+                  keyboardType="numeric"
+                  maxLength={12}
+                  editable={!showAadhaarOtpInput}
+                  style={{ flex: 1, height: 48, fontSize: 15, fontWeight: '600', color: '#1A1A1A' }}
+                />
+              </View>
+              {errors.aadhaar ? (
+                <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginLeft: 4 }}>
+                  {errors.aadhaar}
+                </Text>
+              ) : null}
+
+              {showAadhaarOtpInput ? (
+                <View style={{ marginTop: 4 }}>
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    backgroundColor: '#F8F9FA', 
+                    borderRadius: 12, 
+                    borderWidth: 1, 
+                    borderColor: errors.aadhaar_otp ? '#D32F2F' : '#E0E0E0',
+                    paddingHorizontal: 14,
+                    marginBottom: errors.aadhaar_otp ? 4 : 10
+                  }}>
+                    <MaterialCommunityIcons name="lock-outline" size={20} color="#888888" style={{ marginRight: 8 }} />
+                    <InputPrimitive
+                      placeholder="Enter 6-digit OTP"
+                      value={aadhaarOtp}
+                      onChangeText={setAadhaarOtp}
+                      keyboardType="numeric"
+                      maxLength={6}
+                      style={{ flex: 1, height: 48, fontSize: 15, fontWeight: '600', color: '#1A1A1A' }}
+                    />
+                  </View>
+                  {errors.aadhaar_otp ? (
+                    <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginLeft: 4 }}>
+                      {errors.aadhaar_otp}
+                    </Text>
+                  ) : null}
+
+                  <TouchableOpacity
+                    onPress={handleVerifyAadhaarOtp}
+                    disabled={aadhaarLoading}
+                    style={{ 
+                      backgroundColor: '#10472B', 
+                      height: 46, 
+                      borderRadius: 12, 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexDirection: 'row'
+                    }}
+                  >
+                    {aadhaarLoading ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <MaterialCommunityIcons name="check-decagram" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Verify OTP</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={handleSendAadhaarOtp}
+                  disabled={aadhaarLoading}
+                  style={{ 
+                    backgroundColor: '#10472B', 
+                    height: 46, 
+                    borderRadius: 12, 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    flexDirection: 'row'
+                  }}
+                >
+                  {aadhaarLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="send-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Get OTP</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F0F0F0', flexDirection: 'row', alignItems: 'center' }}>
+              <MaterialCommunityIcons name="shield-check" size={18} color="#10472B" style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 13, color: '#555555' }}>
+                Aadhaar: <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>XXXX-XXXX-{aadhaarNumber.slice(-4)}</Text>
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* 2. PAN Card Card */}
+        <View style={{ 
+          backgroundColor: '#FFFFFF', 
+          borderRadius: 18, 
+          padding: 18, 
+          marginBottom: 16,
+          borderWidth: 1.5,
+          borderColor: isPanVerified ? '#A7D7B5' : (errors.pan ? '#FFCDD2' : '#EAEAEA'),
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 6,
+          elevation: 2
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <View style={{ 
+                width: 40, 
+                height: 40, 
+                borderRadius: 12, 
+                backgroundColor: isPanVerified ? '#E8F5E9' : '#F2F6F4',
+                alignItems: 'center', 
+                justifyContent: 'center',
+                marginRight: 12 
+              }}>
+                <MaterialCommunityIcons 
+                  name="credit-card-outline" 
+                  size={22} 
+                  color={isPanVerified ? '#10472B' : '#10472B'} 
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>
+                    PAN Card Verification
+                  </Text>
+                  <Text style={{ color: '#D32F2F', marginLeft: 2, fontWeight: '700' }}>*</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: '#777777', marginTop: 1 }}>
+                  Real-time Income Tax Dept sync
+                </Text>
+              </View>
+            </View>
+
+            {isPanVerified ? (
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                backgroundColor: '#E8F5E9', 
+                paddingHorizontal: 10, 
+                paddingVertical: 5, 
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#C8E6C9'
+              }}>
+                <MaterialCommunityIcons name="check-circle" size={15} color="#10472B" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#10472B', fontWeight: '800', fontSize: 11 }}>Verified</Text>
+              </View>
+            ) : (
+              <View style={{ 
+                backgroundColor: '#FFF8E1', 
+                paddingHorizontal: 8, 
+                paddingVertical: 4, 
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#FFE082'
+              }}>
+                <Text style={{ color: '#F57F17', fontWeight: '700', fontSize: 11 }}>Pending</Text>
+              </View>
+            )}
+          </View>
+
+          {!isPanVerified ? (
+            <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                backgroundColor: '#F8F9FA', 
+                borderRadius: 12, 
+                borderWidth: 1, 
+                borderColor: errors.pan ? '#D32F2F' : '#E0E0E0',
+                paddingHorizontal: 14,
+                marginBottom: errors.pan ? 4 : 10
+              }}>
+                <MaterialCommunityIcons name="form-textbox" size={20} color="#888888" style={{ marginRight: 8 }} />
+                <InputPrimitive
+                  placeholder="10-character PAN"
+                  value={panNumber}
+                  onChangeText={(val) => setPanNumber(val.toUpperCase())}
+                  autoCapitalize="characters"
+                  maxLength={10}
+                  style={{ flex: 1, height: 48, fontSize: 15, fontWeight: '600', color: '#1A1A1A' }}
+                />
+              </View>
+              {errors.pan ? (
+                <Text style={{ color: '#D32F2F', fontSize: 12, marginBottom: 10, marginLeft: 4 }}>
+                  {errors.pan}
+                </Text>
+              ) : null}
+
+              <TouchableOpacity
+                onPress={handleVerifyPan}
+                disabled={panLoading}
+                style={{ 
+                  backgroundColor: '#10472B', 
+                  height: 46, 
+                  borderRadius: 12, 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexDirection: 'row'
+                }}
+              >
+                {panLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="check-decagram" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Verify PAN</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="shield-check" size={18} color="#10472B" style={{ marginRight: 6 }} />
+                <Text style={{ fontSize: 13, color: '#555555' }}>
+                  PAN: <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>{panNumber.toUpperCase()}</Text>
+                </Text>
+              </View>
+              {panRegisteredName ? (
+                <Text style={{ fontSize: 12, color: '#666666', marginTop: 4, marginLeft: 24 }}>
+                  Registered Name: <Text style={{ fontWeight: '600', color: '#10472B' }}>{panRegisteredName}</Text>
+                </Text>
+              ) : null}
+            </View>
+          )}
+        </View>
+
+        {/* 3 & 4. Upload Documents (Certification & Live Photo) */}
         {requiredDocs.map((reqDoc, index) => {
           const doc = getDoc(reqDoc.name);
           const docError = errors[reqDoc.name];
-          const numError = errors[`${reqDoc.name}_number`];
+          const isUploaded = !!doc;
           
           return (
-            <View key={index} className={`bg-sand p-5 rounded-2xl border ${docError ? 'border-clay/50' : 'border-sage/10'} mb-6`}>
-              <Text className="font-bold text-slate text-lg mb-2">
-                {reqDoc.name} <Text className="text-clay/80">*</Text>
-              </Text>
-              
-              {reqDoc.name !== 'Live Photo' && (
-                <Input 
-                  label={undefined} 
-                  placeholder={reqDoc.placeholder} 
-                  value={docNumbers[reqDoc.name] || ''} 
-                  onChangeText={(val) => updateDocNumber(reqDoc.name, val)} 
-                  error={numError}
-                />
-              )}
-              
-              <View className="flex-row items-center justify-between mt-2">
-                <View className="flex-1 mr-4">
-                  <Button 
-                    title={doc ? "Change Photo" : `Upload ${reqDoc.name}`} 
-                    onPress={() => pickImage(reqDoc.name)} 
-                    variant={doc ? "outline" : "primary"} 
-                  />
+            <View key={index} style={{ 
+              backgroundColor: '#FFFFFF', 
+              borderRadius: 18, 
+              padding: 18, 
+              marginBottom: 16,
+              borderWidth: 1.5,
+              borderColor: isUploaded ? '#A7D7B5' : (docError ? '#FFCDD2' : '#EAEAEA'),
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.04,
+              shadowRadius: 6,
+              elevation: 2
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View style={{ 
+                    width: 40, 
+                    height: 40, 
+                    borderRadius: 12, 
+                    backgroundColor: isUploaded ? '#E8F5E9' : '#F2F6F4',
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    marginRight: 12 
+                  }}>
+                    <MaterialCommunityIcons 
+                      name={reqDoc.icon} 
+                      size={22} 
+                      color={isUploaded ? '#10472B' : '#10472B'} 
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }}>
+                        {reqDoc.name}
+                      </Text>
+                      <Text style={{ color: '#D32F2F', marginLeft: 2, fontWeight: '700' }}>*</Text>
+                    </View>
+                    <Text style={{ fontSize: 12, color: '#777777', marginTop: 1 }}>
+                      {reqDoc.desc}
+                    </Text>
+                  </View>
                 </View>
-                {doc && (
-                  <View className="bg-green-100 px-3 py-2 rounded-lg border border-green-200">
-                    <Text className="text-green-800 font-bold text-xs">Uploaded</Text>
+
+                {isUploaded ? (
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    backgroundColor: '#E8F5E9', 
+                    paddingHorizontal: 10, 
+                    paddingVertical: 5, 
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: '#C8E6C9'
+                  }}>
+                    <MaterialCommunityIcons name="check-circle" size={15} color="#10472B" style={{ marginRight: 4 }} />
+                    <Text style={{ color: '#10472B', fontWeight: '800', fontSize: 11 }}>Uploaded</Text>
+                  </View>
+                ) : (
+                  <View style={{ 
+                    backgroundColor: '#FFF8E1', 
+                    paddingHorizontal: 8, 
+                    paddingVertical: 4, 
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: '#FFE082'
+                  }}>
+                    <Text style={{ color: '#F57F17', fontWeight: '700', fontSize: 11 }}>Required</Text>
                   </View>
                 )}
               </View>
-              {docError && <Text className="text-clay/80 text-sm mt-2">{docError}</Text>}
+
+              <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+                {isUploaded && doc.uri ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <Image 
+                      source={{ uri: doc.uri }} 
+                      style={{ width: 50, height: 50, borderRadius: 10, marginRight: 12, backgroundColor: '#EEE' }} 
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>
+                        {doc.filename}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: '#10472B', fontWeight: '600', marginTop: 2 }}>
+                        Ready for verification
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                <TouchableOpacity
+                  onPress={() => pickImage(reqDoc.name)}
+                  style={{ 
+                    backgroundColor: isUploaded ? '#FFFFFF' : '#10472B',
+                    borderWidth: isUploaded ? 1.5 : 0,
+                    borderColor: '#10472B',
+                    height: 46, 
+                    borderRadius: 12, 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    flexDirection: 'row'
+                  }}
+                >
+                  <MaterialCommunityIcons 
+                    name={isUploaded ? "pencil-outline" : (reqDoc.name === 'Live Photo' ? "camera" : "upload")} 
+                    size={18} 
+                    color={isUploaded ? '#10472B' : '#FFFFFF'} 
+                    style={{ marginRight: 6 }} 
+                  />
+                  <Text style={{ color: isUploaded ? '#10472B' : '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                    {isUploaded ? `Change ${reqDoc.name}` : (reqDoc.name === 'Live Photo' ? "Take Photo Now" : `Upload ${reqDoc.name}`)}
+                  </Text>
+                </TouchableOpacity>
+
+                {docError ? (
+                  <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 6, marginLeft: 4 }}>
+                    {docError}
+                  </Text>
+                ) : null}
+              </View>
             </View>
           );
         })}
 
-        <View className="mt-4 mb-12">
-          <Button title="Submit & Request OTP" onPress={handleInitialSubmit} loading={loading} />
+        {/* Submit Action Button */}
+        <View style={{ marginTop: 10, marginBottom: 20 }}>
+          <TouchableOpacity
+            onPress={handleInitialSubmit}
+            disabled={loading}
+            style={{ 
+              backgroundColor: completedSteps === totalSteps ? '#10472B' : '#0B5B31', 
+              height: 56, 
+              borderRadius: 16, 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              flexDirection: 'row',
+              shadowColor: '#10472B',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+              elevation: 4
+            }}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16, marginRight: 6 }}>
+                  Proceed & Request OTP
+                </Text>
+                <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Consent Modal */}
       <Modal visible={showConsentModal} animationType="slide" transparent={true}>
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-cream w-full rounded-t-3xl overflow-hidden shadow-xl" onStartShouldSetResponder={() => true}>
-            <View className="bg-sand px-6 py-5 border-b border-sage/10 flex-row justify-between items-center">
-              <Text className="text-lg font-bold text-slate">Terms & Permissions</Text>
-              <TouchableOpacity onPress={() => setShowConsentModal(false)}>
-                <Text className="text-sage font-bold">Close</Text>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' }}>
+            <View style={{ backgroundColor: '#F8F9FA', paddingHorizontal: 22, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#EEEEEE', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="shield-check-outline" size={22} color="#10472B" style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 17, fontWeight: '800', color: '#1A1A1A' }}>Terms & Verification Consent</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowConsentModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <MaterialCommunityIcons name="close" size={22} color="#888888" />
               </TouchableOpacity>
             </View>
             
-            <View className="p-6 pb-2">
-              <Text className="text-sage mb-6 text-base">To proceed with your application, we need your consent to collect and process the following information:</Text>
+            <View style={{ padding: 22 }}>
+              <Text style={{ color: '#666666', fontSize: 14, marginBottom: 18, lineHeight: 20 }}>
+                Please provide your consent to complete your digital KYC and onboarding:
+              </Text>
               
-              <View className="mb-2">
-                <TouchableOpacity onPress={() => setConsentAadhar(!consentAadhar)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentAadhar ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentAadhar && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1 flex-row flex-wrap items-center">
-                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to use my<Text className="font-bold"> Aadhaar number and details</Text> for identity verification and e-KYC purposes in accordance with UIDAI guidelines. </Text>
-                    
-                  </View>
-                </TouchableOpacity>
-              </View>
-              <View className="mb-2">
-                <TouchableOpacity onPress={() => setConsentPan(!consentPan)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPan ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentPan && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1 flex-row flex-wrap items-center">
-                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to fetch and <Text className="font-bold"> verify my PAN details</Text> with the Income Tax Department database for onboarding and compliance purposes. </Text>
-                    
-                  </View>
-                </TouchableOpacity>
-              </View>
-              {/* <View className="mb-2">
-                <TouchableOpacity onPress={() => setConsentLocation(!consentLocation)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentLocation ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentLocation && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1 flex-row flex-wrap items-center">
-                    <Text className="text-slate text-base">By checking this box, I authorize SahYogi to collect and process my <Text className="font-bold">Location</Text> data for assignment and tracking purposes.</Text>
-                  </View>
-                </TouchableOpacity>
-              </View> */}
-              <View className="mb-2">
-                <TouchableOpacity onPress={() => setConsentPrivacy(!consentPrivacy)} className="flex-row items-center mb-5 bg-sand p-4 rounded-xl border border-sage/10">
-                  <View className={`w-6 h-6 rounded border mr-4 items-center justify-center ${consentPrivacy ? 'bg-primary-500 border-primary-500' : 'border-sage/50 bg-white'}`}>
-                    {consentPrivacy && <Text className="text-white text-xs font-bold">✓</Text>}
-                  </View>
-                  <View className="flex-1 flex-row flex-wrap items-center">
-                    <Text className="text-slate text-base">I read and agree to </Text>
-                    <TouchableOpacity onPress={(e) => {
-                      e.stopPropagation();
-                      Linking.openURL('https://www.sahyogi.net.in/privacy.html');
-                    }}>
-                      <Text className="text-[#0B5B31] text-base font-bold underline">privacy policy</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              </View>
+              {/* Aadhaar Consent */}
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => setConsentAadhar(!consentAadhar)} 
+                style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'flex-start', 
+                  marginBottom: 14, 
+                  backgroundColor: '#F8F9FA', 
+                  padding: 14, 
+                  borderRadius: 14, 
+                  borderWidth: 1, 
+                  borderColor: consentAadhar ? '#A7D7B5' : '#EEEEEE' 
+                }}
+              >
+                <View style={{ 
+                  width: 22, 
+                  height: 22, 
+                  borderRadius: 6, 
+                  borderWidth: 1.5, 
+                  borderColor: consentAadhar ? '#10472B' : '#BDBDBD',
+                  backgroundColor: consentAadhar ? '#10472B' : '#FFFFFF',
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  marginRight: 12,
+                  marginTop: 2
+                }}>
+                  {consentAadhar && <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />}
+                </View>
+                <Text style={{ flex: 1, color: '#333333', fontSize: 13, lineHeight: 19 }}>
+                  I authorize SahYogi to verify my <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>Aadhaar details</Text> via UIDAI for e-KYC compliance.
+                </Text>
+              </TouchableOpacity>
+
+              {/* PAN Consent */}
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => setConsentPan(!consentPan)} 
+                style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'flex-start', 
+                  marginBottom: 14, 
+                  backgroundColor: '#F8F9FA', 
+                  padding: 14, 
+                  borderRadius: 14, 
+                  borderWidth: 1, 
+                  borderColor: consentPan ? '#A7D7B5' : '#EEEEEE' 
+                }}
+              >
+                <View style={{ 
+                  width: 22, 
+                  height: 22, 
+                  borderRadius: 6, 
+                  borderWidth: 1.5, 
+                  borderColor: consentPan ? '#10472B' : '#BDBDBD',
+                  backgroundColor: consentPan ? '#10472B' : '#FFFFFF',
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  marginRight: 12,
+                  marginTop: 2
+                }}>
+                  {consentPan && <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />}
+                </View>
+                <Text style={{ flex: 1, color: '#333333', fontSize: 13, lineHeight: 19 }}>
+                  I authorize SahYogi to verify my <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>PAN details</Text> against the Income Tax Department database.
+                </Text>
+              </TouchableOpacity>
+
+              {/* Privacy Policy */}
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => setConsentPrivacy(!consentPrivacy)} 
+                style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'flex-start', 
+                  marginBottom: 16, 
+                  backgroundColor: '#F8F9FA', 
+                  padding: 14, 
+                  borderRadius: 14, 
+                  borderWidth: 1, 
+                  borderColor: consentPrivacy ? '#A7D7B5' : '#EEEEEE' 
+                }}
+              >
+                <View style={{ 
+                  width: 22, 
+                  height: 22, 
+                  borderRadius: 6, 
+                  borderWidth: 1.5, 
+                  borderColor: consentPrivacy ? '#10472B' : '#BDBDBD',
+                  backgroundColor: consentPrivacy ? '#10472B' : '#FFFFFF',
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  marginRight: 12,
+                  marginTop: 2
+                }}>
+                  {consentPrivacy && <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />}
+                </View>
+                <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap' }}>
+                  <Text style={{ color: '#333333', fontSize: 13, lineHeight: 19 }}>
+                    I agree to the SahYogi{' '}
+                  </Text>
+                  <TouchableOpacity onPress={(e) => {
+                    e.stopPropagation();
+                    Linking.openURL('https://www.sahyogi.net.in/privacy.html');
+                  }}>
+                    <Text style={{ color: '#10472B', fontWeight: '800', fontSize: 13, textDecorationLine: 'underline' }}>
+                      Privacy Policy & Terms
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
             </View>
             
-            <View className="bg-sand px-6 py-5 border-t border-sage/10">
-              <Button 
-                title="Agree & Continue" 
-                onPress={submitDocuments} 
-                loading={loading}
-                disabled={!allConsented}
-              />
+            <View style={{ paddingHorizontal: 22, paddingBottom: 24, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EEEEEE' }}>
+              <TouchableOpacity
+                onPress={submitDocuments}
+                disabled={!allConsented || loading}
+                style={{ 
+                  backgroundColor: allConsented ? '#10472B' : '#C8E6C9', 
+                  height: 52, 
+                  borderRadius: 14, 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexDirection: 'row'
+                }}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>
+                    Agree & Continue
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Decorative Brand Line - Bottom Edge */}
-      <View style={{ height: 6, flexDirection: 'row', zIndex: 50 }}>
-        <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-          <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
-          <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
-          <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
-          <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
+      {/* Decorative Brand Accent Bottom Line */}
+      <View style={{ height: 4, flexDirection: 'row', width: '100%' }}>
+        <View style={{ flex: 1, backgroundColor: '#10472B' }} />
+        <View style={{ width: 60, backgroundColor: '#D32F2F' }} />
       </View>
     </SafeAreaView>
   );
 }
+
+// Minimalist native text input wrapper for pixel-perfect card integration
+function InputPrimitive(props: any) {
+  const { TextInput } = require('react-native');
+  return <TextInput placeholderTextColor="#9E9E9E" {...props} />;
+}
+
