@@ -49,6 +49,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
             "success": False,
             "error_type": "HTTPException",
             "message": exc.detail,
+            "detail": exc.detail,
             "path": request.url.path
         }
     )
