@@ -279,10 +279,15 @@ async def get_all_stores(
             return StoresListResponse(status="success", stores=[])
         
         # Fetch stores
-        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, contact_number, store_type, tenant_id").in_("tenant_id", target_tenant_ids).order("created_at", desc=True).execute()
+        stores_res = supabase.table("stores").select("store_id, store_name, address, city, state, pincode, google_map_link, contact_number, store_type, tenant_id, domain_id").in_("tenant_id", target_tenant_ids).order("created_at", desc=True).execute()
+
+        # Fetch domain names map
+        doms_res = supabase.table("job_domains").select("domain_id, name").execute()
+        dom_map = {d["domain_id"]: d["name"] for d in (doms_res.data or []) if "domain_id" in d}
                 
         stores = []
         for s in stores_res.data:
+            s_domain_id = s.get("domain_id")
             stores.append(StoreResponse(
                 store_id=s.get("store_id"),
                 store_name=s.get("store_name"),
@@ -293,12 +298,31 @@ async def get_all_stores(
                 google_map_link=s.get("google_map_link"),
                 contact_number=s.get("contact_number"),
                 store_type=s.get("store_type"),
-                tenant_id=s.get("tenant_id")
+                tenant_id=s.get("tenant_id"),
+                domain_id=s_domain_id,
+                domain_name=dom_map.get(s_domain_id) if s_domain_id else None
             ))
             
         return StoresListResponse(status="success", stores=stores)
     except Exception as e:
         print(f"Error fetching stores: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/domains")
+async def get_domains_list(admin_info: dict = Depends(verify_superadmin)):
+    """
+    Fetch all active job domains for store domain selection.
+    """
+    try:
+        try:
+            doms_res = supabase.table("job_domains").select("domain_id, name, is_active").order("name").execute()
+            active_doms = [d for d in (doms_res.data or []) if d.get("is_active") is not False]
+        except Exception:
+            doms_res = supabase.table("job_domains").select("domain_id, name").order("name").execute()
+            active_doms = doms_res.data or []
+        return {"status": "success", "domains": active_doms}
+    except Exception as e:
+        print(f"Error fetching domains: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/stores", response_model=ActionResponse)

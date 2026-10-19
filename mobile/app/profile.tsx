@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Linking, LayoutAnimation } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Linking, LayoutAnimation } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { apiClient } from '../src/api/client';
@@ -9,6 +10,7 @@ import IDBadge from '../src/components/IDBadge';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const logout = useAuthStore(state => state.logout);
   const [userProfile, setUserProfile] = useState<{ first_name: string, last_name: string, ratings?: number, shifts_completed?: number, recent_activity?: any[] } | null>(null);
   const [showIdCard, setShowIdCard] = useState(false);
@@ -91,147 +93,164 @@ export default function ProfileScreen() {
 
   return (
     <Watermark>
-      <SafeAreaView className="flex-1 bg-transparent pt-8">
+      <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: 'transparent' }}>
         {/* Header */}
-        <View className="bg-cream px-6 py-4 flex-row items-center shadow-sm z-10 pb-6" style={{ position: 'relative' }}>
-          <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center bg-sage/10 rounded-full mr-3">
-            <Feather name="arrow-left" size={20} color="#666666" />
+        <View className="bg-cream px-5 py-3 flex-row items-center shadow-sm z-10 pb-5" style={{ position: 'relative' }}>
+          <TouchableOpacity onPress={() => router.back()} className="w-9 h-9 items-center justify-center bg-sage/10 rounded-full mr-3">
+            <Feather name="arrow-left" size={18} color="#666666" />
           </TouchableOpacity>
           <Text className="font-bold text-slate text-lg flex-1 text-center">My Profile</Text>
           <Image
             source={require('../assets/images/newlogo.png')}
-            style={{ width: 60, height: 60, resizeMode: 'contain' }}
+            style={{ width: 44, height: 44, resizeMode: 'contain' }}
           />
           {/* Decorative Brand Line - Absolute Bottom */}
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 6, flexDirection: 'row' }}>
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 5, flexDirection: 'row' }}>
             <View style={{ flex: 1, backgroundColor: '#0B5B31' }} />
-            <View style={{ width: 0, height: 0, borderTopWidth: 6, borderTopColor: '#0B5B31', borderRightWidth: 6, borderRightColor: 'transparent', marginLeft: -1 }} />
-            <View style={{ width: 4, height: 6, backgroundColor: 'transparent' }} />
-            <View style={{ width: 0, height: 0, borderBottomWidth: 6, borderBottomColor: '#D32F2F', borderLeftWidth: 6, borderLeftColor: 'transparent', marginRight: -1 }} />
+            <View style={{ width: 0, height: 0, borderTopWidth: 5, borderTopColor: '#0B5B31', borderRightWidth: 5, borderRightColor: 'transparent', marginLeft: -1 }} />
+            <View style={{ width: 4, height: 5, backgroundColor: 'transparent' }} />
+            <View style={{ width: 0, height: 0, borderBottomWidth: 5, borderBottomColor: '#D32F2F', borderLeftWidth: 5, borderLeftColor: 'transparent', marginRight: -1 }} />
             <View style={{ flex: 1, backgroundColor: '#D32F2F' }} />
           </View>
         </View>
 
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          {/* Profile Info Card */}
-          <View className="bg-cream mx-5 mt-6 rounded-3xl p-6 shadow-sm border border-sage/10 items-center">
-            <TouchableOpacity 
-              onPress={() => setShowIdCard(true)}
-              className="h-24 w-24 rounded-full bg-[#FEF2F2] items-center justify-center border-4 border-[#0B5B31] mb-4 shadow-sm"
-              activeOpacity={0.8}
-            >
-              <Text className="text-[#D32F2F] text-4xl font-bold">{initial}</Text>
-            </TouchableOpacity>
-
-            <Text className="text-2xl font-bold text-slate mb-1">{fullName.toUpperCase()}</Text>
-            <Text className="text-muted text-sm font-medium mb-3">SahYogi</Text>
-
-            {/* Dynamic Rating */}
-            {userProfile?.shifts_completed ? (
-              <>
-                <View className="flex-row items-center bg-sand px-4 py-2 rounded-full border border-sage/10">
-                  <Text className="text-sage mr-2 text-lg">
-                    {'⭐'.repeat(userProfile?.ratings || 0)}
-                  </Text>
-                  <Text className="text-slate font-bold">{userProfile?.ratings ? `${userProfile.ratings}.0` : '0.0'}</Text>
-                </View>
-                <Text className="text-sage text-xs mt-2">Rated by Store Managers</Text>
-              </>
-            ) : (
-              <View className="bg-sand px-4 py-2 rounded-full border border-sage/10 mt-1">
-                <Text className="text-muted font-medium text-sm">Complete a shift to get ratings</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Stats Grid */}
-          <View className="mx-5 mt-6 flex-row justify-between">
-            <View className="bg-cream flex-1 mr-2 rounded-3xl p-5 shadow-sm border border-sage/10 items-center justify-center">
-              <View className="w-10 h-10 rounded-full bg-moss/5 items-center justify-center mb-3">
-                <Text className="text-moss/80 text-xl">💰</Text>
-              </View>
-              <Text className="text-sage text-xs font-bold tracking-widest uppercase mb-1 text-center">Total Earnings</Text>
-              <Text className="text-2xl font-bold text-slate text-center">₹ {totalEarnings.toLocaleString()}</Text>
-            </View>
-
-            <View className="bg-cream flex-1 ml-2 rounded-3xl p-5 shadow-sm border border-sage/10 items-center justify-center">
-              <View className="w-10 h-10 rounded-full bg-moss/10 items-center justify-center mb-3">
-                <Text className="text-moss/80 text-xl">📋</Text>
-              </View>
-              <Text className="text-sage text-xs font-bold tracking-widest uppercase mb-1 text-center">Shifts Completed</Text>
-              <Text className="text-2xl font-bold text-slate text-center">{userProfile?.shifts_completed || 0}</Text>
-            </View>
-          </View>
-
-          {/* Recent Activity */}
-          <View className="mx-5 mt-8 mb-10">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-slate">Recent Activity</Text>
-              <TouchableOpacity onPress={() => router.push('/payments')}>
-                <Text className="text-moss font-bold">View all</Text>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: 'space-between',
+            paddingHorizontal: 18,
+            paddingTop: 8,
+            paddingBottom: Math.max(insets.bottom + 12, 24),
+          }}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View>
+            {/* Profile Info Card */}
+            <View className="bg-cream rounded-3xl p-3 shadow-sm border border-sage/10 items-center">
+              <TouchableOpacity 
+                onPress={() => setShowIdCard(true)}
+                className="h-16 w-16 rounded-full bg-[#FEF2F2] items-center justify-center border-4 border-[#0B5B31] mb-1.5 shadow-sm"
+                activeOpacity={0.8}
+              >
+                <Text className="text-[#D32F2F] text-2xl font-bold">{initial}</Text>
               </TouchableOpacity>
+
+              <Text className="text-lg font-bold text-slate mb-0.5">{fullName.toUpperCase()}</Text>
+              <Text className="text-muted text-xs font-medium mb-1.5">SahYogi</Text>
+
+              {/* Dynamic Rating */}
+              {userProfile?.shifts_completed ? (
+                <>
+                  <View className="flex-row items-center bg-sand px-3 py-1 rounded-full border border-sage/10">
+                    <Text className="text-sage mr-1.5 text-sm">
+                      {'⭐'.repeat(userProfile?.ratings || 0)}
+                    </Text>
+                    <Text className="text-slate font-bold text-xs">{userProfile?.ratings ? `${userProfile.ratings}.0` : '0.0'}</Text>
+                  </View>
+                  <Text className="text-sage text-[10px] mt-0.5">Rated by Store Managers</Text>
+                </>
+              ) : (
+                <View className="bg-sand px-3 py-1 rounded-full border border-sage/10 mt-0.5">
+                  <Text className="text-muted font-medium text-xs">Complete a shift to get ratings</Text>
+                </View>
+              )}
             </View>
 
-            {userProfile?.recent_activity && userProfile.recent_activity.length > 0 ? (
-              userProfile.recent_activity.slice(0, 3).map((activity, index) => {
-                const date = new Date(activity.shift_date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                return (
-                  <View key={index} className="bg-cream rounded-3xl p-5 mb-4 shadow-sm border border-sage/10">
-                    <View className="flex-row items-center">
-                      <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${activity.payment_status === 'processed' ? 'bg-moss/10' : 'bg-sage/10'}`}>
-                        {activity.payment_status === 'processed' ? (
-                          <Text className="text-moss text-xl">✓</Text>
-                        ) : (
-                          <Feather name="clock" size={24} color="#CA8A04" />
-                        )}
-                      </View>
-                      <View className="flex-1">
-                        <Text className="font-bold text-slate text-base mb-1">{activity.job_name || 'Shift Payment'}</Text>
-                        <Text className="text-sage text-xs">
-                          {activity.store_name || 'Unknown Store'}
-                        </Text>
-                      </View>
-                      <View className="items-end">
-                        <Text className="font-bold text-moss text-lg">+₹{activity.amount?.toLocaleString() || 0}</Text>
-                        <Text className="text-sage text-[10px]">{date}</Text>
+            {/* Stats Grid */}
+            <View className="flex-row justify-between mt-2.5">
+              <View className="bg-cream flex-1 mr-2 rounded-2xl p-3 shadow-sm border border-sage/10 items-center justify-center">
+                <View className="w-7 h-7 rounded-full bg-moss/5 items-center justify-center mb-1">
+                  <Text className="text-moss/80 text-sm">💰</Text>
+                </View>
+                <Text className="text-sage text-[10px] font-bold tracking-widest uppercase mb-0.5 text-center">Total Earnings</Text>
+                <Text className="text-lg font-bold text-slate text-center">₹ {totalEarnings.toLocaleString()}</Text>
+              </View>
+
+              <View className="bg-cream flex-1 ml-2 rounded-2xl p-3 shadow-sm border border-sage/10 items-center justify-center">
+                <View className="w-7 h-7 rounded-full bg-moss/10 items-center justify-center mb-1">
+                  <Text className="text-moss/80 text-sm">📋</Text>
+                </View>
+                <Text className="text-sage text-[10px] font-bold tracking-widest uppercase mb-0.5 text-center">Shifts Completed</Text>
+                <Text className="text-lg font-bold text-slate text-center">{userProfile?.shifts_completed || 0}</Text>
+              </View>
+            </View>
+
+            {/* Recent Activity */}
+            <View className="mt-2.5">
+              <View className="flex-row justify-between items-center mb-1.5">
+                <Text className="text-sm font-bold text-slate">Recent Activity</Text>
+                <TouchableOpacity onPress={() => router.push('/payments')} activeOpacity={0.7}>
+                  <Text className="text-moss font-bold text-xs">View all</Text>
+                </TouchableOpacity>
+              </View>
+
+              {userProfile?.recent_activity && userProfile.recent_activity.length > 0 ? (
+                (() => {
+                  const activity = userProfile.recent_activity[0];
+                  const date = new Date(activity.shift_date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  return (
+                    <View className="bg-cream rounded-2xl p-3 shadow-sm border border-sage/10">
+                      <View className="flex-row items-center">
+                        <View className={`w-9 h-9 rounded-full items-center justify-center mr-3 ${activity.payment_status === 'processed' ? 'bg-moss/10' : 'bg-sage/10'}`}>
+                          {activity.payment_status === 'processed' ? (
+                            <Text className="text-moss text-base">✓</Text>
+                          ) : (
+                            <Feather name="clock" size={18} color="#CA8A04" />
+                          )}
+                        </View>
+                        <View className="flex-1">
+                          <Text className="font-bold text-slate text-xs mb-0.5" numberOfLines={1}>{activity.job_name || 'Shift Payment'}</Text>
+                          <Text className="text-sage text-[11px]" numberOfLines={1}>
+                            {activity.store_name || 'Unknown Store'}
+                          </Text>
+                        </View>
+                        <View className="items-end">
+                          <Text className="font-bold text-moss text-sm">+₹{activity.amount?.toLocaleString() || 0}</Text>
+                          <Text className="text-sage text-[10px]">{date}</Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                );
-              })
-            ) : (
-              <View className="bg-cream rounded-3xl p-5 shadow-sm border border-sage/10 items-center justify-center">
-                <Text className="text-sage py-2">No recent activity available</Text>
-              </View>
-            )}
+                  );
+                })()
+              ) : (
+                <View className="bg-cream rounded-2xl p-3 shadow-sm border border-sage/10 items-center justify-center">
+                  <Text className="text-sage text-xs py-0.5">No recent activity available</Text>
+                </View>
+              )}
+            </View>
           </View>
 
-          {/* Action Buttons */}
-          <View className="mx-5 mb-10 mt-6">
-            <TouchableOpacity
-              onPress={() => setShowSupportModal(true)}
-              className="bg-cream py-4 rounded-3xl items-center flex-row justify-center shadow-sm border border-sage/20 mb-4"
-              activeOpacity={0.85}
-            >
-              <Feather name="help-circle" size={20} color="#0B5B31" className="mr-2" />
-              <Text className="text-moss font-bold text-lg ml-2">Help & Support</Text>
-            </TouchableOpacity>
-
+          {/* Bottom Actions */}
+          <View className="mt-3">
             <TouchableOpacity
               onPress={handleLogout}
-              className="bg-[#D32F2F] py-4 rounded-3xl items-center flex-row justify-center shadow-sm"
+              className="bg-[#D32F2F] py-3 rounded-2xl items-center flex-row justify-center shadow-sm"
               activeOpacity={0.85}
             >
-              <Text className="text-white font-bold text-lg mr-2">Logout</Text>
+              <Text className="text-white font-bold text-sm mr-2">Logout</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => setShowDeleteReasonModal(true)}
-              className="py-4 mt-4 items-center justify-center"
-              activeOpacity={0.85}
-            >
-              <Text className="text-red-400 font-bold text-sm">Delete Account</Text>
-            </TouchableOpacity>
+            <View className="flex-row items-center justify-center mt-2.5" style={{ gap: 16 }}>
+              <TouchableOpacity
+                onPress={() => setShowSupportModal(true)}
+                className="flex-row items-center py-1.5 px-2"
+                activeOpacity={0.7}
+              >
+                <Feather name="help-circle" size={14} color="#666666" style={{ marginRight: 5 }} />
+                <Text className="text-slate/70 font-bold text-xs">Help & Support</Text>
+              </TouchableOpacity>
+
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1' }} />
+
+              <TouchableOpacity
+                onPress={() => setShowDeleteReasonModal(true)}
+                className="py-1.5 px-2"
+                activeOpacity={0.7}
+              >
+                <Text className="text-red-400 font-bold text-xs">Delete Account</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
