@@ -411,8 +411,8 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     ten_mins_ago = (datetime.now(timezone.utc) - timedelta(seconds=600)).isoformat()
     try:
         recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", ten_mins_ago).execute()
-        if len(recent_otps.data) >= 3:
-            raise HTTPException(status_code=429, detail="Phone rate limit exceeded: Maximum 3 OTP requests per 10 minutes.")
+        if len(recent_otps.data) >= 50:
+            raise HTTPException(status_code=429, detail="Phone rate limit exceeded: Maximum 50 OTP requests per 10 minutes.")
     except HTTPException:
         raise
     except Exception as e:

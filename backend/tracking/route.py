@@ -17,6 +17,41 @@ class LocationUpdateSchema(BaseModel):
 class StartTrackingSchema(BaseModel):
     job_id: str
 
+class UpdateTrackingStatusSchema(BaseModel):
+    job_id: Optional[str] = None
+    status: str
+
+@router.post("/status")
+async def update_tracking_status(
+    payload: UpdateTrackingStatusSchema,
+    worker_id: str = Depends(get_current_user)
+):
+    from .redis_client import get_redis
+    try:
+        client = await get_redis()
+        if client:
+            status_data = {
+                "worker_id": worker_id,
+                "job_id": payload.job_id,
+                "status": payload.status,
+                "updated_at": time.time()
+            }
+            # Cache for 24 hours
+            await client.setex(f"worker:{worker_id}:tracking_status", 86400, json.dumps(status_data))
+            if payload.job_id:
+                await client.setex(f"job:{payload.job_id}:tracking_status", 86400, json.dumps(status_data))
+                channel = f"job:{payload.job_id}:location_updates"
+                await client.publish(channel, json.dumps({
+                    "type": "tracking_status_change",
+                    "worker_id": worker_id,
+                    "job_id": payload.job_id,
+                    "tracking_status": payload.status
+                }))
+    except Exception as e:
+        print(f"[Tracking] Error updating tracking status in Redis: {e}")
+        
+    return {"message": "Tracking status updated", "status": payload.status}
+
 @router.post("/session/start")
 async def start_tracking_session(
     payload: StartTrackingSchema, 
@@ -236,6 +271,9 @@ async def get_tracking_state(
         
         latest_eta = json.loads(latest_eta_raw) if latest_eta_raw else None
         latest_loc = json.loads(latest_loc_raw) if latest_loc_raw else None
+        
+        status_raw = await client.get(f"job:{job_id}:tracking_status") if client else None
+        tracking_status_info = json.loads(status_raw) if status_raw else None
 
         # Fetch store coordinates for this job so mobile map can center on the store immediately
         store_data = None
@@ -262,7 +300,8 @@ async def get_tracking_state(
             "status": "active", 
             "location_data": latest_loc,
             "eta_data": latest_eta,
-            "store_data": store_data
+            "store_data": store_data,
+            "tracking_status": tracking_status_info.get("status") if tracking_status_info else None
         }
     except HTTPException:
         raise

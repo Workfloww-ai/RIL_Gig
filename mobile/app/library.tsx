@@ -10,7 +10,7 @@ import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { Watermark } from '../src/components/Watermark';
 import StatusModal from '../src/components/StatusModal';
-import { LocationTrackingService } from '../src/services/LocationTrackingService';
+import { LocationTrackingService, TrackingStatus } from '../src/services/LocationTrackingService';
 interface Module {
   id: string;
   title: string;
@@ -45,23 +45,16 @@ export default function LibraryScreen() {
     isError: false
   });
 
-  const [disclosureVisible, setDisclosureVisible] = useState(false);
-  const disclosureResolver = React.useRef<((value: boolean) => void) | null>(null);
+  const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>('NOT_REQUIRED');
+  const [showLocationConsentModal, setShowLocationConsentModal] = useState(false);
+  const [pendingAcceptJobId, setPendingAcceptJobId] = useState<string | null>(null);
 
-  const showCustomDisclosure = (): Promise<boolean> => {
-    return new Promise((resolve) => {
-      disclosureResolver.current = resolve;
-      setDisclosureVisible(true);
+  useEffect(() => {
+    const unsubscribe = LocationTrackingService.subscribeTrackingStatus((status) => {
+      setTrackingStatus(status);
     });
-  };
-
-  const handleDisclosureSelection = (agreed: boolean) => {
-    setDisclosureVisible(false);
-    if (disclosureResolver.current) {
-      disclosureResolver.current(agreed);
-      disclosureResolver.current = null;
-    }
-  };
+    return unsubscribe;
+  }, []);
 
   const certificateRef = React.useRef<any>(null);
 
@@ -88,7 +81,7 @@ export default function LibraryScreen() {
   };
 
   const [jobsTab, setJobsTab] = useState<'available' | 'accepted'>('available');
-  
+
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [availableOffset, setAvailableOffset] = useState(0);
   const [hasMoreAvailable, setHasMoreAvailable] = useState(true);
@@ -126,14 +119,61 @@ export default function LibraryScreen() {
   };
 
   const handleAcceptJob = async (request_id: string) => {
+    // 1. Check if user already consented and has location permissions
+    const hasConsent = await LocationTrackingService.hasLocationConsent();
+    const permissions = await LocationTrackingService.checkPermissions();
+
+    if (hasConsent && permissions.foreground) {
+      // User has already given consent and foreground permission: proceed directly
+      await executeJobAcceptance(request_id);
+    } else {
+      // Step 1: Explain why & obtain consent via Prominent Location Disclosure Modal
+      setPendingAcceptJobId(request_id);
+      await LocationTrackingService.setTrackingStatus('ELIGIBLE', request_id);
+      setShowLocationConsentModal(true);
+    }
+  };
+
+  const handleConsentAgreeAndContinue = async () => {
+    const jobIdToAccept = pendingAcceptJobId;
+    setShowLocationConsentModal(false);
+
+    // Save consent and update tracking status to USER_CONSENTED
+    await LocationTrackingService.saveLocationConsent();
+    await LocationTrackingService.setTrackingStatus('USER_CONSENTED', jobIdToAccept || undefined);
+
+    // Trigger Android Foreground Location Permission prompt ("While using the app")
+    const fgGranted = await LocationTrackingService.requestForegroundPermission();
+
+    if (!fgGranted) {
+      Alert.alert(
+        "Location Access Needed",
+        "Location access is required so the assigned manager can view your live journey to the store. Please allow location access to continue.",
+        [{ text: "OK" }]
+      );
+      setPendingAcceptJobId(null);
+      return;
+    }
+
+    // Permission granted - update tracking status to PERMISSION_GRANTED
+    await LocationTrackingService.setTrackingStatus('PERMISSION_GRANTED', jobIdToAccept || undefined);
+    if (jobIdToAccept) {
+      await executeJobAcceptance(jobIdToAccept);
+    }
+    setPendingAcceptJobId(null);
+  };
+
+  const handleConsentNotNow = () => {
+    setShowLocationConsentModal(false);
+    setPendingAcceptJobId(null);
+    showToast("Location consent is required to share your live ETA during shifts.");
+  };
+
+  const executeJobAcceptance = async (request_id: string) => {
     setAcceptingJobId(request_id);
     try {
       await apiClient.post(`/jobs/accept/${request_id}`);
       showToast('Job accepted successfully!');
-      
-      // Force location disclosure ONLY ONCE exactly when they accept a new job
-      // await LocationTrackingService.requestPermissions(showCustomDisclosure, true);
-      
       fetchJobs();
     } catch (err: any) {
       showToast(err.response?.data?.detail || 'Failed to accept job');
@@ -149,18 +189,18 @@ export default function LibraryScreen() {
     const job = [...acceptedToday, ...acceptedUpcoming, ...acceptedPast].find(j => j.job_assignment_id === assignment_id);
     try {
       await apiClient.post(`/jobs/worker/jobs/assignment/${assignment_id}/respond-extension`, { status });
-      
+
       if (status === 'accepted' && job) {
         const baseAmount = job.base_compensation * job.hours_duration;
         const extAmount = job.extension_hours * job.base_compensation * 1.1;
         const totalAmount = Math.round(baseAmount + extAmount);
-        
+
         const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
         const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
         const totalHours = job.hours_duration + job.extension_hours;
         const endDateTime = new Date(shiftDateTime.getTime() + totalHours * 60 * 60 * 1000);
         const endTimeStr = endDateTime.getHours().toString().padStart(2, '0') + ':' + endDateTime.getMinutes().toString().padStart(2, '0');
-        
+
         Alert.alert(
           "Extension Accepted! 🎉",
           `You have successfully extended your shift by ${job.extension_hours} hour(s).\n\nNew Shift End: ${endTimeStr}\nNew Total Payout: ₹${totalAmount}`,
@@ -313,10 +353,15 @@ export default function LibraryScreen() {
   );
 
   useEffect(() => {
-    // Request background location permissions immediately on login
-    // so Google Play reviewers see the Prominent Disclosure
-    // without needing to accept a job. Passing custom UI callback.
-    // LocationTrackingService.requestPermissions(showCustomDisclosure);
+    // Show full prominent location consent immediately on login if not yet granted
+    const checkConsentOnLogin = async () => {
+      const hasConsent = await LocationTrackingService.hasLocationConsent();
+      const permissions = await LocationTrackingService.checkPermissions();
+      if (!hasConsent || !permissions.foreground) {
+        setShowLocationConsentModal(true);
+      }
+    };
+    checkConsentOnLogin();
 
     const fetchData = async () => {
       try {
@@ -351,12 +396,12 @@ export default function LibraryScreen() {
     try {
       if (loadMore) setLoadingMoreAvailable(true);
       else { setJobsLoading(true); setAvailableOffset(0); }
-      
+
       const currentOffset = loadMore ? availableOffset + 20 : 0;
       const res = await apiClient.get(`/jobs/available?limit=20&offset=${currentOffset}`);
       const newJobs = res.data.jobs || [];
       setHasMoreAvailable(newJobs.length === 20);
-      
+
       if (loadMore) {
         setAvailableJobs(prev => [...prev, ...newJobs]);
         setAvailableOffset(currentOffset);
@@ -372,16 +417,16 @@ export default function LibraryScreen() {
     }
   };
 
-  const fetchAcceptedCategory = async (category: 'today'|'upcoming'|'past', loadMore = false) => {
+  const fetchAcceptedCategory = async (category: 'today' | 'upcoming' | 'past', loadMore = false) => {
     let currentOffset = 0;
     let hasMore = true;
     let loadingMore = false;
     if (category === 'today') { hasMore = hasMoreToday; loadingMore = loadingToday; currentOffset = loadMore ? todayOffset + 20 : 0; }
     if (category === 'upcoming') { hasMore = hasMoreUpcoming; loadingMore = loadingUpcoming; currentOffset = loadMore ? upcomingOffset + 20 : 0; }
     if (category === 'past') { hasMore = hasMorePast; loadingMore = loadingPast; currentOffset = loadMore ? pastOffset + 20 : 0; }
-    
+
     if (loadMore && (!hasMore || loadingMore)) return;
-    
+
     try {
       if (loadMore) {
         if (category === 'today') setLoadingToday(true);
@@ -390,11 +435,11 @@ export default function LibraryScreen() {
       } else {
         setJobsLoading(true);
       }
-      
+
       const res = await apiClient.get(`/jobs/accepted?time_filter=${category}&limit=20&offset=${currentOffset}`);
       const newJobs = res.data.jobs || [];
       const isFull = newJobs.length === 20;
-      
+
       if (category === 'today') {
         setHasMoreToday(isFull);
         setAcceptedToday(prev => loadMore ? [...prev, ...newJobs] : newJobs);
@@ -443,29 +488,29 @@ export default function LibraryScreen() {
     }
   }, [justCompleted, isAllCompleted]);
 
-  // Background Location Tracking Effect
+  // Location Tracking Effect
   useEffect(() => {
     // Find the first job that is 'accepted' and within the tracking window
     const activeJob = acceptedToday.find((job: any) => {
       // ONLY track when they are commuting. Stop immediately when OTP is verified (status becomes 'started').
       if (job.assignment_status !== 'accepted') return false;
-      
+
       let isWithinTrackingWindow = false;
 
       if (job.shift_date && job.start_time) {
         const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
         const shiftDateTime = new Date(`${formattedDate}T${job.start_time}`);
-        
+
         // Tracking starts 15 minutes before the shift
         const trackingStartDateTime = new Date(shiftDateTime.getTime() - 15 * 60 * 1000);
-        
+
         const now = new Date();
-        
+
         // Allow tracking while the worker is en-route up to shift duration or 3 hours after start time
         // Tracking immediately halts as soon as the store manager verifies OTP (status becomes 'started' or arrival_status 'arrived')
         const shiftDurationHours = Number(job.hours_duration) || 2;
         const expirationDateTime = new Date(shiftDateTime.getTime() + Math.max(shiftDurationHours, 3) * 60 * 60 * 1000);
-        
+
         if (now >= trackingStartDateTime && now <= expirationDateTime && job.arrival_status !== 'arrived') {
           isWithinTrackingWindow = true;
         }
@@ -476,9 +521,24 @@ export default function LibraryScreen() {
     if (activeJob) {
       LocationTrackingService.startTracking(activeJob.request_id);
     } else {
-      LocationTrackingService.stopTracking();
+      const arrivedJob = acceptedToday.find((job: any) => job.arrival_status === 'arrived');
+      if (arrivedJob) {
+        LocationTrackingService.stopTracking('ARRIVED');
+      } else {
+        const hasAcceptedFutureJobs = acceptedToday.some((job: any) => job.assignment_status === 'accepted') || acceptedUpcoming.length > 0;
+        if (hasAcceptedFutureJobs) {
+          LocationTrackingService.setTrackingStatus('ELIGIBLE');
+        } else {
+          const completedJob = acceptedToday.find((job: any) => job.assignment_status === 'completed');
+          if (completedJob) {
+            LocationTrackingService.stopTracking('COMPLETED');
+          } else {
+            LocationTrackingService.stopTracking('NOT_REQUIRED');
+          }
+        }
+      }
     }
-  }, [acceptedToday]);
+  }, [acceptedToday, acceptedUpcoming]);
 
   // Poll to detect 15-min tracking window entrance and OTP verification status changes
   useEffect(() => {
@@ -502,9 +562,17 @@ export default function LibraryScreen() {
       <View key={job.request_id} className="bg-cream rounded-3xl p-5 mb-5 shadow-sm border border-sage/10">
         <View className="flex-row justify-between items-start mb-4">
           <View className="flex-1 pr-4">
-            <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-2 flex-row items-center border border-moss/20">
-              <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
-              <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
+            <View className="flex-row items-center flex-wrap gap-1.5 mb-2">
+              <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full flex-row items-center border border-moss/20">
+                <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
+                <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
+              </View>
+              {trackingStatus === 'TRACKING_ACTIVE' && (
+                <View className="bg-emerald-100 self-start px-2.5 py-1.5 rounded-full flex-row items-center border border-emerald-300">
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#059669', marginRight: 5 }} />
+                  <Text style={{ color: '#065F46', fontSize: 10, fontWeight: '700' }}>Live Tracking Active</Text>
+                </View>
+              )}
             </View>
             <View className="flex-row items-center mb-1.5 flex-wrap">
               <Text className="font-bold text-charcoal text-xl leading-tight mr-1">{job.job_name}</Text>
@@ -528,7 +596,7 @@ export default function LibraryScreen() {
             const extAmount = job.extension_status === 'accepted' ? (job.extension_hours * job.base_compensation * 1.1) : 0;
             const totalAmount = (baseAmount + extAmount).toFixed(0);
             const totalHours = job.hours_duration + (job.extension_status === 'accepted' ? job.extension_hours : 0);
-            
+
             return (
               <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
                 <Text className="text-white font-bold text-xl">₹{totalAmount}</Text>
@@ -721,7 +789,7 @@ export default function LibraryScreen() {
             const baseAmount = (Number(job.base_compensation) || 0) * (Number(job.hours_duration) || 0);
             const extAmount = (Number(job.extension_hours) || 0) * (Number(job.base_compensation) || 0) * 1.1;
             const totalAmount = (baseAmount + extAmount).toFixed(0);
-            
+
             let formattedEndTime = "";
             if (job.shift_date && job.start_time) {
               const formattedDate = String(job.shift_date).split('-')[0].length !== 4 ? String(job.shift_date).split('-').reverse().join('-') : job.shift_date;
@@ -913,65 +981,65 @@ export default function LibraryScreen() {
                         }}
                         activeOpacity={module.status === 'locked' ? 1 : 0.7}
                       >
-                      <View className="flex-row mb-4">
-                        {/* Thumbnail / Icon */}
-                        <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
-                          {/* Placeholder for video thumbnail */}
-                          <View className="absolute inset-0 bg-sage/30 opacity-50" />
-                          <View className="absolute inset-0 items-center justify-center">
-                            <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-moss/50' : 'bg-moss/80'}`}>
-                              <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
+                        <View className="flex-row mb-4">
+                          {/* Thumbnail / Icon */}
+                          <View className="w-24 h-24 bg-sage/10 rounded-2xl mr-4 overflow-hidden relative">
+                            {/* Placeholder for video thumbnail */}
+                            <View className="absolute inset-0 bg-sage/30 opacity-50" />
+                            <View className="absolute inset-0 items-center justify-center">
+                              <View className={`w-10 h-10 rounded-full items-center justify-center ${module.status === 'locked' ? 'bg-gray-800/60' : module.status === 'quiz_passed' ? 'bg-moss/50' : 'bg-moss/80'}`}>
+                                <Text className="text-white text-lg">{module.status === 'locked' ? '🔒' : module.status === 'quiz_passed' ? '✓' : '▶'}</Text>
+                              </View>
                             </View>
-                          </View>
-                          {/* <View className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded-md">
+                            {/* <View className="absolute bottom-2 right-2 bg-black/70 px-2 py-0.5 rounded-md">
  <Text className="text-white text-xs font-medium">{module.duration_text || '2m'}</Text>
  </View> */}
-                        </View>
+                          </View>
 
-                        {/* Details */}
-                        <View className="flex-1 justify-between py-1">
-                          <View>
-                            <View className="bg-moss/10 self-start px-2 py-1 rounded-full mb-2">
-                              <Text className="text-moss text-[10px] font-bold tracking-wider">{module.category_name}</Text>
+                          {/* Details */}
+                          <View className="flex-1 justify-between py-1">
+                            <View>
+                              <View className="bg-moss/10 self-start px-2 py-1 rounded-full mb-2">
+                                <Text className="text-moss text-[10px] font-bold tracking-wider">{module.category_name}</Text>
+                              </View>
+                              <Text className="font-bold text-charcoal text-base leading-tight mb-1" numberOfLines={2}>
+                                {module.title}
+                              </Text>
+                              <Text className="text-muted text-xs" numberOfLines={2}>
+                                {module.overview_text}
+                              </Text>
                             </View>
-                            <Text className="font-bold text-charcoal text-base leading-tight mb-1" numberOfLines={2}>
-                              {module.title}
-                            </Text>
-                            <Text className="text-muted text-xs" numberOfLines={2}>
-                              {module.overview_text}
-                            </Text>
                           </View>
                         </View>
-                      </View>
 
-                      {/* Actions */}
-                      <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
-                        <View className="flex-row items-center">
-                          <Text className="text-gray-400 mr-2">⏱</Text>
-                          <Text className="text-muted text-xs font-medium">{module.duration_text}</Text>
+                        {/* Actions */}
+                        <View className="flex-row items-center justify-between mt-2 pt-4 border-t border-gray-50">
+                          <View className="flex-row items-center">
+                            <Text className="text-gray-400 mr-2">⏱</Text>
+                            <Text className="text-muted text-xs font-medium">{module.duration_text}</Text>
+                          </View>
+
+                          {module.status === 'locked' ? (
+                            <View className="bg-sage/10 px-5 py-2.5 rounded-full flex-row items-center">
+                              <Text className="text-sage mr-2">🔒</Text>
+                              <Text className="text-sage font-bold">Locked</Text>
+                            </View>
+                          ) : module.status === 'quiz_passed' ? (
+                            <View
+                              className="bg-moss/5 px-5 py-2.5 rounded-full flex-row items-center border border-moss/20"
+                            >
+                              <Text className="text-moss font-bold mr-2">✓ Passed</Text>
+                              <Text className="text-moss/80 text-xs font-medium bg-moss/10 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
+                            </View>
+                          ) : (
+                            <View
+                              className="bg-moss px-5 py-2.5 rounded-full flex-row items-center shadow-sm shadow-primary-500/50"
+                            >
+                              <Text className="text-white mr-2">▶</Text>
+                              <Text className="text-white font-bold">Start Lesson</Text>
+                            </View>
+                          )}
                         </View>
-
-                        {module.status === 'locked' ? (
-                          <View className="bg-sage/10 px-5 py-2.5 rounded-full flex-row items-center">
-                            <Text className="text-sage mr-2">🔒</Text>
-                            <Text className="text-sage font-bold">Locked</Text>
-                          </View>
-                        ) : module.status === 'quiz_passed' ? (
-                          <View
-                            className="bg-moss/5 px-5 py-2.5 rounded-full flex-row items-center border border-moss/20"
-                          >
-                            <Text className="text-moss font-bold mr-2">✓ Passed</Text>
-                            <Text className="text-moss/80 text-xs font-medium bg-moss/10 px-2 py-0.5 rounded-md">{module.highest_quiz_score}%</Text>
-                          </View>
-                        ) : (
-                          <View
-                            className="bg-moss px-5 py-2.5 rounded-full flex-row items-center shadow-sm shadow-primary-500/50"
-                          >
-                            <Text className="text-white mr-2">▶</Text>
-                            <Text className="text-white font-bold">Start Lesson</Text>
-                          </View>
-                        )}
-                      </View>
 
                       </TouchableOpacity>
 
@@ -1134,70 +1202,70 @@ export default function LibraryScreen() {
                           <View className="flex-row justify-between items-start mb-4">
                             <View className="flex-1 pr-4">
                               <View className="bg-moss/10 self-start px-3 py-1.5 rounded-full mb-2 flex-row items-center border border-moss/20">
-                              <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
-                              <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
+                                <Feather name="briefcase" size={12} color="#0B5B31" style={{ marginRight: 6 }} />
+                                <Text className="text-moss text-[10px] font-bold tracking-wider uppercase">{job.store_name}</Text>
+                              </View>
+                              <View className="flex-row items-center mb-1.5 flex-wrap">
+                                <Text className="font-bold text-charcoal text-xl leading-tight mr-1">{job.job_name}</Text>
+                                <TouchableOpacity onPress={() => setStatusModal({ visible: true, title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', isError: false })} style={{ padding: 4 }}>
+                                  <Feather name="info" size={20} color="#6B7280" />
+                                </TouchableOpacity>
+                              </View>
+                              <View className="flex-row items-start">
+                                <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
+                                <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
+                              </View>
+                              {job.google_map_link && (
+                                <TouchableOpacity
+                                  onPress={() => Linking.openURL(job.google_map_link)}
+                                  className="mt-1 flex-row items-center bg-sage/10 self-start px-2 py-1 rounded"
+                                >
+                                  <Feather name="navigation" size={10} color="#0B5B31" style={{ marginRight: 4 }} />
+                                  <Text className="text-sage text-[10px] font-bold">See Distance</Text>
+                                </TouchableOpacity>
+                              )}
                             </View>
-                            <View className="flex-row items-center mb-1.5 flex-wrap">
-                              <Text className="font-bold text-charcoal text-xl leading-tight mr-1">{job.job_name}</Text>
-                              <TouchableOpacity onPress={() => setStatusModal({ visible: true, title: 'Job Description', message: job.job_description || job.description || 'No description available for this job.', isError: false })} style={{ padding: 4 }}>
-                                <Feather name="info" size={20} color="#6B7280" />
-                              </TouchableOpacity>
+                            <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
+                              <Text className="text-white font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
+                              <Text className="text-white text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
                             </View>
-                            <View className="flex-row items-start">
-                              <Feather name="map-pin" size={12} color="#6B7280" style={{ marginTop: 2, marginRight: 4 }} />
-                              <Text className="text-muted text-xs flex-1 leading-relaxed">{job.address}{job.city ? `, ${job.city}` : ''}</Text>
-                            </View>
-                            {job.google_map_link && (
-                              <TouchableOpacity
-                                onPress={() => Linking.openURL(job.google_map_link)}
-                                className="mt-1 flex-row items-center bg-sage/10 self-start px-2 py-1 rounded"
-                              >
-                                <Feather name="navigation" size={10} color="#0B5B31" style={{ marginRight: 4 }} />
-                                <Text className="text-sage text-[10px] font-bold">See Distance</Text>
-                              </TouchableOpacity>
-                            )}
                           </View>
-                          <View className="bg-clay px-3 py-2.5 rounded-2xl items-center min-w-[75px] shadow-sm">
-                            <Text className="text-white font-bold text-xl">₹{job.base_compensation * job.hours_duration}</Text>
-                            <Text className="text-white text-[9px] font-bold uppercase tracking-wider mt-0.5">{job.hours_duration} {job.hours_duration == 1 ? "Hour" : "Hours"}</Text>
-                          </View>
-                        </View>
 
-                        <View className="flex-row bg-sand rounded-2xl p-3.5 mb-5 border border-sage/10 justify-around shadow-sm">
-                          <View className="items-center">
-                            <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
-                            <View className="flex-row items-center">
-                              <Feather name="calendar" size={12} color="#666666" style={{ marginRight: 5 }} />
-                              <Text className="text-slate font-semibold text-xs">{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''}</Text>
+                          <View className="flex-row bg-sand rounded-2xl p-3.5 mb-5 border border-sage/10 justify-around shadow-sm">
+                            <View className="items-center">
+                              <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Date</Text>
+                              <View className="flex-row items-center">
+                                <Feather name="calendar" size={12} color="#666666" style={{ marginRight: 5 }} />
+                                <Text className="text-slate font-semibold text-xs">{job.shift_date ? job.shift_date.split('-').reverse().join('-') : ''}</Text>
+                              </View>
+                            </View>
+                            <View className="w-[1px] bg-sage/20 h-full" />
+                            <View className="items-center">
+                              <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
+                              <View className="flex-row items-center">
+                                <Feather name="clock" size={12} color="#666666" style={{ marginRight: 5 }} />
+                                <Text className="text-slate font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
+                              </View>
+                            </View>
+                            <View className="w-[1px] bg-sage/20 h-full" />
+                            <View className="items-center">
+                              <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Duration</Text>
+                              <Text className="text-slate font-semibold text-xs">{job.hours_duration} hrs</Text>
                             </View>
                           </View>
-                          <View className="w-[1px] bg-sage/20 h-full" />
-                          <View className="items-center">
-                            <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Time</Text>
-                            <View className="flex-row items-center">
-                              <Feather name="clock" size={12} color="#666666" style={{ marginRight: 5 }} />
-                              <Text className="text-slate font-semibold text-xs">{job.start_time.substring(0, 5)}</Text>
-                            </View>
-                          </View>
-                          <View className="w-[1px] bg-sage/20 h-full" />
-                          <View className="items-center">
-                            <Text className="text-sage text-[9px] uppercase font-bold tracking-widest mb-1.5">Duration</Text>
-                            <Text className="text-slate font-semibold text-xs">{job.hours_duration} hrs</Text>
-                          </View>
-                        </View>
 
-                        <Button
-                          title="Accept Job"
-                          onPress={() => handleAcceptJob(job.request_id)}
-                          loading={acceptingJobId === job.request_id}
-                          disabled={acceptingJobId !== null && acceptingJobId !== job.request_id}
-                        />
-                      </View>
-                    ))}
-                    {loadingMoreAvailable && (
-                      <ActivityIndicator size="small" color="#0B5B31" style={{ marginVertical: 10 }} />
-                    )}
-                  </>
+                          <Button
+                            title="Accept Job"
+                            onPress={() => handleAcceptJob(job.request_id)}
+                            loading={acceptingJobId === job.request_id}
+                            disabled={acceptingJobId !== null && acceptingJobId !== job.request_id}
+                          />
+                        </View>
+                      ))}
+                      {loadingMoreAvailable && (
+                        <ActivityIndicator size="small" color="#0B5B31" style={{ marginVertical: 10 }} />
+                      )}
+                    </>
                   )
                 ) : (
                   totalAcceptedCount === 0 ? (
@@ -1402,7 +1470,7 @@ export default function LibraryScreen() {
               <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
                 <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
                   <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 }}>Shift Extension Request</Text>
-                  
+
                   <View style={{ backgroundColor: '#F0FDF4', borderRadius: 12, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#DCFCE7' }}>
                     <Text style={{ fontSize: 15, color: '#4B5563', marginBottom: 8 }}>
                       The store manager has requested to extend your current shift.
@@ -1442,35 +1510,92 @@ export default function LibraryScreen() {
           );
         })()}
 
-        {/* Custom Location Disclosure Modal matching studio UI
-        <Modal visible={disclosureVisible} transparent animationType="fade">
-          <View className="flex-1 justify-center items-center bg-black/50 px-6">
-            <View className="bg-white rounded-3xl p-6 w-full shadow-xl">
-              <View className="flex-row items-center mb-4">
-                <Feather name="map-pin" size={24} color="#0B5B31" className="mr-3" />
-                <Text className="text-xl font-extrabold text-gray-900 ml-2">Background Location</Text>
+        {/* Prominent Location Disclosure Modal (Single Unified Message) */}
+        <Modal
+          visible={showLocationConsentModal}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={handleConsentNotNow}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 28, padding: 24, width: '100%', maxWidth: 420, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 10 }}>
+
+              {/* Header Icon & Title */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <Feather name="navigation" size={30} color="#0B5B31" />
+                </View>
+                <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 8 }}>
+                  <Text style={{ color: '#0B5B31', fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                    Live Job Journey & ETA
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827', textAlign: 'center' }}>
+                  Location Access Required
+                </Text>
               </View>
-              <Text className="text-sage text-base mb-6 leading-relaxed font-medium">
-                SahYogi collects location data to enable real-time ETA tracking for store managers even when the app is closed or not in use.
+
+              {/* Main Disclosure Text */}
+              <Text style={{ fontSize: 14, color: '#374151', lineHeight: 21, marginBottom: 14, fontWeight: '500' }}>
+                SahYogi collects your location in the foreground to enable live job tracking and share your journey with your assigned store manager while you travel to an accepted job.
               </Text>
-              <View className="flex-row justify-end space-x-3">
-                <TouchableOpacity
-                  onPress={() => handleDisclosureSelection(false)}
-                  className="px-6 py-3 rounded-xl bg-gray-100"
-                >
-                  <Text className="text-gray-700 font-bold text-base">Deny</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleDisclosureSelection(true)}
-                  className="px-6 py-3 rounded-xl bg-[#0B5B31] ml-3 shadow-md shadow-green-900/20"
-                >
-                  <Text className="text-white font-bold text-base">Accept</Text>
-                </TouchableOpacity>
+
+              {/* Feature Points */}
+              <View style={{ backgroundColor: '#F0FDF4', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#DCFCE7' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#166534', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  This allows the assigned manager to see:
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                  <Feather name="check-circle" size={15} color="#0B5B31" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600' }}>Your current location</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                  <Feather name="check-circle" size={15} color="#0B5B31" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600' }}>Whether you are en route</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Feather name="check-circle" size={15} color="#0B5B31" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600' }}>Your estimated arrival time (ETA)</Text>
+                </View>
               </View>
+
+              {/* Privacy and Timing Notice */}
+              <View style={{ backgroundColor: '#F9FAFB', borderRadius: 12, padding: 12, marginBottom: 18, borderWidth: 1, borderColor: '#F3F4F6' }}>
+                <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18, marginBottom: 4 }}>
+                  • Tracking starts only <Text style={{ fontWeight: '700', color: '#111827' }}>15 minutes before the start time</Text> of your relevant job shift.
+                </Text>
+                <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18, marginBottom: 4 }}>
+                  • Location is collected only in the <Text style={{ fontWeight: '700', color: '#111827' }}>foreground</Text> while the app is active. When the app or phone is closed, location cannot be accessed.
+                </Text>
+                <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
+                  • Tracking automatically stops upon arrival or shift completion.
+                </Text>
+              </View>
+
+              {/* Action Buttons */}
+              <TouchableOpacity
+                onPress={handleConsentAgreeAndContinue}
+                activeOpacity={0.85}
+                style={{ backgroundColor: '#0B5B31', paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginBottom: 8, shadowColor: '#0B5B31', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 }}>
+                  I AGREE & CONTINUE
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleConsentNotNow}
+                activeOpacity={0.7}
+                style={{ paddingVertical: 10, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#6B7280', fontSize: 14, fontWeight: '600' }}>
+                  NOT NOW
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
-        */}
 
       </SafeAreaView>
     </Watermark>

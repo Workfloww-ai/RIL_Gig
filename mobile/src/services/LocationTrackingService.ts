@@ -1,12 +1,29 @@
 import * as Location from 'expo-location';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import * as TaskManager from 'expo-task-manager';
 import { apiClient } from '../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LOCATION_TASK_NAME = 'BACKGROUND_LOCATION_TASK';
+export type TrackingStatus =
+  | 'NOT_REQUIRED'
+  | 'ELIGIBLE'
+  | 'USER_CONSENTED'
+  | 'PERMISSION_GRANTED'
+  | 'TRACKING_ACTIVE'
+  | 'ARRIVED'
+  | 'COMPLETED'
+  | 'STOPPED';
 
-// Define the task
+const LOCATION_TASK_NAME = 'BACKGROUND_LOCATION_TASK';
+const TRACKING_STATUS_STORAGE_KEY = '@tracking_status';
+const ACTIVE_JOB_ID_KEY = 'active_tracking_job_id';
+const LOCATION_CONSENT_KEY = '@location_consent_granted';
+const LOCATION_CONSENT_TIMESTAMP_KEY = '@location_consent_timestamp';
+
+let currentTrackingStatus: TrackingStatus = 'NOT_REQUIRED';
+const statusListeners = new Set<(status: TrackingStatus) => void>();
+
+// Define the background location task
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (error) {
     console.error(`[LocationTask] Error:`, error);
@@ -18,8 +35,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     
     if (location) {
       try {
-        // Retrieve the current active job_id from storage
-        const jobId = await AsyncStorage.getItem('active_tracking_job_id');
+        const jobId = await AsyncStorage.getItem(ACTIVE_JOB_ID_KEY);
         if (!jobId) {
           console.log('[LocationTask] No active tracking job found.');
           return;
@@ -39,21 +55,16 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         
         if (res.data && res.data.stop) {
           console.log(`[LocationTask] Backend commanded stop for job ${jobId}. Terminating tracking.`);
-          await AsyncStorage.removeItem('active_tracking_job_id');
-          await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+          await LocationTrackingService.stopTracking('ARRIVED');
           return;
         }
         
         console.log(`[LocationTask] Sent location for job ${jobId}`);
       } catch (err: any) {
         console.error('[LocationTask] Failed to send location', err);
-        // If backend returned stop command or worker is unauthorized/completed
         if (err.response?.data?.stop || err.response?.status === 403) {
           console.log('[LocationTask] Backend rejected tracking (stop/forbidden). Terminating background updates.');
-          await AsyncStorage.removeItem('active_tracking_job_id');
-          try {
-            await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-          } catch (_) {}
+          await LocationTrackingService.stopTracking('STOPPED');
         }
       }
     }
@@ -78,7 +89,7 @@ async function sendLocationUpdate(jobId: string, location: Location.LocationObje
     
     if (res.data && res.data.stop) {
       console.log(`[LocationService] Backend commanded stop for job ${jobId}. Terminating tracking.`);
-      await LocationTrackingService.stopTracking();
+      await LocationTrackingService.stopTracking('ARRIVED');
       return false;
     }
     console.log(`[LocationService] Sent location for job ${jobId}: ${payload.latitude}, ${payload.longitude}`);
@@ -87,7 +98,7 @@ async function sendLocationUpdate(jobId: string, location: Location.LocationObje
     console.error('[LocationService] Failed to send location', err);
     if (err.response?.data?.stop || err.response?.status === 403) {
       console.log('[LocationService] Backend rejected tracking (stop/forbidden). Terminating updates.');
-      await LocationTrackingService.stopTracking();
+      await LocationTrackingService.stopTracking('STOPPED');
       return false;
     }
   }
@@ -95,62 +106,147 @@ async function sendLocationUpdate(jobId: string, location: Location.LocationObje
 }
 
 export const LocationTrackingService = {
-  async requestPermissions(showDisclosure?: () => Promise<boolean>, forceDisclosure: boolean = false) {
-    console.log('[LocationTrackingService] Checking current permissions...');
-    const fg = await Location.getForegroundPermissionsAsync();
-    console.log('[LocationTrackingService] Foreground status:', fg.status);
+  getTrackingStatus(): TrackingStatus {
+    return currentTrackingStatus;
+  },
 
-    let hasForeground = fg.status === 'granted';
-
-    // Step 1: Request Foreground Permission if not yet granted
-    if (!hasForeground) {
-      console.log('[LocationTrackingService] Requesting Foreground Permission...');
-      const { status: reqFgStatus } = await Location.requestForegroundPermissionsAsync();
-      hasForeground = reqFgStatus === 'granted';
-      if (!hasForeground) {
-        console.log('[LocationTrackingService] Foreground permission denied.');
-        return false;
-      }
-    }
-
-    // Step 2: Try to request background permission as best-effort for background updates
+  async loadInitialStatus(): Promise<TrackingStatus> {
     try {
-      const currentBg = await Location.getBackgroundPermissionsAsync();
-      if (currentBg.status !== 'granted') {
+      const saved = await AsyncStorage.getItem(TRACKING_STATUS_STORAGE_KEY);
+      if (saved) {
+        currentTrackingStatus = saved as TrackingStatus;
+      }
+    } catch (e) {
+      console.warn('[LocationTrackingService] Error loading initial tracking status:', e);
+    }
+    return currentTrackingStatus;
+  },
+
+  async setTrackingStatus(status: TrackingStatus, jobId?: string): Promise<void> {
+    currentTrackingStatus = status;
+    try {
+      await AsyncStorage.setItem(TRACKING_STATUS_STORAGE_KEY, status);
+      statusListeners.forEach((listener) => {
+        try {
+          listener(status);
+        } catch (err) {
+          console.warn('[LocationTrackingService] Listener execution error:', err);
+        }
+      });
+
+      // Best-effort push status update to backend
+      apiClient.post('/tracking/status', {
+        job_id: jobId,
+        status: status,
+      }).catch((err) => {
+        console.log('[LocationTrackingService] Backend status notify notice:', err?.message);
+      });
+    } catch (e) {
+      console.warn('[LocationTrackingService] Error persisting tracking status:', e);
+    }
+  },
+
+  subscribeTrackingStatus(listener: (status: TrackingStatus) => void): () => void {
+    statusListeners.add(listener);
+    listener(currentTrackingStatus);
+    return () => {
+      statusListeners.delete(listener);
+    };
+  },
+
+  async hasLocationConsent(): Promise<boolean> {
+    try {
+      const val = await AsyncStorage.getItem(LOCATION_CONSENT_KEY);
+      return val === 'true';
+    } catch {
+      return false;
+    }
+  },
+
+  async saveLocationConsent(): Promise<void> {
+    try {
+      await AsyncStorage.setItem(LOCATION_CONSENT_KEY, 'true');
+      await AsyncStorage.setItem(LOCATION_CONSENT_TIMESTAMP_KEY, new Date().toISOString());
+    } catch (e) {
+      console.warn('[LocationTrackingService] Error saving location consent:', e);
+    }
+  },
+
+  async checkPermissions(): Promise<{ foreground: boolean; background: boolean }> {
+    try {
+      const fg = await Location.getForegroundPermissionsAsync();
+      const bg = await Location.getBackgroundPermissionsAsync();
+      return {
+        foreground: fg.status === 'granted',
+        background: bg.status === 'granted',
+      };
+    } catch (e) {
+      console.warn('[LocationTrackingService] Error checking permissions:', e);
+      return { foreground: false, background: false };
+    }
+  },
+
+  async requestForegroundPermission(): Promise<boolean> {
+    try {
+      const fg = await Location.getForegroundPermissionsAsync();
+      if (fg.status === 'granted') {
+        return true;
+      }
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      return status === 'granted';
+    } catch (e) {
+      console.error('[LocationTrackingService] Error requesting foreground permission:', e);
+      return false;
+    }
+  },
+
+  async requestBackgroundPermission(): Promise<boolean> {
+    try {
+      const bg = await Location.getBackgroundPermissionsAsync();
+      if (bg.status === 'granted') {
+        return true;
+      }
+      const { status } = await Location.requestBackgroundPermissionsAsync();
+      return status === 'granted';
+    } catch (e) {
+      console.warn('[LocationTrackingService] Error requesting background permission:', e);
+      return false;
+    }
+  },
+
+  // Legacy compatibility method
+  async requestPermissions(showDisclosure?: () => Promise<boolean>, forceDisclosure: boolean = false) {
+    const fgGranted = await this.requestForegroundPermission();
+    if (!fgGranted) return false;
+
+    try {
+      const { background } = await this.checkPermissions();
+      if (!background) {
         let userAgreed = false;
         if (showDisclosure) {
           userAgreed = await showDisclosure();
         } else {
-          userAgreed = await new Promise((resolve) => {
-            Alert.alert(
-              "Location Tracking Requirement",
-              "SahYogi collects location data to enable real-time ETA tracking for store managers during active shifts.",
-              [
-                { text: "Skip", onPress: () => resolve(false), style: "cancel" },
-                { text: "Allow", onPress: () => resolve(true) }
-              ],
-              { cancelable: true }
-            );
-          });
+          userAgreed = true;
         }
 
         if (userAgreed) {
-          console.log('[LocationTrackingService] Requesting Background Permission...');
-          await Location.requestBackgroundPermissionsAsync();
+          await this.requestBackgroundPermission();
         }
       }
     } catch (bgErr) {
-      console.warn('[LocationTrackingService] Background permission request error/skipped:', bgErr);
+      console.warn('[LocationTrackingService] Background request error:', bgErr);
     }
 
-    // As long as foreground location is granted, we can proceed with tracking
     return true;
   },
 
-  async startTracking(jobId: string, showDisclosure?: () => Promise<boolean>) {
-    // Check if already tracking this exact job
+  isTrackingActive(): boolean {
+    return currentTrackingStatus === 'TRACKING_ACTIVE' || foregroundTimer !== null;
+  },
+
+  async startTracking(jobId: string): Promise<boolean> {
     try {
-      const activeJobId = await AsyncStorage.getItem('active_tracking_job_id');
+      const activeJobId = await AsyncStorage.getItem(ACTIVE_JOB_ID_KEY);
       if (activeJobId === jobId && foregroundTimer) {
         console.log(`[LocationTrackingService] Already actively tracking job ${jobId}`);
         return true;
@@ -159,15 +255,15 @@ export const LocationTrackingService = {
       console.warn('[LocationTrackingService] State check error:', e);
     }
 
-    // Only prompt disclosure if permissions are not yet granted
-    const hasPermissions = await this.requestPermissions(showDisclosure, false);
-    if (!hasPermissions) {
+    const { foreground } = await this.checkPermissions();
+    if (!foreground) {
       console.warn('[LocationTrackingService] Foreground permissions not granted.');
       return false;
     }
 
     // Save job_id for background task and foreground loop to use
-    await AsyncStorage.setItem('active_tracking_job_id', jobId);
+    await AsyncStorage.setItem(ACTIVE_JOB_ID_KEY, jobId);
+    await this.setTrackingStatus('TRACKING_ACTIVE', jobId);
 
     // Notify backend that session is starting
     try {
@@ -194,7 +290,7 @@ export const LocationTrackingService = {
     }
     foregroundTimer = setInterval(async () => {
       try {
-        const currentJobId = await AsyncStorage.getItem('active_tracking_job_id');
+        const currentJobId = await AsyncStorage.getItem(ACTIVE_JOB_ID_KEY);
         if (!currentJobId) {
           if (foregroundTimer) clearInterval(foregroundTimer);
           return;
@@ -231,7 +327,7 @@ export const LocationTrackingService = {
         showsBackgroundLocationIndicator: true,
         foregroundService: {
           notificationTitle: 'Live Job Tracking Active',
-          notificationBody: 'Sharing your real-time ETA with the store manager.',
+          notificationBody: 'Sharing your real-time ETA starting 15 minutes before your shift.',
           notificationColor: '#0B5B31',
         },
       });
@@ -240,19 +336,14 @@ export const LocationTrackingService = {
       console.warn('[LocationTrackingService] Background location task could not start (will rely on foreground loop):', bgTaskErr);
     }
 
-    Alert.alert(
-      "Live Location Sharing Active",
-      "Your location is being shared with the store manager.",
-      [{ text: "OK" }]
-    );
     return true;
   },
 
-  async stopTracking() {
-    const jobId = await AsyncStorage.getItem('active_tracking_job_id');
+  async stopTracking(reason: TrackingStatus = 'STOPPED') {
+    const jobId = await AsyncStorage.getItem(ACTIVE_JOB_ID_KEY);
     
     // Clear storage first to stop any pending loop
-    await AsyncStorage.removeItem('active_tracking_job_id');
+    await AsyncStorage.removeItem(ACTIVE_JOB_ID_KEY);
 
     // Clear active foreground interval
     if (foregroundTimer) {
@@ -274,6 +365,8 @@ export const LocationTrackingService = {
       console.warn('[LocationTrackingService] Error stopping location updates:', e);
     }
 
+    await this.setTrackingStatus(reason, jobId || undefined);
+
     // Notify backend that session is stopping
     if (jobId) {
       try {
@@ -284,3 +377,8 @@ export const LocationTrackingService = {
     }
   }
 };
+
+// Initialize initial status from storage
+LocationTrackingService.loadInitialStatus().catch((e) => {
+  console.warn('[LocationTrackingService] Init error:', e);
+});
