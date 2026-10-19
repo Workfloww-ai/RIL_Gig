@@ -4,7 +4,7 @@ module.exports = {
   expo: {
     name: "Sahyogi",
     slug: "sahyogi",
-    version: "1.2.6",
+    version: "1.2.7",
     orientation: "portrait",
     icon: "./assets/images/newlogo.png",
     splash: {
@@ -18,7 +18,7 @@ module.exports = {
       icon: "./assets/images/newlogo.png"
     },
     android: {
-      versionCode: 10,
+      versionCode: 11,
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/newlogo.png",
@@ -83,9 +83,9 @@ module.exports = {
     extra: {
       router: {},
       eas: {
-        projectId: "f1ce6922-d990-410b-884b-73fa33a90184"
+        projectId: "999659e5-5045-4ce6-aa34-5668376ae1a5"
       }
     },
-    owner: "monalika20s-team"
+    owner: "sahyogi"
   }
 };
