@@ -4,7 +4,7 @@ module.exports = {
   expo: {
     name: "Sahyogi",
     slug: "sahyogi",
-    version: "1.2.8",
+    version: "1.3.0",
     orientation: "portrait",
     icon: "./assets/images/newlogo.png",
     splash: {
@@ -18,7 +18,7 @@ module.exports = {
       icon: "./assets/images/newlogo.png"
     },
     android: {
-      versionCode: 12,
+      versionCode: 14,
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/newlogo.png",
@@ -83,9 +83,9 @@ module.exports = {
     extra: {
       router: {},
       eas: {
-        projectId: "c146f487-b7c0-45de-81a8-7a89af035689"
+        projectId: "999659e5-5045-4ce6-aa34-5668376ae1a5"
       }
     },
-    owner: "workflowwais-team"
+    owner: "sahyogi"
   }
 };
