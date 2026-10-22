@@ -19,7 +19,7 @@ async def process_eta_queue():
             payload_str = await client.lpop("eta_calculation_queue")
             
             if not payload_str:
-                await asyncio.sleep(60)  # Polling every 1 minute instead of 1 second
+                await asyncio.sleep(2)  # Polling every 2 seconds for responsive ETA calculations
                 continue
                 
             payload = json.loads(payload_str)

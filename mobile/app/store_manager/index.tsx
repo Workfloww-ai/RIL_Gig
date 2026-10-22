@@ -34,6 +34,8 @@ interface AcceptedWorker {
   name: string;
   role: string;
   avatarUrl?: string;
+  assignment_id?: string;
+  mobile_number?: string;
   status: 'Review Pending' | 'En Route' | 'On Site' | 'Confirmed' | 'Completed';
   acceptances: {
     t90: AcceptanceStatus;
@@ -168,10 +170,11 @@ export default function StoreManagerDashboard() {
     upcoming: false,
     past: false,
     pending: false,
-    declined: false
+    declined: false,
+    req_approved: false
   });
 
-  const toggleSection = (section: 'today' | 'upcoming' | 'past' | 'pending' | 'declined') => {
+  const toggleSection = (section: 'today' | 'upcoming' | 'past' | 'pending' | 'declined' | 'req_approved') => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -621,11 +624,11 @@ export default function StoreManagerDashboard() {
                                 <Feather name="phone" size={12} color="#0B5B31" />
                               </TouchableOpacity>
                             )}
-                            {/* showTracking && (
+                            {showTracking && (
                               <TouchableOpacity onPress={() => router.push(`/store_manager/live_tracking?jobId=${job.request_id}&workerId=${worker.id}&workerName=${encodeURIComponent(worker.name || 'Worker')}` as any)} style={{ backgroundColor: '#E1EBE5', padding: 4, borderRadius: 12 }}>
                                 <Feather name="navigation" size={12} color="#0B5B31" />
                               </TouchableOpacity>
-                            ) */}
+                            )}
                           </View>
                           <Text style={{ color: '#666666', fontSize: 12, marginTop: 1 }}>{worker.role}</Text>
                         </View>

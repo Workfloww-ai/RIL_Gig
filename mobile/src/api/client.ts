@@ -1,16 +1,30 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
+import { NativeModules } from 'react-native';
 
-// Update this to your machine's local IP (e.g., 192.168.1.5) if testing on a physical device.
-// 10.0.2.2 works for Android Emulator. localhost works for iOS Simulator.
-// Using the new localtunnel address
-// If the env variable already has /api, strip it so the interceptor can handle it
-export const API_URL = process.env.EXPO_PUBLIC_API_URL?.endsWith('/api') 
-  ? process.env.EXPO_PUBLIC_API_URL.replace(/\/api$/, '') 
-  : process.env.EXPO_PUBLIC_API_URL;
+const CURRENT_MAC_IP = '10.5.62.248';
+
+const getBaseApiUrl = () => {
+  let envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl?.endsWith('/api')) {
+    envUrl = envUrl.replace(/\/api$/, '');
+  }
+
+  // In development, prioritize the real Mac IP so requests don't hit outdated/cached IPs
+  if (__DEV__) {
+    return `http://${CURRENT_MAC_IP}:8000`;
+  }
+
+  return envUrl || `http://${CURRENT_MAC_IP}:8000`;
+};
+
+export const API_URL = getBaseApiUrl();
 
 export const apiClient = axios.create({
   baseURL: API_URL,
+  timeout: 10000, // 10s timeout so requests never hang indefinitely
   headers: {
     'Bypass-Tunnel-Reminder': 'true' // Required to bypass localtunnel interstitial page
   }
@@ -18,7 +32,7 @@ export const apiClient = axios.create({
 
 // Add a request interceptor to automatically attach the JWT token
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Automatically prepend /api if it's missing
     if (config.url) {
       if (config.url.startsWith('/') && !config.url.startsWith('/api')) {
@@ -28,7 +42,32 @@ apiClient.interceptors.request.use(
       }
     }
 
-    const token = useAuthStore.getState().token;
+    console.log(`[Network] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`);
+
+    let token = useAuthStore.getState().token;
+
+    // Headless background tasks (like background location) might run before Zustand is hydrated from storage
+    if (!token) {
+      try {
+        const raw = await SecureStore.getItemAsync('auth-storage');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          token = parsed?.state?.token;
+          if (token) {
+            useAuthStore.getState().setToken(token);
+            if (parsed?.state?.refreshToken) {
+              useAuthStore.getState().setRefreshToken(parsed.state.refreshToken);
+            }
+            if (parsed?.state?.userId) {
+              useAuthStore.getState().setUserId(parsed.state.userId);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[Network] SecureStore fallback error:', err);
+      }
+    }
+
     if (token) {
       console.log(`[Network] Attaching JWT Token to ${config.url}`);
       config.headers.Authorization = `Bearer ${token}`;
@@ -84,7 +123,19 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
       
       try {
-        const { refreshToken, setToken, logout } = useAuthStore.getState();
+        let { refreshToken } = useAuthStore.getState();
+        const { setToken, logout } = useAuthStore.getState();
+
+        if (!refreshToken) {
+          try {
+            const raw = await SecureStore.getItemAsync('auth-storage');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              refreshToken = parsed?.state?.refreshToken;
+            }
+          } catch (_) {}
+        }
+
         console.log("[Interceptor] 401 caught. Refresh Token in store:", refreshToken ? "EXISTS" : "MISSING");
         
         if (!refreshToken) {
@@ -138,7 +189,16 @@ apiClient.interceptors.response.use(
     }
     
     if (!error.response && (error.code === 'ECONNABORTED' || error.message === 'Network Error' || error.message.includes('Network'))) {
-      // Modify the error so frontend components can easily extract the detail string
+      if (originalRequest && !originalRequest._fallbackTried) {
+        originalRequest._fallbackTried = true;
+        const currentBase = originalRequest.baseURL || API_URL || '';
+        const fallbackBase = currentBase.includes('localhost') ? `http://${CURRENT_MAC_IP}:8000` : 'http://localhost:8000';
+        console.log(`[Network Interceptor] Retrying with fallback: ${fallbackBase}${originalRequest.url}`);
+        originalRequest.baseURL = fallbackBase;
+        return apiClient(originalRequest);
+      }
+
+      console.error(`[Network Error] Failed URL: ${error.config?.baseURL || ''}${error.config?.url} | Reason: ${error.message} (${error.code || 'NO_CODE'})`);
       error.response = {
         data: {
           detail: 'Poor network connection. Please check your signal and try again.',

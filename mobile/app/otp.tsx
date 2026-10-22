@@ -134,13 +134,16 @@ export default function OTPScreen() {
           JSON.stringify(err.response.data, null, 2)
         );
 
-        const detail = err.response.data?.detail;
+        const errorMsg =
+          err.response.data?.detail ||
+          err.response.data?.message ||
+          (Array.isArray(err.response.data?.details) ? err.response.data.details[0]?.msg : null);
 
-        if (typeof detail === "string") {
-          setError(detail);
-        } else if (Array.isArray(detail)) {
+        if (typeof errorMsg === "string") {
+          setError(errorMsg);
+        } else if (Array.isArray(errorMsg)) {
           // FastAPI 422 Validation Error
-          setError(detail[0]?.msg || "Validation Error");
+          setError(errorMsg[0]?.msg || "Validation Error");
         } else {
           setError("Server returned an error");
         }

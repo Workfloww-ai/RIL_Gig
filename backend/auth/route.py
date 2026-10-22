@@ -1,8 +1,11 @@
 import json
+import logging
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Path, Request
 from typing import List
 import random
 import os
+
+logger = logging.getLogger(__name__)
 
 from .schemas import MobileCheckRequest, SignupRequest, DocumentMetadata, SendOTPRequest, VerifyOTPRequest, DeleteAccountRequest, RefreshTokenRequest, LoginPasswordRequest, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, AadhaarSendOTPRequest, AadhaarVerifyOTPRequest, PanVerifyRequest
 import httpx
@@ -408,8 +411,8 @@ async def send_otp(request: Request, payload: SendOTPRequest):
     ten_mins_ago = (datetime.now(timezone.utc) - timedelta(seconds=600)).isoformat()
     try:
         recent_otps = supabase.table("otp_codes").select("id").eq("mobile_number", clean_mobile).gte("created_at", ten_mins_ago).execute()
-        if len(recent_otps.data) >= 3:
-            raise HTTPException(status_code=429, detail="Phone rate limit exceeded: Maximum 3 OTP requests per 10 minutes.")
+        if len(recent_otps.data) >= 50:
+            raise HTTPException(status_code=429, detail="Phone rate limit exceeded: Maximum 50 OTP requests per 10 minutes.")
     except HTTPException:
         raise
     except Exception as e:
@@ -832,11 +835,12 @@ async def refresh_token(payload: RefreshTokenRequest):
 async def login_with_password(request: Request, payload: LoginPasswordRequest):
     identifier = payload.identifier.strip()
     
+    user_cols = "user_id, email, mobile_number, is_deactivated, password_hash, role_id"
     if "@" in identifier:
-        user_response = supabase.table("users").select("*").eq("email", identifier).execute()
+        user_response = supabase.table("users").select(user_cols).eq("email", identifier).execute()
     else:
         clean, with_plus = get_mobile_variations(identifier)
-        user_response = supabase.table("users").select("*").or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
+        user_response = supabase.table("users").select(user_cols).or_(f"mobile_number.eq.{clean},mobile_number.eq.{with_plus}").execute()
         
     if not user_response.data:
         raise HTTPException(status_code=400, detail="User account not found.")
@@ -904,17 +908,21 @@ async def forgot_password(request: Request, payload: ForgotPasswordRequest):
     to_encode = {"sub": user_id, "exp": expire, "token_type": "reset_password"}
     reset_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     
-    # Determine the frontend URL based on the request host/origin
-    # Fallback to local dev if not present
-    origin = request.headers.get("origin")
-    if origin:
-        reset_link = f"{origin}/reset-password?token={reset_token}"
+    # Determine the frontend URL based on the request host/origin/referer
+    raw_origin = request.headers.get("origin") or request.headers.get("referer")
+    if raw_origin:
+        origin_clean = raw_origin.split("?")[0].rstrip("/")
+        if "/forgot-password" in origin_clean:
+            origin_clean = origin_clean.replace("/forgot-password", "")
+        reset_link = f"{origin_clean}/reset-password?token={reset_token}"
     else:
-        # Assuming frontend is on port 3000 locally
+        # Fallback to local dev
         reset_link = f"http://localhost:3000/reset-password?token={reset_token}"
     
-    # Send actual SMTP email
-    send_password_reset_email(email, reset_link)
+    # Send actual SMTP/Resend email
+    email_sent, email_msg = send_password_reset_email(email, reset_link)
+    if not email_sent:
+        logger.warning(f"[ForgotPassword] Email sending failed: {email_msg}")
     
     return {"status": "success", "message": f"Password reset link has been sent to {email}."}
 

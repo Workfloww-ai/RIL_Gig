@@ -3,7 +3,7 @@ import "../global.css"; // Note: For NativeWind v4
 import OfflineBanner from '../src/components/OfflineBanner';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-// import '../src/services/LocationTrackingService'; // Initialize global TaskManager
+import '../src/services/LocationTrackingService'; // Initialize global TaskManager
 import { useAuthStore } from '../src/store/authStore';
 import { useEffect } from 'react';
 
@@ -18,7 +18,8 @@ export default function RootLayout() {
     if (!_hasHydrated) return;
 
     // We consider these paths as part of the "auth" flow
-    const inAuthGroup = segments[0] === 'index' || segments[0] === 'otp' || segments[0] === 'signup';
+    const seg = segments[0] as string | undefined;
+    const inAuthGroup = seg === 'index' || seg === 'otp' || seg === 'signup';
 
     if (token && inAuthGroup) {
       // Redirect authenticated users away from login screens

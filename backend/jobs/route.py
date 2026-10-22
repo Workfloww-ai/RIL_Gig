@@ -880,6 +880,21 @@ async def verify_start_otp(assignment_id: str, payload: VerifyOtpRequest, user_i
             "assignment_status": "started"
         }).eq("job_assignment_id", assignment_id).execute()
         
+        # Clean up Redis tracking state and broadcast stop event to store manager
+        try:
+            import json
+            from tracking.redis_client import clear_tracking_keys, get_redis
+            await clear_tracking_keys(worker_id=payload.worker_id, job_id=request_id)
+            client = await get_redis()
+            await client.publish(f"job:{request_id}:location_updates", json.dumps({
+                "type": "tracking_stopped",
+                "worker_id": payload.worker_id,
+                "job_id": request_id,
+                "reason": "otp_verified"
+            }))
+        except Exception as redis_err:
+            logger.warning(f"[VerifyOtp] Error clearing tracking in Redis: {redis_err}")
+        
         return {"status": "success", "message": "Job started successfully"}
     except HTTPException:
         raise

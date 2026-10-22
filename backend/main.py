@@ -49,6 +49,7 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
             "success": False,
             "error_type": "HTTPException",
             "message": exc.detail,
+            "detail": exc.detail,
             "path": request.url.path
         }
     )
@@ -134,14 +135,16 @@ def shutdown_scheduler():
 
 
 # Configure CORS
-allowed_origins = os.getenv(
+allowed_origins_raw = os.getenv(
     "ALLOWED_ORIGINS", 
     "http://localhost:3000,http://localhost:8081"
-).split(",")
+)
+allowed_origins = [o.strip() for o in allowed_origins_raw.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"^https?:\/\/.*$",  # Permissive regex ensures Vercel, custom domains, and local origins pass CORS
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,8 +1,10 @@
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
 module.exports = {
   expo: {
     name: "Sahyogi",
     slug: "sahyogi",
-    version: "1.2.4",
+    version: "1.3.1",
     orientation: "portrait",
     icon: "./assets/images/newlogo.png",
     splash: {
@@ -16,7 +18,7 @@ module.exports = {
       icon: "./assets/images/newlogo.png"
     },
     android: {
-      versionCode: 8,
+      versionCode: 15,
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/newlogo.png",
@@ -27,14 +29,16 @@ module.exports = {
       package: "com.workfloww.sahyogi",
       config: {
         googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "API_KEY_MISSING_IN_ENV"
+          apiKey: GOOGLE_MAPS_API_KEY
         }
       },
       permissions: [
-        // "android.permission.ACCESS_COARSE_LOCATION",
-        // "android.permission.ACCESS_FINE_LOCATION",
-        // "android.permission.ACCESS_BACKGROUND_LOCATION",
-        // "android.permission.FOREGROUND_SERVICE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     web: {
@@ -54,16 +58,24 @@ module.exports = {
       "expo-video",
       "@react-native-community/datetimepicker",
       "expo-sharing",
-      // [
-      //   "expo-location",
-      //   {
-      //     locationAlwaysAndWhenInUsePermission: "Allow Sahyogi to use your location to track your route during active jobs.",
-      //     locationAlwaysPermission: "Allow Sahyogi to track your location in the background so store managers can see your real-time ETA.",
-      //     isIosBackgroundLocationEnabled: true,
-      //     isAndroidBackgroundLocationEnabled: true
-      //   }
-      // ],
-      "expo-secure-store"
+      "expo-image",
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission: "Allow Sahyogi to use your location to track your route during active jobs.",
+          locationAlwaysPermission: "Allow Sahyogi to track your location in the background so store managers can see your real-time ETA.",
+          isIosBackgroundLocationEnabled: true,
+          isAndroidBackgroundLocationEnabled: true
+        }
+      ],
+      "expo-secure-store",
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": GOOGLE_MAPS_API_KEY
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true

@@ -72,7 +72,8 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       console.error('API Error:', err.message, err.response?.data);
-      setError(err.response?.data?.detail || 'An error occurred. Make sure your local server is running.');
+      const errMsg = err.response?.data?.message || err.response?.data?.detail || err.message || 'An error occurred.';
+      setError(errMsg);
     } finally {
       setLoading(false);
     }

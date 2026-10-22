@@ -12,7 +12,7 @@ load_dotenv()
 import asyncio
 import datetime
 import logging
-from db.jobs_db import get_pending_t90_call_assignments, update_t90_call_status
+from db.jobs_db import get_pending_t90_call_assignments, update_t90_call_status, claim_t90_assignment
 from utils.hunar_ai import trigger_t90_voice_call
 
 
@@ -26,6 +26,7 @@ async def process_t90_voice_calls():
     """
     Evaluates all active worker assignments and triggers Hunar.ai voice calls
     for workers whose shift starts in approximately 90 minutes (between 60 and 95 mins).
+    Deduplication is handled at the DB level via atomic claim per assignment.
     """
     worker_flag = os.getenv("IS_WORKER_ON") or os.getenv("is_worker_on", "false")
     is_worker_on = str(worker_flag).strip().lower() in ("true", "1", "t", "yes")
@@ -111,6 +112,12 @@ async def process_t90_voice_calls():
                     if not mobile_number:
                         logger.warning(f"[T90VoiceWorker] No mobile number found for assignment {assignment_id}")
                         continue
+
+                    # Atomically claim this assignment at DB level to prevent duplicate calls across replicas
+                    claimed = claim_t90_assignment(assignment_id)
+                    if not claimed:
+                        logger.info(f"[T90VoiceWorker] Assignment {assignment_id} already claimed by another replica. Skipping.")
+                        continue
                         
                     masked_number = f"+91 ****{mobile_number[-4:]}" if mobile_number and len(mobile_number) >= 4 else "****"
                     masked_name = " ".join([p[0] + "***" for p in worker_name.split()])
@@ -118,9 +125,6 @@ async def process_t90_voice_calls():
                         f"[T90VoiceWorker] Triggering T-90 call for assignment {assignment_id} "
                         f"to {masked_name} ({masked_number}). Shift in {minutes_until_shift:.1f} mins."
                     )
-                    
-                    # Mark status as call_initiated first to avoid race conditions
-                    update_t90_call_status(assignment_id, new_status="call_initiated")
                     
                     # Trigger Hunar AI call
                     result = await trigger_t90_voice_call(

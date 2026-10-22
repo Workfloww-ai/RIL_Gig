@@ -17,6 +17,41 @@ class LocationUpdateSchema(BaseModel):
 class StartTrackingSchema(BaseModel):
     job_id: str
 
+class UpdateTrackingStatusSchema(BaseModel):
+    job_id: Optional[str] = None
+    status: str
+
+@router.post("/status")
+async def update_tracking_status(
+    payload: UpdateTrackingStatusSchema,
+    worker_id: str = Depends(get_current_user)
+):
+    from .redis_client import get_redis
+    try:
+        client = await get_redis()
+        if client:
+            status_data = {
+                "worker_id": worker_id,
+                "job_id": payload.job_id,
+                "status": payload.status,
+                "updated_at": time.time()
+            }
+            # Cache for 24 hours
+            await client.setex(f"worker:{worker_id}:tracking_status", 86400, json.dumps(status_data))
+            if payload.job_id:
+                await client.setex(f"job:{payload.job_id}:tracking_status", 86400, json.dumps(status_data))
+                channel = f"job:{payload.job_id}:location_updates"
+                await client.publish(channel, json.dumps({
+                    "type": "tracking_status_change",
+                    "worker_id": worker_id,
+                    "job_id": payload.job_id,
+                    "tracking_status": payload.status
+                }))
+    except Exception as e:
+        print(f"[Tracking] Error updating tracking status in Redis: {e}")
+        
+    return {"message": "Tracking status updated", "status": payload.status}
+
 @router.post("/session/start")
 async def start_tracking_session(
     payload: StartTrackingSchema, 
@@ -44,13 +79,28 @@ async def stop_tracking_session(
     worker_id: str = Depends(get_current_user)
 ):
     from utils.supabase_client import supabase
+    from .redis_client import clear_tracking_keys, get_redis
     try:
         # Verify assignment exists
-        wja_resp = supabase.table("worker_job_assignments").select("id").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
+        wja_resp = supabase.table("worker_job_assignments").select("job_assignment_id").eq("request_id", payload.job_id).eq("worker_id", worker_id).execute()
         if not wja_resp.data:
             raise HTTPException(status_code=403, detail="Worker not assigned to this job.")
             
-        # Optional: End session logic
+        # Clean up Redis tracking keys and notify connected store managers via WebSocket
+        await clear_tracking_keys(worker_id=worker_id, job_id=payload.job_id)
+        try:
+            client = await get_redis()
+            channel = f"job:{payload.job_id}:location_updates"
+            await client.publish(channel, json.dumps({
+                "type": "tracking_stopped",
+                "worker_id": worker_id,
+                "job_id": payload.job_id,
+                "reason": "session_stopped"
+            }))
+        except Exception as r_err:
+            print(f"[Tracking] Error broadcasting stop: {r_err}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
@@ -87,7 +137,7 @@ async def receive_location(
                 req_info = req_info[0]
 
             if status != "accepted":
-                print(f"[Backend] Job {payload.job_id} is no longer accepted (status: {status}). Telling mobile to STOP.")
+                print(f"[Backend] Job {payload.job_id} is no longer in 'accepted' status (current: {status}). Telling mobile to STOP.")
                 return {"message": "Stop tracking", "stop": True}
                 
             # Check if shift has already started and worker has not shown up
@@ -104,8 +154,9 @@ async def receive_location(
                 shift_dt_str = f"{shift_date} {start_time}"
                 try:
                     shift_dt = datetime.strptime(shift_dt_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=IST)
-                    if now >= shift_dt:
-                        print(f"[Backend] Shift started at {shift_dt}, but worker arrival_status is '{arrival_status}'. Telling mobile to STOP.")
+                    # Allow tracking for up to 3 hours after start time if worker has not arrived yet
+                    if now >= shift_dt + timedelta(hours=3):
+                        print(f"[Backend] Shift started at {shift_dt} and 3 hours elapsed, worker arrival_status is '{arrival_status}'. Telling mobile to STOP.")
                         return {"message": "Stop tracking", "stop": True}
                 except Exception as ex:
                     print(f"[Tracking] Error parsing shift time: {ex}")
@@ -190,7 +241,7 @@ async def get_tracking_state(
         is_authorized = False
         
         # Check if user is the assigned worker
-        wja_resp = supabase.table("worker_job_assignments").select("id").eq("request_id", job_id).eq("worker_id", user_id).execute()
+        wja_resp = supabase.table("worker_job_assignments").select("job_assignment_id").eq("request_id", job_id).eq("worker_id", user_id).execute()
         if wja_resp.data:
             is_authorized = True
         else:
@@ -199,7 +250,7 @@ async def get_tracking_state(
             if req_resp.data:
                 store_id = req_resp.data[0].get("store_id")
                 # Check user store assignment
-                usa_resp = supabase.table("user_store_assignment").select("id").eq("user_id", user_id).eq("store_id", store_id).execute()
+                usa_resp = supabase.table("user_store_assignment").select("store_id").eq("user_id", user_id).eq("store_id", store_id).execute()
                 if usa_resp.data:
                     is_authorized = True
                 else:
@@ -207,17 +258,50 @@ async def get_tracking_state(
                     user_role_resp = supabase.table("users").select("role_id").eq("user_id", user_id).execute()
                     if user_role_resp.data and user_role_resp.data[0].get("role_id"):
                         role_resp = supabase.table("roles").select("role_name").eq("role_id", user_role_resp.data[0]["role_id"]).execute()
-                        if role_resp.data and role_resp.data[0]["role_name"].lower() in ["superadmin", "finance"]:
+                        if role_resp.data and role_resp.data[0]["role_name"].lower() in ["superadmin", "finance", "store_manager"]:
                             is_authorized = True
                             
         if not is_authorized:
             raise HTTPException(status_code=403, detail="Not authorized to view tracking for this job.")
             
-        # Currently skipping Redis ETA fetch as per requirements
+        from .redis_client import get_redis
+        client = await get_redis()
+        latest_eta_raw = await client.get(f"job:{job_id}:latest_eta")
+        latest_loc_raw = await client.get(f"job:{job_id}:latest_location")
+        
+        latest_eta = json.loads(latest_eta_raw) if latest_eta_raw else None
+        latest_loc = json.loads(latest_loc_raw) if latest_loc_raw else None
+        
+        status_raw = await client.get(f"job:{job_id}:tracking_status") if client else None
+        tracking_status_info = json.loads(status_raw) if status_raw else None
+
+        # Fetch store coordinates for this job so mobile map can center on the store immediately
+        store_data = None
+        try:
+            req_store_resp = supabase.table("manpower_requests").select(
+                "store_id, stores(store_id, store_name, latitude, longitude)"
+            ).eq("request_id", job_id).execute()
+            if req_store_resp.data and len(req_store_resp.data) > 0:
+                s_info = req_store_resp.data[0].get("stores")
+                if isinstance(s_info, list) and len(s_info) > 0:
+                    s_info = s_info[0]
+                if s_info:
+                    store_data = {
+                        "store_id": s_info.get("store_id"),
+                        "store_name": s_info.get("store_name"),
+                        "latitude": s_info.get("latitude"),
+                        "longitude": s_info.get("longitude")
+                    }
+        except Exception as s_err:
+            print(f"[Tracking] Error fetching store info: {s_err}")
+        
         return {
             "job_id": job_id, 
             "status": "active", 
-            "eta_data": None
+            "location_data": latest_loc,
+            "eta_data": latest_eta,
+            "store_data": store_data,
+            "tracking_status": tracking_status_info.get("status") if tracking_status_info else None
         }
     except HTTPException:
         raise
