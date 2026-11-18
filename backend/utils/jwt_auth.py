@@ -13,9 +13,12 @@ SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("FATAL ERROR: JWT_SECRET_KEY is missing from environment variables.")
 ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
-# Standard enterprise access token expiration is usually short (15-60 mins). 
+# Access token: short-lived for security (30 mins). Silently refreshed by the mobile client.
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES", "30"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("JWT_REFRESH_EXPIRE_DAYS", "7"))
+# Refresh token: long-lived so users stay logged in indefinitely.
+# Default: 365 days. Override via JWT_REFRESH_EXPIRE_DAYS env var.
+# User is only logged out if they explicitly logout from the app.
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("JWT_REFRESH_EXPIRE_DAYS", "365"))
 
 security = HTTPBearer()
 

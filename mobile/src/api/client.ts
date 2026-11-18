@@ -46,7 +46,9 @@ apiClient.interceptors.request.use(
 
     let token = useAuthStore.getState().token;
 
-    // Headless background tasks (like background location) might run before Zustand is hydrated from storage
+    // Zustand might not be hydrated yet from SecureStore on a cold start
+    // (e.g. background location tasks fire before hydration completes).
+    // Fall back to reading SecureStore directly in that case.
     if (!token) {
       try {
         const raw = await SecureStore.getItemAsync('auth-storage');
@@ -126,6 +128,8 @@ apiClient.interceptors.response.use(
         let { refreshToken } = useAuthStore.getState();
         const { setToken, logout } = useAuthStore.getState();
 
+        // Same SecureStore fallback for the refresh token — handles the case
+        // where Zustand hasn't finished hydrating before the first request fires.
         if (!refreshToken) {
           try {
             const raw = await SecureStore.getItemAsync('auth-storage');

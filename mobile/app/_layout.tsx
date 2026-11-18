@@ -10,12 +10,13 @@ import { useEffect } from 'react';
 import { apiClient } from '../src/api/client';
 
 export default function RootLayout() {
+  // Wait for SecureStore hydration before making routing decisions
   const { _hasHydrated, token, role } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (!_hasHydrated) return;
+    if (!_hasHydrated) return; // Don't redirect until tokens are loaded from SecureStore
 
     // We consider these paths as part of the "auth" flow
     const seg = segments[0] as string | undefined;
