@@ -974,7 +974,18 @@ export default function DocumentsScreen() {
                     Linking.openURL('https://www.sahyogi.net.in/privacy.html');
                   }}>
                     <Text style={{ color: '#10472B', fontWeight: '800', fontSize: 13, textDecorationLine: 'underline' }}>
-                      Privacy Policy & Terms
+                      Privacy Policy
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={{ color: '#333333', fontSize: 13, lineHeight: 19 }}>
+                    {' '}and{' '}
+                  </Text>
+                  <TouchableOpacity onPress={(e) => {
+                    e.stopPropagation();
+                    Linking.openURL('https://www.sahyogi.net.in/terms-and-conditions.html');
+                  }}>
+                    <Text style={{ color: '#10472B', fontWeight: '800', fontSize: 13, textDecorationLine: 'underline' }}>
+                      Terms & Conditions
                     </Text>
                   </TouchableOpacity>
                 </View>
